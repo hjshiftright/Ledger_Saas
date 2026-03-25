@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option J: Milestone Quest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .quest-header {
+            padding: 24px 40px;
+            background: #161b22;
+            border-bottom: 2px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-track {
+            height: 12px;
+            background: #30363d;
+            border-radius: 100px;
+            width: 300px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            background: linear-gradient(90deg, #3fb950, #ab7df8);
+            width: 10%;
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .xp-badge {
+            background: #238636;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+        }
+
+        .main-stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            position: relative;
+        }
+
+        .quest-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 32px;
+            width: 100%;
+            max-width: 600px;
+            padding: 48px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.8) translateY(40px); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .btn-quest {
+            background: #3fb950;
+            color: white;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            margin-top: 32px;
+        }
+        .btn-quest:hover { background: #2ea043; transform: scale(1.05); box-shadow: 0 0 20px rgba(63, 185, 80, 0.4); }
+
+        .form-input {
+            background: #0d1117;
+            border: 2px solid #30363d;
+            border-radius: 16px;
+            padding: 16px 20px;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            width: 100%;
+            outline: none;
+            margin-top: 24px;
+            text-align: center;
+        }
+        .form-input:focus { border-color: #ab7df8; }
+
+        .milestone-node {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8b949e;
+            font-size: 18px;
+            z-index: 10;
+        }
+        .milestone-node.completed { background: #3fb950; color: white; }
+    </style>
+</head>
+<body>
+
+    <header class="quest-header">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">⚔️</div>
+            <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Financial Quest</div>
+                <div class="text-white font-black text-lg">Ledger Onboarding</div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <div class="progress-track">
+                <div class="progress-fill" id="fill"></div>
+            </div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase mt-2">Level 01: The Awakening</div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <div class="text-right">
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Total XP</div>
+                <div class="text-white font-black text-lg">240 <span class="text-indigo-400 text-xs">/ 1000</span></div>
+            </div>
+            <div class="xp-badge">+50 XP</div>
+        </div>
+    </header>
+
+    <main class="main-stage">
+        
+        <div class="quest-card" id="q-1">
+            <div class="text-6xl mb-8">👤</div>
+            <h1 class="text-4xl font-black text-white mb-4">Claim Your Identity</h1>
+            <p class="text-slate-400 leading-relaxed max-w-sm mx-auto">Every hero needs a name. What shall we call you in this financial realm?</p>
+            <input type="text" id="name" placeholder="Vamsi" class="form-input">
+            <button class="btn-quest" onclick="next(1, 'Gathering Assets')">
+                Claim Identity <i class="fas fa-crown text-xs"></i>
+            </button>
+        </div>
+
+        <div class="quest-card hidden" id="q-2">
+            <div class="text-6xl mb-8">💰</div>
+            <h1 class="text-4xl font-black text-white mb-4">Gathering Assets</h1>
+            <p class="text-slate-400 leading-relaxed max-w-sm mx-auto">First piece of treasure found! Entering your main bank balance grants +150 XP.</p>
+            <input type="number" id="balance" placeholder="₹ Amount" class="form-input">
+            <button class="btn-quest" onclick="next(2, 'The Grand Reveal')">
+                Deposit Treasure <i class="fas fa-gem text-xs"></i>
+            </button>
+        </div>
+
+        <div class="quest-card hidden" id="q-3">
+            <div class="text-6xl mb-8">🏆</div>
+            <h1 class="text-4xl font-black text-white mb-4">Quest Complete!</h1>
+            <div class="bg-[#238636]/20 border border-[#238636] p-8 rounded-3xl mt-8">
+                <div class="text-[10px] font-bold text-green-400 uppercase mb-2">Stability Multiplier Achieved</div>
+                <div class="text-5xl font-black text-white tracking-tighter">₹<span id="final-val">0</span></div>
+            </div>
+            <button class="btn-quest w-full justify-center" onclick="location.reload()">
+                Enter the Citadel <i class="fas fa-fort-awesome text-xs"></i>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Milestone Navigation -->
+    <div class="fixed bottom-12 left-0 right-0 flex justify-center gap-12 pointer-events-none">
+        <div class="milestone-node completed" id="m-1"><i class="fas fa-user-ninja"></i></div>
+        <div class="milestone-node" id="m-2"><i class="fas fa-treasure-chest"></i></div>
+        <div class="milestone-node" id="m-3"><i class="fas fa-flag-checkered"></i></div>
+    </div>
+
+    <script>
+        function next(curr, nextTitle) {
+            document.getElementById('q-' + curr).style.display = 'none';
+            const nxt = curr + 1;
+            const card = document.getElementById('q-' + nxt);
+            card.style.display = 'block';
+            card.classList.remove('hidden');
+
+            document.getElementById('fill').style.width = (nxt * 33) + '%';
+            document.getElementById('m-' + nxt).classList.add('completed');
+
+            if (nxt === 3) {
+                const val = document.getElementById('balance').value || 0;
+                document.getElementById('final-val').innerText = Number(val).toLocaleString('en-IN');
+            }
+        }
+    </script>
+</body>
+</html>

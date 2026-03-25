@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option A: Modern FinTech (Full Flow)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #fafafa; }
+        .slide-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card-selected { border-color: #4F46E5 !important; background-color: #EEF2FF !important; }
+        .card-selected .check-icon { display: flex !important; }
+        
+        .fab { position: fixed; bottom: 30px; right: 30px; z-index: 50; box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5); }
+        .ai-panel { position: fixed; bottom: 90px; right: 30px; width: 350px; z-index: 40; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); transform: translateY(20px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .ai-panel.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 4px; }
+
+        .draft-banner { background: #FFF9E6; border-bottom: 1px solid #FFE58F; padding: 8px; text-align: center; font-size: 11px; font-weight: 700; color: #856404; position: sticky; top: 0; z-index: 100; }
+    </style>
+</head>
+<body class="text-slate-900 h-screen flex flex-col overflow-hidden">
+    <div class="draft-banner"><i class="fas fa-clock-rotate-left mr-2"></i> RESUMING DRAFT: Started today at 7:30 PM. Accounts are unsynced.</div>
+
+    <!-- Progress Header -->
+    <header class="w-full max-w-5xl mx-auto px-8 pt-8 pb-4 shrink-0">
+        <div class="flex items-center justify-between mb-8">
+            <div class="text-2xl font-extrabold tracking-tight">Ledger.</div>
+            <div class="flex gap-4 items-center">
+                <span id="save-indicator" class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest opacity-0 transition-opacity">Saved</span>
+                <button class="text-sm font-semibold text-slate-400 hover:text-slate-700 transition-colors">Save & Exit</button>
+            </div>
+        </div>
+        
+        <!-- Progress Steps -->
+        <div class="flex justify-between relative mb-4">
+            <div class="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -z-10 -translate-y-1/2 rounded-full"></div>
+            <div id="prog-bar" class="absolute top-1/2 left-0 h-1 bg-indigo-600 -z-10 -translate-y-1/2 rounded-full transition-all duration-500" style="width: 25%;"></div>
+            
+            <div class="w-1/4 text-center cursor-pointer" onclick="goToStep(1)">
+                <div class="text-[10px] font-bold uppercase tracking-widest mb-1 text-indigo-600" id="step-label-1">Identity</div>
+                <div class="w-3 h-3 rounded-full bg-indigo-600 mx-auto border-2 border-white shadow-sm" id="step-dot-1"></div>
+            </div>
+            <div class="w-1/4 text-center cursor-pointer" onclick="goToStep(2)">
+                <div class="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400" id="step-label-2">Structure</div>
+                <div class="w-3 h-3 rounded-full bg-slate-200 mx-auto border-2 border-white shadow-sm" id="step-dot-2"></div>
+            </div>
+            <div class="w-1/4 text-center cursor-pointer" onclick="goToStep(3)">
+                <div class="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400" id="step-label-3">Ambition</div>
+                <div class="w-3 h-3 rounded-full bg-slate-200 mx-auto border-2 border-white shadow-sm" id="step-dot-3"></div>
+            </div>
+            <div class="w-1/4 text-center cursor-pointer" onclick="goToStep(4)">
+                <div class="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400" id="step-label-4">Clarity</div>
+                <div class="w-3 h-3 rounded-full bg-slate-200 mx-auto border-2 border-white shadow-sm" id="step-dot-4"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto pb-32 pt-8 relative" id="main-container">
+        
+        <!-- STAGE 1: IDENTITY -->
+        <div id="step-1" class="w-full max-w-4xl mx-auto px-8 slide-enter">
+            <div class="mb-10">
+                <h1 class="text-4xl font-extrabold tracking-tight mb-3">Let's find your baseline.</h1>
+                <p class="text-lg text-slate-500">Pick a persona that reflects your life. We'll pre-create your accounts.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
+                <!-- Persona Card 1 -->
+                <div class="persona-card group relative p-6 rounded-2xl border-2 border-slate-100 bg-white hover:border-indigo-200 cursor-pointer transition-all shadow-sm hover:shadow-md" onclick="selectPersona(this, 'salaried', 'Riya')">
+                    <div class="check-icon absolute top-4 right-4 w-6 h-6 bg-indigo-600 text-white rounded-full hidden items-center justify-center shadow-lg"><i class="fas fa-check text-[10px]"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-4 text-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors"><i class="fas fa-briefcase"></i></div>
+                    <h3 class="font-bold text-lg mb-1">Salaried Pro</h3>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">Steady & Structured</p>
+                    <p class="text-sm text-slate-500 leading-relaxed mb-4">Fixed income, SIPs, and home loans. Optimizing for long-term growth.</p>
+                    <div class="flex flex-wrap gap-2"><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">EPF</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">HDFC Bank</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">SIPs</span></div>
+                </div>
+                
+                <!-- Persona Card 2 -->
+                <div class="persona-card group relative p-6 rounded-2xl border-2 border-slate-100 bg-white hover:border-indigo-200 cursor-pointer transition-all shadow-sm hover:shadow-md" onclick="selectPersona(this, 'business', 'Vamsi')">
+                    <div class="check-icon absolute top-4 right-4 w-6 h-6 bg-indigo-600 text-white rounded-full hidden items-center justify-center shadow-lg"><i class="fas fa-check text-[10px]"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-4 text-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors"><i class="fas fa-store"></i></div>
+                    <h3 class="font-bold text-lg mb-1">Business Owner</h3>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">Variable & Scale</p>
+                    <p class="text-sm text-slate-500 leading-relaxed mb-4">Managing cash-flow, business loans, and aggressive reinvestment.</p>
+                    <div class="flex flex-wrap gap-2"><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">GST</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">Current A/C</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">OD</span></div>
+                </div>
+
+                <!-- Persona Card 3 -->
+                <div class="persona-card group relative p-6 rounded-2xl border-2 border-slate-100 bg-white hover:border-indigo-200 cursor-pointer transition-all shadow-sm hover:shadow-md" onclick="selectPersona(this, 'investor', 'Ananya')">
+                    <div class="check-icon absolute top-4 right-4 w-6 h-6 bg-indigo-600 text-white rounded-full hidden items-center justify-center shadow-lg"><i class="fas fa-check text-[10px]"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-4 text-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors"><i class="fas fa-chart-line"></i></div>
+                    <h3 class="font-bold text-lg mb-1">Active Investor</h3>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">Growth & Data</p>
+                    <p class="text-sm text-slate-500 leading-relaxed mb-4">Focused on asset allocation across stocks, gold, and fixed deposits.</p>
+                    <div class="flex flex-wrap gap-2"><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">Zerodha</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">Stocks</span><span class="px-2 py-0.5 bg-slate-50 text-slate-500 text-[10px] font-bold rounded">Gold</span></div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end p-8 border-t border-slate-100 bg-white sticky bottom-0 left-0 right-0 z-10 w-full rounded-t-3xl shadow-2xl shadow-indigo-500/10 transition-all transform translate-y-0" id="nav-1">
+                <button id="btn-next-1" class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all opacity-50 cursor-not-allowed flex items-center gap-3" onclick="goToStep(2)" disabled>
+                    Configure My Accounts <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 2: STRUCTURE -->
+        <div id="step-2" class="w-full max-w-4xl mx-auto px-8 hidden">
+            <div class="mb-8">
+                <h1 class="text-4xl font-extrabold tracking-tight mb-2">The Financial Map</h1>
+                <p class="text-lg text-slate-500">Confirm your accounts and enter starting balances.</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Inputs Section -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- Assets -->
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-emerald-600">Assets (What you own)</h3>
+                            <button class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">+ Add Account</button>
+                        </div>
+                        <div class="space-y-3" id="asset-list">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+
+                    <!-- Liabilities -->
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-rose-500">Liabilities (What you owe)</h3>
+                            <button class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">+ Add Debt</button>
+                        </div>
+                        <div class="space-y-3" id="liab-list">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Summary Section -->
+                <div class="lg:col-span-1">
+                    <div class="sticky top-8 bg-white rounded-3xl border border-slate-100 p-8 shadow-xl shadow-slate-200/50">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Live Balance Sheet</div>
+                        <div class="space-y-6">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-slate-500">Total Assets</span>
+                                    <span class="font-bold text-emerald-600">₹<span id="label-ast">0</span></span>
+                                </div>
+                                <div class="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                                    <div class="h-full bg-emerald-500 rounded-full" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-slate-500">Total liabilities</span>
+                                    <span class="font-bold text-rose-500">₹<span id="label-liab">0</span></span>
+                                </div>
+                                <div class="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                                    <div id="liab-bar" class="h-full bg-rose-500 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div class="pt-6 border-t border-slate-100">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Net Worth</span>
+                                <div class="text-2xl font-black text-slate-900 leading-none tracking-tight">₹<span id="label-nw">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center p-8 border-t border-slate-100 bg-white sticky bottom-0 left-0 right-0 z-10 w-full rounded-t-3xl shadow-2xl shadow-indigo-500/10 mt-12">
+                <button class="text-sm font-bold text-slate-400 hover:text-slate-800 transition-colors" onclick="goToStep(1)">← Back</button>
+                <button class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center gap-3" onclick="goToStep(3)">
+                    Set Financial Goals <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 3: AMBITION -->
+        <div id="step-3" class="w-full max-w-4xl mx-auto px-8 hidden">
+            <div class="mb-10">
+                <h1 class="text-4xl font-extrabold tracking-tight mb-3">Your Future Ambition</h1>
+                <p class="text-lg text-slate-500">Where are you going? Choose goals to track progress against your net worth.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-12">
+                <!-- Goal Item 1 -->
+                <div class="p-6 rounded-3xl border-2 border-indigo-600 bg-indigo-50/30">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-200"><i class="fas fa-umbrella-beach"></i></div>
+                        <div>
+                            <h3 class="font-bold text-lg leading-none mb-1">Retirement</h3>
+                            <p class="text-xs text-indigo-500 font-bold uppercase tracking-wider">High Priority</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Monthly Retirement Spend</label>
+                            <input type="number" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 transition-all" value="100000">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Retire Age</label>
+                                <input type="number" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none" value="60">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Till Age</label>
+                                <input type="number" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none" value="95">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Goal Item 2 -->
+                <div class="p-6 rounded-3xl border-2 border-slate-100 bg-white hover:border-emerald-200 transition-all cursor-pointer group">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center text-xl group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors"><i class="fas fa-shield-heart"></i></div>
+                            <div>
+                                <h3 class="font-bold text-lg leading-none mb-1">Emergency Fund</h3>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Active Protection</p>
+                            </div>
+                        </div>
+                        <div class="w-6 h-6 rounded-full border-2 border-slate-100 flex items-center justify-center text-emerald-500 group-hover:border-emerald-500 transition-colors"><i class="fas fa-check text-[10px] hidden group-hover:block"></i></div>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed">Secure 6 months of your current lifestyle to handle any bumps in the road.</p>
+                </div>
+
+                <!-- Goal Item 3 -->
+                <div class="p-6 rounded-3xl border-2 border-slate-100 bg-white hover:border-amber-200 transition-all cursor-pointer group">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center text-xl group-hover:bg-amber-50 group-hover:text-amber-500 transition-colors"><i class="fas fa-plane-departure"></i></div>
+                            <div>
+                                <h3 class="font-bold text-lg leading-none mb-1">Yearly Sabbatical</h3>
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Freedom</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-plus text-slate-300 group-hover:text-amber-500"></i>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed">Fund a 1-month break every year to recharge and travel without financial stress.</p>
+                </div>
+                
+                <!-- Add Custom -->
+                <div class="p-6 rounded-3xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-all cursor-pointer">
+                    <i class="fas fa-plus-circle text-slate-300 text-3xl mb-3"></i>
+                    <span class="font-bold text-slate-400">Add Custom Goal</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center p-8 border-t border-slate-100 bg-white sticky bottom-0 left-0 right-0 z-10 w-full rounded-t-3xl shadow-2xl shadow-indigo-500/10 mt-12">
+                <button class="text-sm font-bold text-slate-400 hover:text-slate-800 transition-colors" onclick="goToStep(2)">← Back</button>
+                <button class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center gap-3" onclick="goToStep(4)">
+                    Generate Dashboard <i class="fas fa-sparkles text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 4: CLARITY -->
+        <div id="step-4" class="w-full max-w-5xl mx-auto px-8 hidden">
+            <div class="flex items-center justify-between mb-10">
+                <div>
+                    <h1 class="text-4xl font-extrabold tracking-tight mb-2">Financial Clarity.</h1>
+                    <p class="text-lg text-slate-500">Welcome, <span id="user-name-label" class="text-indigo-600 font-bold underline">User</span>. Here's your baseline dashboard.</p>
+                </div>
+                <button class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-all shadow-lg flex items-center gap-2">
+                    Enter Main App <i class="fas fa-rocket"></i>
+                </button>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Main Metric Card -->
+                <div class="lg:col-span-2 bg-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+                    <div class="absolute top-0 right-0 p-12 opacity-10 pointer-events-none"><i class="fas fa-chart-line text-[200px]"></i></div>
+                    <div class="relative z-10">
+                        <div class="text-xs font-bold uppercase tracking-widest opacity-60 mb-2">Net Assets as of Today</div>
+                        <div class="text-6xl font-black tracking-tight mb-8">₹<span id="finish-nw">0</span></div>
+                        <div class="grid grid-cols-2 gap-8 border-t border-white/10 pt-8">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Total Ownership</div>
+                                <div class="text-2xl font-bold italic">₹<span id="finish-ast">0</span></div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Total Obligations</div>
+                                <div class="text-2xl font-bold italic">₹<span id="finish-liab">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insight Card -->
+                <div class="lg:col-span-1 bg-white rounded-3xl p-8 border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center"><i class="fas fa-sparkles"></i></div>
+                        <div>
+                            <div class="font-bold text-sm">Copilot Insight</div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time Audit</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-600 leading-relaxed mb-6" id="final-ai-text">
+                        Your net worth is off to a solid start. I noticed you have a high liability-to-asset ratio (45%). High priority should be building that emergency fund.
+                    </p>
+                    <div class="mt-auto pt-6 border-t border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Next Recommendation</div>
+                        <button class="w-full bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold py-3 rounded-xl transition-all border border-slate-200">Set Monthly Contribution</button>
+                    </div>
+                </div>
+
+                <!-- Goal Stats -->
+                <div class="lg:col-span-3 grid md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Goal: Retirement</div>
+                        <div class="text-2xl font-black text-slate-800 mb-2">₹4.2 Cr</div>
+                        <div class="w-full h-1.5 bg-slate-50 rounded-full mb-2"><div class="h-full bg-indigo-500 rounded-full" style="width: 15%;"></div></div>
+                        <div class="text-[10px] font-bold text-indigo-500">15% Funded</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Financial Health</div>
+                        <div class="text-2xl font-black text-emerald-600 mb-2">Good</div>
+                        <div class="flex gap-1 mb-2"><div class="h-1.5 flex-1 bg-emerald-500 rounded-full"></div><div class="h-1.5 flex-1 bg-emerald-500 rounded-full"></div><div class="h-1.5 flex-1 bg-slate-100 rounded-full"></div></div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Score: 68/100</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Monthly Surplus</div>
+                        <div class="text-2xl font-black text-slate-800 mb-2">₹42,000</div>
+                        <div class="text-[10px] font-medium text-slate-500">32% of total income</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- UI Overlay: AI FAB -->
+    <button class="fab w-14 h-14 bg-violet-600 text-white rounded-full flex items-center justify-center text-xl hover:bg-violet-700 transition-all hover:scale-105 active:scale-95" id="ai-fab" onclick="toggleAI()">
+        <i class="fas fa-sparkles"></i>
+    </button>
+    
+    <!-- AI Panel -->
+    <div class="ai-panel bg-white border border-slate-100 flex flex-col h-[450px]" id="ai-panel">
+        <div class="bg-violet-600 text-white p-5 rounded-t-[19px] flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-robot text-xl"></i>
+                <div>
+                    <div class="font-bold text-sm">Ledger Copilot</div>
+                    <div class="text-[10px] text-violet-200 font-bold uppercase tracking-widest">Stage Assistant</div>
+                </div>
+            </div>
+            <button onclick="toggleAI()" class="text-white/60 hover:text-white"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="flex-1 p-5 overflow-y-auto bg-slate-50 space-y-4 text-sm" id="chat-history">
+            <div class="bg-white border border-slate-100 p-4 rounded-2xl rounded-tl-none shadow-sm text-slate-700 leading-relaxed">
+                Hi! I'm your financial copilot. I help set up your ledger so you don't have to deal with jargon. <br><br>
+                What's your financial life like lately? (e.g., job info, investments, loans)
+            </div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white rounded-b-[19px]">
+            <div class="flex items-center bg-slate-50 rounded-xl overflow-hidden border border-slate-200 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100 transition-all">
+                <input type="text" id="ai-input" class="flex-1 bg-transparent px-4 py-3 outline-none text-sm placeholder-slate-400 font-medium" placeholder="E.g. I work at GE and make 15L..." onkeypress="handleAIChat(event)">
+                <button class="w-12 h-12 flex items-center justify-center text-violet-600 hover:text-violet-800 transition-colors" onclick="sendAIMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            currentStep: 1,
+            persona: null,
+            name: 'User',
+            accounts: {
+                assets: [],
+                liabilities: []
+            },
+            assetsTotal: 0,
+            liabTotal: 0
+        };
+
+        const accountDefaults = {
+            salaried: {
+                assets: [ {name: 'HDFC Savings', balance: 450000}, {name: 'EPF/PPF', balance: 1200000} ],
+                liabilities: [ {name: 'HDFC Home Loan', balance: 3500000}, {name: 'SBI Credit Card', balance: 45000} ]
+            },
+            business: {
+                assets: [ {name: 'Current A/C', balance: 2500000}, {name: 'Inventory Assets', balance: 5000000} ],
+                liabilities: [ {name: 'Business Loan', balance: 1500000}, {name: 'GST Payable', balance: 85000} ]
+            },
+            investor: {
+                assets: [ {name: 'Zerodha Stocks', balance: 2200000}, {name: 'Tanishq Gold', balance: 450000}, {name: 'Mutual Funds', balance: 1500000} ],
+                liabilities: [ {name: 'Credit Card', balance: 20000} ]
+            }
+        };
+
+        function selectPersona(el, type, name) {
+            document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('card-selected'));
+            el.classList.add('card-selected');
+            state.persona = type;
+            state.name = name;
+            
+            const btn = document.getElementById('btn-next-1');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            // Apply defaults to state
+            state.accounts.assets = [...accountDefaults[type].assets];
+            state.accounts.liabilities = [...accountDefaults[type].liabilities];
+            
+            saveIndicator();
+        }
+
+        function saveIndicator() {
+            const ind = document.getElementById('save-indicator');
+            ind.style.opacity = 1;
+            setTimeout(() => ind.style.opacity = 0, 1500);
+        }
+
+        function renderStage2() {
+            const aList = document.getElementById('asset-list');
+            const lList = document.getElementById('liab-list');
+            
+            aList.innerHTML = state.accounts.assets.map((a, i) => `
+                <div class="flex items-center justify-between bg-white border border-slate-100 p-4 rounded-2xl shadow-sm group">
+                    <input type="text" class="font-bold text-slate-800 outline-none w-1/2 bg-transparent" value="${a.name}" onchange="updateAccount('assets', ${i}, 'name', this.value)">
+                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 w-56 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-50 transition-all">
+                        <select class="bg-transparent text-[10px] font-bold text-slate-400 mr-2 outline-none">
+                            <option>INR</option>
+                            <option>USD</option>
+                        </select>
+                        <input type="number" class="w-full bg-transparent outline-none font-black text-right text-emerald-700 tabular-nums" value="${a.balance}" onkeyup="updateAccount('assets', ${i}, 'balance', this.value)">
+                    </div>
+                </div>
+            `).join('');
+
+            lList.innerHTML = state.accounts.liabilities.map((l, i) => `
+                <div class="flex items-center justify-between bg-white border border-slate-100 p-4 rounded-2xl shadow-sm group">
+                    <input type="text" class="font-bold text-slate-800 outline-none w-1/2 bg-transparent" value="${l.name}" onchange="updateAccount('liabilities', ${i}, 'name', this.value)">
+                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 w-40 focus-within:border-rose-400 focus-within:ring-2 focus-within:ring-rose-50 transition-all">
+                        <span class="text-slate-400 text-xs mr-2">₹</span>
+                        <input type="number" class="w-full bg-transparent outline-none font-black text-right text-rose-700 tabular-nums" value="${l.balance}" onkeyup="updateAccount('liabilities', ${i}, 'balance', this.value)">
+                    </div>
+                </div>
+            `).join('');
+            
+            calculateNW();
+        }
+
+        function updateAccount(type, index, field, value) {
+            state.accounts[type][index][field] = field === 'balance' ? (Number(value) || 0) : value;
+            calculateNW();
+        }
+
+        function calculateNW() {
+            state.assetsTotal = state.accounts.assets.reduce((sum, a) => sum + a.balance, 0);
+            state.liabTotal = state.accounts.liabilities.reduce((sum, l) => sum + l.balance, 0);
+            const nw = state.assetsTotal - state.liabTotal;
+            
+            document.getElementById('label-ast').innerText = state.assetsTotal.toLocaleString('en-IN');
+            document.getElementById('label-liab').innerText = state.liabTotal.toLocaleString('en-IN');
+            document.getElementById('label-nw').innerText = nw.toLocaleString('en-IN');
+            
+            const liabPercent = state.assetsTotal > 0 ? (state.liabTotal / state.assetsTotal) * 100 : 0;
+            document.getElementById('liab-bar').style.width = Math.min(liabPercent, 100) + '%';
+        }
+
+        function goToStep(n) {
+            if (n === 2) renderStage2();
+            if (n === 4) {
+                document.getElementById('user-name-label').innerText = state.name;
+                document.getElementById('finish-ast').innerText = state.assetsTotal.toLocaleString('en-IN');
+                document.getElementById('finish-liab').innerText = state.liabTotal.toLocaleString('en-IN');
+                document.getElementById('finish-nw').innerText = (state.assetsTotal - state.liabTotal).toLocaleString('en-IN');
+            }
+
+            // UI Transitions
+            [1,2,3,4].forEach(i => {
+                const el = document.getElementById(`step-${i}`);
+                el.classList.add('hidden');
+                el.classList.remove('slide-enter');
+                
+                const dot = document.getElementById(`step-dot-${i}`);
+                const label = document.getElementById(`step-label-${i}`);
+                if (i <= n) {
+                    dot.classList.replace('bg-slate-200', 'bg-indigo-600');
+                    label.classList.replace('text-slate-400', 'text-indigo-600');
+                } else {
+                    dot.classList.replace('bg-indigo-600', 'bg-slate-200');
+                    label.classList.replace('text-indigo-600', 'text-slate-400');
+                }
+            });
+            
+            const target = document.getElementById(`step-${n}`);
+            target.classList.remove('hidden');
+            target.classList.add('slide-enter');
+            
+            document.getElementById('prog-bar').style.width = (n * 25) + '%';
+            state.currentStep = n;
+            window.scrollTo(0, 0);
+            saveIndicator();
+        }
+
+        let aiOpen = false;
+        function toggleAI() {
+            aiOpen = !aiOpen;
+            document.getElementById('ai-panel').classList.toggle('active');
+        }
+
+        function handleAIChat(e) { if(e.key === 'Enter') sendAIMessage(); }
+
+        function sendAIMessage() {
+            const input = document.getElementById('ai-input');
+            const history = document.getElementById('chat-history');
+            const val = input.value.trim();
+            if(!val) return;
+
+            history.innerHTML += `<div class="flex justify-end"><div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-tr-none shadow-sm ml-8 max-w-[85%] font-medium">${val}</div></div>`;
+            input.value = '';
+            history.scrollTop = history.scrollHeight;
+
+            setTimeout(() => {
+                let reply = "I've noted that. Anything else?";
+                if (val.toLowerCase().includes('engineer') || val.toLowerCase().includes('job')) {
+                    reply = "Ah, a salaried professional! I've selected that persona for you and pre-filled your standard accounts.";
+                    selectPersona(document.querySelector('.persona-card'), 'salaried', 'Riya');
+                } else if (val.toLowerCase().includes('bank') && state.currentStep === 2) {
+                    reply = "Confirmed. I've updated your assets list. Your Net Worth is looking healthier now!";
+                }
+
+                history.innerHTML += `<div class="flex justify-start"><div class="bg-white border border-slate-100 p-4 rounded-2xl rounded-tl-none shadow-sm mr-8 max-w-[85%] text-slate-700 leading-relaxed">${reply}</div></div>`;
+                history.scrollTop = history.scrollHeight;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

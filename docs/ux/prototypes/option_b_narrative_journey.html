@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option B: Narrative Journey (Full Flow)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Lora', serif; 
+            background-color: #FDFBF7; 
+            color: #2D3A3A; 
+        }
+        
+        .ui-font { font-family: 'Inter', sans-serif; }
+        
+        .mad-lib-input {
+            border: none;
+            border-bottom: 2px dashed #9ca3af;
+            background: transparent;
+            padding: 0 8px;
+            font-family: 'Lora', serif;
+            font-weight: 700;
+            color: #166534;
+            width: auto;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        .mad-lib-input:focus { border-bottom: 2px solid #166534; background: rgba(22, 101, 52, 0.05); }
+        
+        .mad-lib-select {
+            appearance: none;
+            border: none;
+            border-bottom: 2px dashed #9ca3af;
+            background: transparent;
+            padding: 0 20px 0 8px;
+            font-family: 'Lora', serif;
+            font-weight: 700;
+            color: #166534;
+            outline: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23166534' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right center;
+            background-size: 14px;
+        }
+
+        .story-block {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            padding: 3rem 0;
+        }
+        
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        .ai-glow { animation: aiPulse 2s infinite; }
+        @keyframes aiPulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+
+        .input-sizer { display: inline-grid; align-items: center; }
+        .input-sizer::after, .input-sizer input { width: auto; min-width: 1em; grid-area: 1 / 1; font: inherit; padding: inherit; margin: 0; resize: none; background: none; appearance: none; }
+        .input-sizer::after { content: attr(data-value) " "; visibility: hidden; white-space: pre; }
+        
+        .prog-circle { width: 10px; height: 10px; border-radius: 50%; background: #E5E7EB; }
+        .prog-active { background: #166534; transform: scale(1.4); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative">
+
+    <header class="w-full max-w-4xl mx-auto px-8 pt-10 pb-4 ui-font flex justify-between items-center z-10 shrink-0">
+        <div class="text-xl font-bold tracking-tight text-green-900 border-b-2 border-green-900 pb-1">Ledger.</div>
+        <div class="flex items-center gap-4">
+            <div class="flex gap-2">
+                <div class="prog-circle" id="dot-1"></div>
+                <div class="prog-circle" id="dot-2"></div>
+                <div class="prog-circle" id="dot-3"></div>
+                <div class="prog-circle" id="dot-4"></div>
+            </div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Story progress</div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-3xl mx-auto px-8 py-12 pb-40 relative z-10" id="story-container">
+        
+        <!-- STAGE 1: THE BEGINNING -->
+        <div id="step-1" class="story-block text-2xl leading-relaxed">
+            Every great journey starts with a simple introduction. <br><br>
+            My name is 
+            <label class="input-sizer" data-value="Vamsi">
+                <input type="text" class="mad-lib-input" placeholder="Name" value="Vamsi" oninput="this.parentNode.dataset.value = this.value; checkStep1()" id="name">
+            </label>. 
+            I am 
+            <label class="input-sizer" data-value="28">
+                <input type="number" class="mad-lib-input" placeholder="age" value="28" oninput="this.parentNode.dataset.value = this.value; checkStep1()" id="age">
+            </label> years old. 
+            Right now, I describe my financial life as 
+            <select class="mad-lib-select" id="persona" onchange="checkStep1()">
+                <option value="" disabled selected>— choose —</option>
+                <option value="salaried">a salaried professional</option>
+                <option value="business">running my own business</option>
+                <option value="investor">an active investor</option>
+            </select>.
+            
+            <div class="mt-12 text-center opacity-0 transition-opacity" id="btn-1">
+                <button class="bg-green-900 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all ui-font" onclick="nextStep(2)">Continue the story</button>
+            </div>
+        </div>
+
+        <!-- STAGE 2: THE STRUCTURE -->
+        <div id="step-2" class="story-block text-2xl leading-relaxed hidden">
+            We are building a map of my wealth today. <br><br>
+            My primary savings are kept in my 
+            <select class="mad-lib-select" id="bank" onchange="checkStep2()">
+                <option value="" disabled selected>— Bank —</option>
+                <option value="HDFC">HDFC Bank</option>
+                <option value="SBI">SBI</option>
+                <option value="ICICI">ICICI</option>
+            </select>
+            account, which currently holds around ₹
+            <label class="input-sizer" data-value="350000">
+                <input type="number" class="mad-lib-input" value="350000" oninput="this.parentNode.dataset.value = this.value; checkStep2()" id="balance">
+            </label>. <br><br>
+            Beyond that, I also have 
+            <select class="mad-lib-select" id="assets" onchange="checkStep2()">
+                <option value="mf">investments in mutual funds</option>
+                <option value="stocks">a portfolio of stocks</option>
+                <option value="none">no other major assets</option>
+            </select>. 
+            On the other side of the ledger, I currently 
+            <select class="mad-lib-select" id="liab" onchange="checkStep2()">
+                <option value="home">have a home loan to pay off</option>
+                <option value="cc">have some credit card dues</option>
+                <option value="none" selected>don't owe any major debt</option>
+            </select>.
+            
+            <div class="mt-12 text-center opacity-0 transition-opacity" id="btn-2">
+                <button class="bg-green-900 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all ui-font" onclick="nextStep(3)">Define my goals</button>
+            </div>
+        </div>
+
+        <!-- STAGE 3: THE AMBITION -->
+        <div id="step-3" class="story-block text-2xl leading-relaxed hidden">
+            Wealth is just a tool for my future self. <br><br>
+            My top priority is 
+            <select class="mad-lib-select" id="goal" onchange="checkStep3()">
+                <option value="" disabled selected>— priority —</option>
+                <option value="retire">to retire comfortably</option>
+                <option value="house">to buy my own house</option>
+                <option value="travel">to travel the world</option>
+            </select>. 
+            I want to achieve this by the age of 
+            <label class="input-sizer" data-value="60">
+                <input type="number" class="mad-lib-input" value="60" oninput="this.parentNode.dataset.value = this.value; checkStep3()" id="goal-age">
+            </label>. <br><br>
+            To get there, I am willing to save 
+            <select class="mad-lib-select" id="intensity" onchange="checkStep3()">
+                <option value="moderate">a moderate amount</option>
+                <option value="aggressive">aggressively</option>
+                <option value="safe">very safely</option>
+            </select> every month.
+            
+            <div class="mt-12 text-center opacity-0 transition-opacity" id="btn-3">
+                <button class="bg-green-900 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all ui-font" onclick="nextStep(4)">View my clarity</button>
+            </div>
+        </div>
+
+        <!-- STAGE 4: THE CLARITY -->
+        <div id="step-4" class="story-block text-2xl leading-relaxed hidden">
+            The narrative is complete. <br><br>
+            Your financial story has been translated into a professional double-entry ledger. <br><br>
+            
+            <div class="bg-white rounded-[40px] border border-green-100 p-10 shadow-2xl mt-8">
+                <div class="text-4xl font-bold font-serif mb-6 text-green-900">₹<span id="finish-nw">0</span></div>
+                <div class="grid grid-cols-2 gap-8 mb-8 border-b border-green-50 pb-8 text-lg font-bold text-slate-400">
+                    <div>Ownership: <span class="text-emerald-700">₹<span id="finish-ast">0</span></span></div>
+                    <div>Obligations: <span class="text-rose-700">₹<span id="finish-liab">0</span></span></div>
+                </div>
+                <div class="text-lg italic text-slate-500 mb-8 leading-relaxed">
+                    "You're off to a strong start, <span id="finish-name">User</span>. Your goal for retirement at <span id="finish-age">60</span> is achievable if we maintain your <span id="finish-intensity">aggressive</span> savings rate."
+                </div>
+                <button class="w-full bg-green-900 text-white py-5 rounded-2xl font-bold ui-font shadow-xl hover:bg-black transition-all">Launch My Ledger</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- UI Overlay: AI Co-Author Panel -->
+    <div id="ai-panel" class="ui-font fixed top-1/2 right-12 -translate-y-1/2 w-80 bg-white rounded-3xl shadow-2xl border border-green-50 p-6 z-20 transition-all duration-700 transform translate-x-0">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center ai-glow"><i class="fas fa-pen-nib"></i></div>
+            <div>
+                <div class="font-bold text-sm text-green-900">AI Co-Author</div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Interactive Helper</div>
+            </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 leading-relaxed" id="ai-text">
+            I'm here to help write your story. Fill in the blanks, or type a messy paragraph below and I'll extract the details for you.
+        </p>
+        <textarea id="ai-textarea" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs resize-none focus:border-emerald-300 outline-none mb-3" rows="4" placeholder="E.g. I work in Bangalore as a dev, I'm 28 and have 3L in my HDFC..."></textarea>
+        <button class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100" onclick="processAI()">Extract My Story</button>
+    </div>
+
+    <!-- Background Decoration -->
+    <div class="fixed top-0 left-0 w-1/4 h-screen bg-green-900/5 -z-10 rounded-br-[200px]"></div>
+
+    <script>
+        const state = {
+            step: 1,
+            name: '',
+            age: '',
+            persona: '',
+            bank: '',
+            balance: 0,
+            goal: '',
+            goalAge: 60,
+            intensity: ''
+        };
+
+        function nextStep(n) {
+            document.getElementById(`step-${state.step}`).classList.add('hidden');
+            document.getElementById(`step-${n}`).classList.remove('hidden');
+            
+            document.getElementById(`dot-${state.step}`).classList.remove('prog-active');
+            document.getElementById(`dot-${n}`).classList.add('prog-active');
+            
+            state.step = n;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            if (n === 4) renderClarity();
+        }
+
+        function checkStep1() {
+            state.name = document.getElementById('name').value;
+            state.age = document.getElementById('age').value;
+            state.persona = document.getElementById('persona').value;
+            if (state.name && state.age && state.persona) document.getElementById('btn-1').classList.replace('opacity-0', 'opacity-100');
+        }
+
+        function checkStep2() {
+            state.bank = document.getElementById('bank').value;
+            state.balance = Number(document.getElementById('balance').value);
+            if (state.bank && state.balance) document.getElementById('btn-2').classList.replace('opacity-0', 'opacity-100');
+        }
+
+        function checkStep3() {
+            state.goal = document.getElementById('goal').value;
+            state.intensity = document.getElementById('intensity').value;
+            if (state.goal && state.intensity) document.getElementById('btn-3').classList.replace('opacity-0', 'opacity-100');
+        }
+
+        function renderClarity() {
+            const ast = state.balance;
+            const liab = 0; // simplified for demo
+            document.getElementById('finish-nw').innerText = ast.toLocaleString('en-IN');
+            document.getElementById('finish-ast').innerText = ast.toLocaleString('en-IN');
+            document.getElementById('finish-liab').innerText = liab.toLocaleString('en-IN');
+            document.getElementById('finish-name').innerText = state.name;
+            document.getElementById('finish-age').innerText = document.getElementById('goal-age').value;
+            document.getElementById('finish-intensity').innerText = state.intensity;
+        }
+
+        function processAI() {
+            const btn = document.querySelector('#ai-panel button');
+            btn.innerHTML = 'Writing your story...';
+            setTimeout(() => {
+                // Mock AI extraction
+                document.getElementById('name').value = "Rahul";
+                document.getElementById('name').parentNode.dataset.value = "Rahul";
+                document.getElementById('age').value = "28";
+                document.getElementById('persona').value = "salaried";
+                checkStep1();
+                
+                btn.innerHTML = 'Story Updated ✓';
+                document.getElementById('ai-text').innerText = "I've filled in your first paragraph! Continue to the next part of your story below.";
+                
+                setTimeout(() => nextStep(2), 1000);
+            }, 1000);
+        }
+
+        // Init progress dots
+        document.getElementById('dot-1').classList.add('prog-active');
+    </script>
+</body>
+</html>

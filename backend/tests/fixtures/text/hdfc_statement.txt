@@ -1,0 +1,19 @@
+HDFC Bank Account Statement
+Account Number: 50100****1234
+Period: 01/01/2026 to 31/01/2026
+
+Opening Balance 50,000.00
+
+Date              Narration                                Chq/Ref No.        Value Dt    Withdrawal Amt (Dr)  Deposit Amt (Cr)  Closing Balance
+01/01/2026        UPI/147896325478/SWIGGY FOOD PAYMENT     147896325478       01/01/2026  450.00                                 49,550.00
+02/01/2026        NEFT CR/SALARY/EMPLOYER LTD              NEFT20260202       02/01/2026                        85,000.00        134,550.00
+03/01/2026        UPI/987654321/ZOMATO FOOD ORDER           987654321          03/01/2026  320.00                                 134,230.00
+05/01/2026        ATM/BOM/00123 CASH WD                    ATM00123           05/01/2026  5,000.00                               129,230.00
+08/01/2026        ECS DEBIT/HDFC CC EMI PAYMENT            ECS00456           08/01/2026  15,000.00                              114,230.00
+10/01/2026        IMPS/98765432100/PHONEPE RECHARGE         IMPS98765          10/01/2026  299.00                                  113,931.00
+12/01/2026        UPI/555444333/AMAZON SHOPPING ORDER      555444333          12/01/2026  2,499.00                               111,432.00
+15/01/2026        NEFT CR/INTEREST PAYMENT HDFC SAVINGS    NEFT20260115       15/01/2026                        438.00           111,870.00
+18/01/2026        NACH DEBIT/LIC POLICY PREMIUM JAN2026    NACH001122         18/01/2026  3,500.00                               108,370.00
+20/01/2026        UPI/445566778899/UBER TAXI RIDE           445566778          20/01/2026  185.00                                  108,185.00
+
+Closing Balance 108,185.00

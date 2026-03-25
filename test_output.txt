@@ -1,0 +1,717 @@
+﻿E
+=================================== ERRORS ====================================
+_ ERROR at setup of TestCreateProfile.test_create_profile_returns_201_with_id _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+create = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>, kw = {}
+table = Table('transaction_tags', MetaData(), Column('transaction_id', Integer(), ForeignKey('transactions.id'), table=<transa...>), server_default=DefaultClause(<sqlalchemy.sql.functions.now at 0x14154e9ed50; now>, for_update=False)), schema=None)
+preparer = <sqlalchemy.dialects.sqlite.base.SQLiteIdentifierPreparer object at 0x0000014155C6E350>
+text = '\nCREATE TABLE transaction_tags (\n\ttransaction_id INTEGER NOT NULL, \n\ttag_id INTEGER NOT NULL'
+create_table_suffix = '', separator = ', \n', first_pk = True
+create_column = <sqlalchemy.sql.ddl.CreateColumn object at 0x0000014155DFF110>
+
+    def visit_create_table(self, create, **kw):
+        table = create.element
+        preparer = self.preparer
+    
+        text = "\nCREATE "
+        if table._prefixes:
+            text += " ".join(table._prefixes) + " "
+    
+        text += "TABLE "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+    
+        text += preparer.format_table(table) + " "
+    
+        create_table_suffix = self.create_table_suffix(table)
+        if create_table_suffix:
+            text += create_table_suffix + " "
+    
+        text += "("
+    
+        separator = "\n"
+    
+        # if only one primary key, specify it along with the column
+        first_pk = False
+        for create_column in create.columns:
+            column = create_column.element
+            try:
+>               processed = self.process(
+                    create_column, first_pk=column.primary_key and not first_pk
+                )
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:6838: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+obj = <sqlalchemy.sql.ddl.CreateColumn object at 0x0000014155DFF110>
+kwargs = {'first_pk': False}
+
+    def process(self, obj: Visitable, **kwargs: Any) -> str:
+>       return obj._compiler_dispatch(self, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:947: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateColumn object at 0x0000014155DFF110>
+visitor = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+kw = {'first_pk': False}
+meth = <bound method DDLCompiler.visit_create_column of <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>>
+
+    def _compiler_dispatch(
+        self: Visitable, visitor: Any, **kw: Any
+    ) -> str:
+        """Look for an attribute named "visit_<visit_name>" on the
+        visitor, and call it with the same kw params.
+    
+        """
+        try:
+            meth = getter(visitor)
+        except AttributeError as err:
+            return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa: E501
+        else:
+>           return meth(self, **kw)  # type: ignore  # noqa: E501
+                   ^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+create = <sqlalchemy.sql.ddl.CreateColumn object at 0x0000014155DFF110>
+first_pk = False, kw = {}
+column = Column('id', Integer(), table=<transaction_tags>, primary_key=True, nullable=False)
+
+    def visit_create_column(self, create, first_pk=False, **kw):
+        column = create.element
+    
+        if column.system:
+            return None
+    
+>       text = self.get_column_specification(column, first_pk=first_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:6869: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+column = Column('id', Integer(), table=<transaction_tags>, primary_key=True, nullable=False)
+kwargs = {'first_pk': False}, coltype = 'INTEGER'
+colspec = 'id INTEGER NOT NULL', default = None, on_conflict_clause = None
+
+    def get_column_specification(self, column, **kwargs):
+        coltype = self.dialect.type_compiler_instance.process(
+            column.type, type_expression=column
+        )
+        colspec = self.preparer.format_column(column) + " " + coltype
+        default = self.get_column_default_string(column)
+        if default is not None:
+    
+            if not re.match(r"""^\s*[\'\"\(]""", default) and re.match(
+                r".*\W.*", default
+            ):
+                colspec += f" DEFAULT ({default})"
+            else:
+                colspec += f" DEFAULT {default}"
+    
+        if not column.nullable:
+            colspec += " NOT NULL"
+    
+            on_conflict_clause = column.dialect_options["sqlite"][
+                "on_conflict_not_null"
+            ]
+            if on_conflict_clause is not None:
+                colspec += " ON CONFLICT " + on_conflict_clause
+    
+        if column.primary_key:
+            if (
+                column.autoincrement is True
+                and len(column.table.primary_key.columns) != 1
+            ):
+>               raise exc.CompileError(
+                    "SQLite does not support autoincrement for "
+                    "composite primary keys"
+                )
+E               sqlalchemy.exc.CompileError: SQLite does not support autoincrement for composite primary keys
+
+.venv\Lib\site-packages\sqlalchemy\dialects\sqlite\base.py:1731: CompileError
+
+The above exception was the direct cause of the following exception:
+
+fixturedef = <FixtureDef argname='setup_database' scope='function' baseid='backend/tests/api'>
+request = <SubRequest 'setup_database' for <Function test_create_profile_returns_201_with_id>>
+
+    @pytest.hookimpl(wrapper=True)
+    def pytest_fixture_setup(fixturedef: FixtureDef, request) -> object | None:
+        asyncio_mode = _get_asyncio_mode(request.config)
+        if not _is_asyncio_fixture_function(fixturedef.func):
+            if asyncio_mode == Mode.STRICT:
+                # Ignore async fixtures without explicit asyncio mark in strict mode
+                # This applies to pytest_trio fixtures, for example
+>               return (yield)
+                        ^^^^^
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:728: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    @pytest.fixture(autouse=True)
+    def setup_database():
+        """Create all tables before each test and drop them after."""
+>       Base.metadata.create_all(bind=test_engine)
+
+backend\tests\api\conftest.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = MetaData(), bind = Engine(sqlite:///:memory:), tables = None
+checkfirst = True
+
+    def create_all(
+        self,
+        bind: _CreateDropBind,
+        tables: Optional[_typing_Sequence[Table]] = None,
+        checkfirst: bool = True,
+    ) -> None:
+        """Create all tables stored in this metadata.
+    
+        Conditional by default, will not attempt to recreate tables already
+        present in the target database.
+    
+        :param bind:
+          A :class:`.Connection` or :class:`.Engine` used to access the
+          database.
+    
+        :param tables:
+          Optional list of ``Table`` objects, which is a subset of the total
+          tables in the ``MetaData`` (others are ignored).
+    
+        :param checkfirst:
+          Defaults to True, don't issue CREATEs for tables already present
+          in the target database.
+    
+        """
+>       bind._run_ddl_visitor(
+            ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
+        )
+
+.venv\Lib\site-packages\sqlalchemy\sql\schema.py:5928: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Engine(sqlite:///:memory:)
+visitorcallable = <class 'sqlalchemy.sql.ddl.SchemaGenerator'>
+element = MetaData(), kwargs = {'checkfirst': True, 'tables': None}
+conn = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+
+    def _run_ddl_visitor(
+        self,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
+        **kwargs: Any,
+    ) -> None:
+        with self.begin() as conn:
+>           conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:3268: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+visitorcallable = <class 'sqlalchemy.sql.ddl.SchemaGenerator'>
+element = MetaData(), kwargs = {'checkfirst': True, 'tables': None}
+
+    def _run_ddl_visitor(
+        self,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
+        **kwargs: Any,
+    ) -> None:
+        """run a DDL visitor.
+    
+        This method is only here so that the MockConnection can change the
+        options given to the visitor so that "checkfirst" is skipped.
+    
+        """
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+>       ).traverse_single(element)
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2467: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+obj = MetaData(), kw = {}
+v = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+meth = <bound method SchemaGenerator.visit_metadata of <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>>
+
+    def traverse_single(self, obj: Visitable, **kw: Any) -> Any:
+        for v in self.visitor_iterator:
+            meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
+            if meth:
+>               return meth(obj, **kw)
+                       ^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+metadata = MetaData()
+
+    def visit_metadata(self, metadata):
+        if self.tables is not None:
+            tables = self.tables
+        else:
+            tables = list(metadata.tables.values())
+    
+        collection = sort_tables_and_constraints(
+            [t for t in tables if self._can_create_table(t)]
+        )
+    
+        seq_coll = [
+            s
+            for s in metadata._sequences.values()
+            if s.column is None and self._can_create_sequence(s)
+        ]
+    
+        event_collection = [t for (t, fks) in collection if t is not None]
+    
+        with self.with_ddl_events(
+            metadata,
+            tables=event_collection,
+            checkfirst=self.checkfirst,
+        ):
+            for seq in seq_coll:
+                self.traverse_single(seq, create_ok=True)
+    
+            for table, fkcs in collection:
+                if table is not None:
+>                   self.traverse_single(
+                        table,
+                        create_ok=True,
+                        include_foreign_key_constraints=fkcs,
+                        _is_metadata_operation=True,
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+obj = Table('transaction_tags', MetaData(), Column('transaction_id', Integer(), ForeignKey('transactions.id'), table=<transa...>), server_default=DefaultClause(<sqlalchemy.sql.functions.now at 0x14154e9ed50; now>, for_update=False)), schema=None)
+kw = {'_is_metadata_operation': True, 'create_ok': True, 'include_foreign_key_constraints': {ForeignKeyConstraint(<sqlalche... server_default=DefaultClause(<sqlalchemy.sql.functions.now at 0x14154e9ed50; now>, for_update=False)), schema=None))}}
+v = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+meth = <bound method SchemaGenerator.visit_table of <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>>
+
+    def traverse_single(self, obj: Visitable, **kw: Any) -> Any:
+        for v in self.visitor_iterator:
+            meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
+            if meth:
+>               return meth(obj, **kw)
+                       ^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.SchemaGenerator object at 0x0000014155B8E410>
+table = Table('transaction_tags', MetaData(), Column('transaction_id', Integer(), ForeignKey('transactions.id'), table=<transa...>), server_default=DefaultClause(<sqlalchemy.sql.functions.now at 0x14154e9ed50; now>, for_update=False)), schema=None)
+create_ok = True, include_foreign_key_constraints = None
+_is_metadata_operation = True
+
+    def visit_table(
+        self,
+        table,
+        create_ok=False,
+        include_foreign_key_constraints=None,
+        _is_metadata_operation=False,
+    ):
+        if not create_ok and not self._can_create_table(table):
+            return
+    
+        with self.with_ddl_events(
+            table,
+            checkfirst=self.checkfirst,
+            _is_metadata_operation=_is_metadata_operation,
+        ):
+            for column in table.columns:
+                if column.default is not None:
+                    self.traverse_single(column.default)
+    
+            if not self.dialect.supports_alter:
+                # e.g., don't omit any foreign key constraints
+                include_foreign_key_constraints = None
+    
+            CreateTable(
+                table,
+                include_foreign_key_constraints=(
+                    include_foreign_key_constraints
+                ),
+>           )._invoke_with(self.connection)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1022: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+bind = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+
+    def _invoke_with(self, bind):
+        if self._should_execute(self.target, bind):
+>           return bind.execute(self)
+                   ^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+statement = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+parameters = None
+
+    def execute(
+        self,
+        statement: Executable,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+    ) -> CursorResult[Any]:
+        r"""Executes a SQL statement construct and returns a
+        :class:`_engine.CursorResult`.
+    
+        :param statement: The statement to be executed.  This is always
+         an object that is in both the :class:`_expression.ClauseElement` and
+         :class:`_expression.Executable` hierarchies, including:
+    
+         * :class:`_expression.Select`
+         * :class:`_expression.Insert`, :class:`_expression.Update`,
+           :class:`_expression.Delete`
+         * :class:`_expression.TextClause` and
+           :class:`_expression.TextualSelect`
+         * :class:`_schema.DDL` and objects which inherit from
+           :class:`_schema.ExecutableDDLElement`
+    
+        :param parameters: parameters which will be bound into the statement.
+         This may be either a dictionary of parameter names to values,
+         or a mutable sequence (e.g. a list) of dictionaries.  When a
+         list of dictionaries is passed, the underlying statement execution
+         will make use of the DBAPI ``cursor.executemany()`` method.
+         When a single dictionary is passed, the DBAPI ``cursor.execute()``
+         method will be used.
+    
+        :param execution_options: optional dictionary of execution options,
+         which will be associated with the statement execution.  This
+         dictionary can provide a subset of the options that are accepted
+         by :meth:`_engine.Connection.execution_options`.
+    
+        :return: a :class:`_engine.Result` object.
+    
+        """
+        distilled_parameters = _distill_params_20(parameters)
+        try:
+            meth = statement._execute_on_connection
+        except AttributeError as err:
+            raise exc.ObjectNotExecutableError(statement) from err
+        else:
+>           return meth(
+                self,
+                distilled_parameters,
+                execution_options or NO_OPTIONS,
+            )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+connection = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+distilled_params = (), execution_options = immutabledict({})
+
+    def _execute_on_connection(
+        self, connection, distilled_params, execution_options
+    ):
+>       return connection._execute_ddl(
+            self, distilled_params, execution_options
+        )
+
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.engine.base.Connection object at 0x0000014155D674D0>
+ddl = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+distilled_parameters = (), execution_options = immutabledict({})
+
+    def _execute_ddl(
+        self,
+        ddl: ExecutableDDLElement,
+        distilled_parameters: _CoreMultiExecuteParams,
+        execution_options: CoreExecuteOptionsParameter,
+    ) -> CursorResult[Any]:
+        """Execute a schema.DDL object."""
+    
+        exec_opts = ddl._execution_options.merge_with(
+            self._execution_options, execution_options
+        )
+    
+        event_multiparams: Optional[_CoreMultiExecuteParams]
+        event_params: Optional[_CoreSingleExecuteParams]
+    
+        if self._has_events or self.engine._has_events:
+            (
+                ddl,
+                distilled_parameters,
+                event_multiparams,
+                event_params,
+            ) = self._invoke_before_exec_event(
+                ddl, distilled_parameters, exec_opts
+            )
+        else:
+            event_multiparams = event_params = None
+    
+        schema_translate_map = exec_opts.get("schema_translate_map", None)
+    
+        dialect = self.dialect
+    
+>       compiled = ddl.compile(
+            dialect=dialect, schema_translate_map=schema_translate_map
+        )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1527: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+bind = None
+dialect = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x0000014155C6D090>
+kw = {'schema_translate_map': None}
+
+    @util.preload_module("sqlalchemy.engine.default")
+    @util.preload_module("sqlalchemy.engine.url")
+    def compile(
+        self,
+        bind: Optional[_HasDialect] = None,
+        dialect: Optional[Dialect] = None,
+        **kw: Any,
+    ) -> Compiled:
+        """Compile this SQL expression.
+    
+        The return value is a :class:`~.Compiled` object.
+        Calling ``str()`` or ``unicode()`` on the returned value will yield a
+        string representation of the result. The
+        :class:`~.Compiled` object also can return a
+        dictionary of bind parameter names and values
+        using the ``params`` accessor.
+    
+        :param bind: An :class:`.Connection` or :class:`.Engine` which
+           can provide a :class:`.Dialect` in order to generate a
+           :class:`.Compiled` object.  If the ``bind`` and
+           ``dialect`` parameters are both omitted, a default SQL compiler
+           is used.
+    
+        :param column_keys: Used for INSERT and UPDATE statements, a list of
+            column names which should be present in the VALUES clause of the
+            compiled statement. If ``None``, all columns from the target table
+            object are rendered.
+    
+        :param dialect: A :class:`.Dialect` instance which can generate
+            a :class:`.Compiled` object.  This argument takes precedence over
+            the ``bind`` argument.
+    
+        :param compile_kwargs: optional dictionary of additional parameters
+            that will be passed through to the compiler within all "visit"
+            methods.  This allows any custom flag to be passed through to
+            a custom compilation construct, for example.  It is also used
+            for the case of passing the ``literal_binds`` flag through::
+    
+                from sqlalchemy.sql import table, column, select
+    
+                t = table("t", column("x"))
+    
+                s = select(t).where(t.c.x == 5)
+    
+                print(s.compile(compile_kwargs={"literal_binds": True}))
+    
+        .. seealso::
+    
+            :ref:`faq_sql_expression_string`
+    
+        """
+    
+        if dialect is None:
+            if bind:
+                dialect = bind.dialect
+            elif self.stringify_dialect == "default":
+                dialect = self._default_dialect()
+            else:
+                url = util.preloaded.engine_url
+                dialect = url.URL.create(
+                    self.stringify_dialect
+                ).get_dialect()()
+    
+>       return self._compiler(dialect, **kw)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:312: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+dialect = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x0000014155C6D090>
+kw = {'schema_translate_map': None}
+
+    def _compiler(self, dialect, **kw):
+        """Return a compiler appropriate for this ClauseElement, given a
+        Dialect."""
+    
+>       return dialect.ddl_compiler(dialect, self, **kw)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+dialect = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x0000014155C6D090>
+statement = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+schema_translate_map = None, render_schema_translate = False
+compile_kwargs = immutabledict({})
+
+    def __init__(
+        self,
+        dialect: Dialect,
+        statement: Optional[ClauseElement],
+        schema_translate_map: Optional[SchemaTranslateMapType] = None,
+        render_schema_translate: bool = False,
+        compile_kwargs: Mapping[str, Any] = util.immutabledict(),
+    ):
+        """Construct a new :class:`.Compiled` object.
+    
+        :param dialect: :class:`.Dialect` to compile against.
+    
+        :param statement: :class:`_expression.ClauseElement` to be compiled.
+    
+        :param schema_translate_map: dictionary of schema names to be
+         translated when forming the resultant SQL
+    
+         .. seealso::
+    
+            :ref:`schema_translating`
+    
+        :param compile_kwargs: additional kwargs that will be
+         passed to the initial call to :meth:`.Compiled.process`.
+    
+    
+        """
+        self.dialect = dialect
+        self.preparer = self.dialect.identifier_preparer
+        if schema_translate_map:
+            self.schema_translate_map = schema_translate_map
+            self.preparer = self.preparer._with_schema_translate(
+                schema_translate_map
+            )
+    
+        if statement is not None:
+            self.state = CompilerState.COMPILING
+            self.statement = statement
+            self.can_execute = statement.supports_execution
+            self._annotations = statement._annotations
+            if self.can_execute:
+                if TYPE_CHECKING:
+                    assert isinstance(statement, Executable)
+                self.execution_options = statement._execution_options
+>           self.string = self.process(self.statement, **compile_kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:901: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+obj = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>, kwargs = {}
+
+    def process(self, obj: Visitable, **kwargs: Any) -> str:
+>       return obj._compiler_dispatch(self, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:947: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>
+visitor = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+kw = {}
+meth = <bound method DDLCompiler.visit_create_table of <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>>
+
+    def _compiler_dispatch(
+        self: Visitable, visitor: Any, **kw: Any
+    ) -> str:
+        """Look for an attribute named "visit_<visit_name>" on the
+        visitor, and call it with the same kw params.
+    
+        """
+        try:
+            meth = getter(visitor)
+        except AttributeError as err:
+            return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa: E501
+        else:
+>           return meth(self, **kw)  # type: ignore  # noqa: E501
+                   ^^^^^^^^^^^^^^^^
+
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.base.SQLiteDDLCompiler object at 0x0000014155DCC7D0>
+create = <sqlalchemy.sql.ddl.CreateTable object at 0x0000014155E0BE50>, kw = {}
+table = Table('transaction_tags', MetaData(), Column('transaction_id', Integer(), ForeignKey('transactions.id'), table=<transa...>), server_default=DefaultClause(<sqlalchemy.sql.functions.now at 0x14154e9ed50; now>, for_update=False)), schema=None)
+preparer = <sqlalchemy.dialects.sqlite.base.SQLiteIdentifierPreparer object at 0x0000014155C6E350>
+text = '\nCREATE TABLE transaction_tags (\n\ttransaction_id INTEGER NOT NULL, \n\ttag_id INTEGER NOT NULL'
+create_table_suffix = '', separator = ', \n', first_pk = True
+create_column = <sqlalchemy.sql.ddl.CreateColumn object at 0x0000014155DFF110>
+
+    def visit_create_table(self, create, **kw):
+        table = create.element
+        preparer = self.preparer
+    
+        text = "\nCREATE "
+        if table._prefixes:
+            text += " ".join(table._prefixes) + " "
+    
+        text += "TABLE "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+    
+        text += preparer.format_table(table) + " "
+    
+        create_table_suffix = self.create_table_suffix(table)
+        if create_table_suffix:
+            text += create_table_suffix + " "
+    
+        text += "("
+    
+        separator = "\n"
+    
+        # if only one primary key, specify it along with the column
+        first_pk = False
+        for create_column in create.columns:
+            column = create_column.element
+            try:
+                processed = self.process(
+                    create_column, first_pk=column.primary_key and not first_pk
+                )
+                if processed is not None:
+                    text += separator
+                    separator = ", \n"
+                    text += "\t" + processed
+                if column.primary_key:
+                    first_pk = True
+            except exc.CompileError as ce:
+>               raise exc.CompileError(
+                    "(in table '%s', column '%s'): %s"
+                    % (table.description, column.name, ce.args[0])
+                ) from ce
+E               sqlalchemy.exc.CompileError: (in table 'transaction_tags', column 'id'): SQLite does not support autoincrement for composite primary keys
+
+.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:6848: CompileError
+============================== warnings summary ===============================
+backend\src\schemas\account.py:13
+  C:\sources\ledger-3.0\backend\src\schemas\account.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AccountResponseDTO(AccountBase):
+
+backend\src\schemas\transaction.py:18
+  C:\sources\ledger-3.0\backend\src\schemas\transaction.py:18: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TransactionResponseDTO(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR backend/tests/api/test_profile_api.py::TestCreateProfile::test_create_profile_returns_201_with_id
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+2 warnings, 1 error in 1.12s

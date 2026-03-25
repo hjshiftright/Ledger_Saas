@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option G: Conversational Canvas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;600&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f2f5; 
+            color: #1a1a1a;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* AI Sidebar */
+        .ai-sidebar {
+            width: 400px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .bubble-ai { background: #f3f4f6; border-bottom-left-radius: 4px; color: #374151; }
+        .bubble-user { background: #6366f1; color: white; align-self: flex-end; border-bottom-right-radius: 4px; shadow: 0 4px 6px rgba(99,102,241,0.2); }
+
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid #e5e7eb;
+            background: #fff;
+        }
+
+        /* Interactive Canvas */
+        .viz-canvas {
+            flex: 1;
+            position: relative;
+            background: #fbfbfb;
+            background-image: radial-gradient(#d1d5db 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+            overflow: hidden;
+        }
+
+        .canvas-header {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .wealth-card {
+            position: absolute;
+            width: 220px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            animation: throwIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes throwIn {
+            from { opacity: 0; transform: scale(0.5) translate(-100px, 100px) rotate(-10deg); }
+            to { opacity: 1; transform: scale(1) translate(0, 0) rotate(0deg); }
+        }
+
+        .wealth-card:hover { transform: translateY(-5px); border-color: #6366f1; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .wealth-card.active { border: 2px solid #6366f1; }
+
+        .card-asset { border-top: 6px solid #10b981; }
+        .card-liab { border-top: 6px solid #ef4444; }
+
+        .nw-radial {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            background: white;
+            padding: 24px;
+            border-radius: 32px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AI Sidebar -->
+    <aside class="ai-sidebar">
+        <div class="p-6 border-bottom border-gray-100 bg-indigo-50/50">
+            <h1 class="font-black text-xl text-indigo-900 tracking-tight">Ledger Copilot_</h1>
+            <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Onboarding Logic Engine v3</p>
+        </div>
+
+        <div class="chat-history" id="chat-box">
+            <div class="chat-bubble bubble-ai">
+                Hi! I'm your Ledger assistant. Instead of forms, just tell me about your financial life. 
+                <br><br>
+                For example: <b>"I'm a 30-year-old developer with 5L in HDFC and a 20L home loan."</b>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="relative">
+                <input type="text" id="user-input" placeholder="Describe your finances..." class="w-full bg-gray-50 border border-gray-200 p-4 pr-12 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 transition-all font-medium text-sm">
+                <button onclick="sendMessage()" class="absolute right-3 top-3 w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all">
+                    <i class="fas fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-3 text-center">AI will extract accounts and visualize them instantly.</p>
+        </div>
+    </aside>
+
+    <!-- Interactive Canvas -->
+    <main class="viz-canvas" id="canvas">
+        <div class="canvas-header">
+            <div>
+                <h2 class="font-black text-3xl text-gray-900 tracking-tighter" id="canvas-title">Welcome.</h2>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live State Engine Active</span>
+                </div>
+            </div>
+            <button class="bg-white border border-gray-200 px-6 py-2 rounded-full font-bold text-sm shadow-sm hover:shadow-md transition-all" onclick="finish()">Launch Dashboard</button>
+        </div>
+
+        <!-- Wealth Cards will be "thrown" here -->
+        <div id="card-layer"></div>
+
+        <!-- Net Worth Meter -->
+        <div class="nw-radial" id="nw-meter">
+            <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Projected Net Worth</div>
+            <div class="text-4xl font-black text-gray-900 tracking-tighter">₹<span id="nw-val">0</span></div>
+            <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between text-[10px] font-bold">
+                <span class="text-emerald-500">ASSETS: ₹<span id="ast-val">0</span></span>
+                <span class="mx-4 text-gray-300">|</span>
+                <span class="text-rose-500">DEBTS: ₹<span id="lb-val">0</span></span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const cardLayer = document.getElementById('card-layer');
+        const nwVal = document.getElementById('nw-val');
+        const astVal = document.getElementById('ast-val');
+        const lbVal = document.getElementById('lb-val');
+
+        let state = {
+            name: 'Vamsi',
+            accounts: []
+        };
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `chat-bubble bubble-${type}`;
+            div.innerHTML = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const val = userInput.value;
+            if (!val) return;
+            
+            addMessage(val, 'user');
+            userInput.value = '';
+
+            // Simulate AI Processing
+            setTimeout(() => {
+                processAI(val);
+            }, 800);
+        }
+
+        function processAI(text) {
+            text = text.toLowerCase();
+            let responses = [];
+            
+            if (text.includes('hdfc') || text.includes('bank')) {
+                const amt = text.match(/\d+/) ? text.match(/\d+/)[0] : '500000';
+                addAccount('HDFC Savings', Number(amt) * 1000, 'asset', '🏦');
+                responses.push("I've added your HDFC account to the canvas.");
+            }
+
+            if (text.includes('loan') || text.includes('debt')) {
+                const amt = text.match(/\d+/) ? text.match(/\d+/)[0] : '2000000';
+                addAccount('Home Loan', Number(amt) * 1000, 'liab', '🏠');
+                responses.push("Found the loan! Visualizing that as a liability anchor.");
+            }
+
+            if (responses.length > 0) {
+                addMessage(responses.join(' ') + " Anything else? Investments, gold, or credit cards?", 'ai');
+            } else {
+                addMessage("I didn't quite catch the specific account name or value. Could you rephrase that? (e.g., 'I have 10L in Mutual Funds')", 'ai');
+            }
+        }
+
+        function addAccount(name, val, type, icon) {
+            const id = 'card-' + Date.now();
+            state.accounts.push({ id, name, val, type });
+            
+            const card = document.createElement('div');
+            card.className = `wealth-card card-${type}`;
+            
+            // Random position on canvas
+            const x = 50 + Math.random() * (window.innerWidth - 450 - 250);
+            const y = 150 + Math.random() * (window.innerHeight - 300);
+            
+            card.style.left = x + 'px';
+            card.style.top = y + 'px';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div class="text-2xl">${icon}</div>
+                    <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">${type}</div>
+                </div>
+                <div class="font-bold text-gray-800 mb-1">${name}</div>
+                <div class="text-xl font-black ${type === 'asset' ? 'text-emerald-600' : 'text-rose-500'} tracking-tighter">
+                    ₹${(val).toLocaleString('en-IN')}
+                </div>
+            `;
+            
+            cardLayer.appendChild(card);
+            updateNW();
+        }
+
+        function updateNW() {
+            const assets = state.accounts.filter(a => a.type === 'asset').reduce((s, a) => s + a.val, 0);
+            const liabs = state.accounts.filter(a => a.type === 'liab').reduce((s, a) => s + a.val, 0);
+            const nw = assets - liabs;
+            
+            nwVal.innerText = nw.toLocaleString('en-IN');
+            astVal.innerText = assets.toLocaleString('en-IN');
+            lbVal.innerText = liabs.toLocaleString('en-IN');
+        }
+
+        function finish() {
+            addMessage("Perfect! I'm compiling your financial health score and preparing your dashboard now...", 'ai');
+            setTimeout(() => {
+                alert("Dashboard Initialized. Welcome to Ledger v3.");
+                location.reload();
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

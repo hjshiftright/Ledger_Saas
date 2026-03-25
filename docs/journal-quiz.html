@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double-Entry Journal Quiz</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f0f4f8;
+    --border: #cbd5e1;
+    --accent: #2563eb;
+    --accent2: #7c3aed;
+    --green: #16a34a;
+    --red: #dc2626;
+    --yellow: #d97706;
+    --text: #1e293b;
+    --muted: #64748b;
+    --easy: #16a34a;
+    --medium: #d97706;
+    --hard: #dc2626;
+    --radius: 20px;
+    --mono: 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .subtitle { color: var(--muted); font-size: 0.88rem; text-align: center; margin-bottom: 28px; }
+
+  /* ── Setup panel ── */
+  #setup {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 540px;
+  }
+
+  .setup-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase;
+                 letter-spacing: .08em; margin-bottom: 10px; }
+
+  .level-row { display: flex; gap: 10px; margin-bottom: 20px; }
+
+  .level-btn {
+    flex: 1; padding: 10px 0; border-radius: 99px; border: 2px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    font-size: 0.88rem; font-weight: 600; transition: all .15s;
+  }
+  .level-btn.easy.active  { border-color: var(--easy);   color: #166534; background: #f0fdf4; }
+  .level-btn.medium.active{ border-color: var(--medium); color: #92400e; background: #fffbeb; }
+  .level-btn.hard.active  { border-color: var(--hard);   color: #991b1b; background: #fef2f2; }
+  .level-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .qty-row { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .qty-btn {
+    padding: 8px 18px; border-radius: 99px; border: 2px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    font-size: 0.88rem; transition: all .15s;
+  }
+  .qty-btn.active { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+
+  #start-btn {
+    width: 100%; padding: 13px; border-radius: 99px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer;
+    transition: opacity .15s;
+  }
+  #start-btn:hover { opacity: .88; }
+
+  /* ── Quiz panel ── */
+  #quiz { display: none; width: 100%; max-width: 720px; }
+
+  .progress-bar-wrap {
+    background: var(--surface2); border-radius: 99px; height: 6px; margin-bottom: 20px; overflow: hidden;
+  }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+                  transition: width .4s ease; border-radius: 99px; }
+
+  .q-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px; font-size: 0.8rem; color: var(--muted);
+  }
+  .q-level { padding: 3px 10px; border-radius: 99px; font-weight: 700; font-size: 0.75rem; }
+  .q-level.easy   { background: #f0fdf4; color: #166534; }
+  .q-level.medium { background: #fffbeb; color: #92400e; }
+  .q-level.hard   { background: #fef2f2; color: #991b1b; }
+
+  .q-meta { flex-wrap: wrap; }
+  .q-type { font-size: 0.75rem; color: var(--muted);
+            background: var(--surface2); padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); }
+  .quit-btn {
+    padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    font-size: 0.78rem; transition: all .15s; margin-left: auto;
+  }
+  .quit-btn:hover { border-color: var(--red); color: var(--red); background: #fef2f2; }
+
+  .q-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+
+  .scenario-box {
+    background: var(--surface2); border-left: 4px solid var(--accent);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;
+    font-size: 0.92rem; line-height: 1.6;
+  }
+
+  .q-text { font-size: 1rem; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+
+  /* Multiple choice */
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    padding: 12px 16px; border-radius: 99px; border: 2px solid var(--border);
+    background: var(--surface2); cursor: pointer; font-size: 0.92rem;
+    transition: all .15s; display: flex; align-items: center; gap: 10px;
+    font-family: inherit;
+  }
+  .option:hover:not(:disabled) { border-color: var(--accent); }
+  .option .opt-label {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+  }
+  .option.selected { border-color: var(--accent); background: #eff6ff; }
+  .option.correct  { border-color: var(--green); background: #f0fdf4; color: #166534; }
+  .option.wrong    { border-color: var(--red);   background: #fef2f2; color: #991b1b; }
+  .option.revealed { border-color: var(--green); background: #f0fdf4; opacity: .7; }
+
+  /* Journal entry fill-in */
+  .journal-table {
+    width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.88rem;
+    margin-bottom: 16px;
+  }
+  .journal-table { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .journal-table th {
+    background: var(--surface2); padding: 8px 12px; text-align: left;
+    color: var(--muted); font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: .05em; border-bottom: 1px solid var(--border);
+  }
+  .journal-table td {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+  }
+  .journal-table tr:last-child td { border-bottom: none; }
+
+  .dr-row { color: #1d4ed8; }
+  .cr-row { color: #7c3aed; padding-left: 28px; }
+
+  .blank-select {
+    background: var(--surface2); border: 2px solid var(--accent);
+    color: var(--text); border-radius: 99px; padding: 4px 8px;
+    font-size: 0.88rem; font-family: var(--mono); cursor: pointer;
+    min-width: 140px;
+  }
+  .blank-select.correct-sel { border-color: var(--green); background: #f0fdf4; color: #166534; }
+  .blank-select.wrong-sel   { border-color: var(--red);   background: #fef2f2; color: #991b1b; }
+
+  /* Feedback */
+  .feedback {
+    margin-top: 18px; padding: 14px 16px; border-radius: 16px; font-size: 0.9rem;
+    line-height: 1.6; display: none;
+  }
+  .feedback.correct-fb { background: #f0fdf4; border: 1px solid var(--green); color: #166534; }
+  .feedback.wrong-fb   { background: #fef2f2; border: 1px solid var(--red);   color: #991b1b; }
+
+  .feedback strong { display: block; font-size: 1rem; margin-bottom: 6px; }
+  .feedback .why { color: var(--text); font-size: 0.88rem; }
+
+  /* Action buttons */
+  .q-actions { margin-top: 20px; display: flex; gap: 12px; }
+  .btn-check {
+    flex: 1; padding: 12px; border-radius: 99px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn-check:hover { opacity: .88; }
+  .btn-next {
+    padding: 12px 24px; border-radius: 99px; border: 2px solid var(--border);
+    background: var(--surface2); color: var(--text); font-size: 0.95rem;
+    font-weight: 600; cursor: pointer; transition: all .15s; display: none;
+  }
+  .btn-next:hover { border-color: var(--accent); }
+
+  .btn-back {
+    padding: 12px 20px; border-radius: 99px; border: 2px solid var(--border);
+    background: var(--surface2); color: var(--muted); font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; transition: all .15s; display: none;
+  }
+  .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Results ── */
+  #results { display: none; width: 100%; max-width: 540px; }
+
+  .result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  .score-ring {
+    width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 5px solid var(--accent); background: var(--surface2);
+  }
+  .score-pct { font-size: 2rem; font-weight: 800; color: var(--accent); }
+  .score-sub { font-size: 0.75rem; color: var(--muted); }
+  .result-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+  .result-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+
+  .breakdown {
+    display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .bd-item {
+    background: var(--surface2); border-radius: 16px; padding: 12px 18px; text-align: center;
+  }
+  .bd-num { font-size: 1.4rem; font-weight: 800; }
+  .bd-lbl { font-size: 0.75rem; color: var(--muted); }
+
+  .review-list { text-align: left; margin-bottom: 24px; }
+  .review-item {
+    padding: 10px 14px; border-radius: 99px; margin-bottom: 8px;
+    font-size: 0.85rem; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .review-item.ok  { background: #f0fdf4; }
+  .review-item.bad { background: #fef2f2; }
+  .review-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .review-q { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
+
+  #restart-btn {
+    width: 100%; padding: 13px; border-radius: 99px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer;
+  }
+  #restart-btn:hover { opacity: .88; }
+
+  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 12px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Double-Entry Journal Quiz</h1>
+<p class="subtitle">Test your understanding of debits, credits and the accounting equation</p>
+
+<!-- ── Setup ── -->
+<div id="setup">
+  <div class="setup-label">Difficulty level</div>
+  <div class="level-row">
+    <button class="level-btn easy active" data-level="easy">Easy</button>
+    <button class="level-btn medium" data-level="medium">Medium</button>
+    <button class="level-btn hard" data-level="hard">Hard</button>
+  </div>
+
+  <div class="setup-label">Number of questions</div>
+  <div class="qty-row">
+    <button class="qty-btn active" data-qty="5">5</button>
+    <button class="qty-btn" data-qty="10">10</button>
+    <button class="qty-btn" data-qty="15">15</button>
+    <button class="qty-btn" data-qty="20">20</button>
+  </div>
+
+  <button id="start-btn">Start Quiz →</button>
+</div>
+
+<!-- ── Quiz ── -->
+<div id="quiz">
+  <div class="progress-bar-wrap"><div class="progress-bar" id="prog"></div></div>
+  <div class="q-meta">
+    <span id="q-counter">Question 1 / 10</span>
+    <span class="q-level" id="q-level-badge"></span>
+    <span class="q-type" id="q-type-badge"></span>
+    <button class="quit-btn" id="quit-btn">↩ Restart</button>
+  </div>
+  <div class="q-card">
+    <div class="scenario-box" id="scenario"></div>
+    <div class="q-text" id="q-text"></div>
+    <div id="q-body"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="q-actions">
+      <button class="btn-back"  id="btn-back" >← Back</button>
+      <button class="btn-check" id="btn-check">Check Answer</button>
+      <button class="btn-next"  id="btn-next" >Next →</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<!-- ── Results ── -->
+<div id="results">
+  <div class="result-card">
+    <div class="score-ring">
+      <div class="score-pct" id="r-pct"></div>
+      <div class="score-sub" id="r-frac"></div>
+    </div>
+    <div class="result-title" id="r-title"></div>
+    <div class="result-sub"   id="r-sub"></div>
+    <div class="breakdown">
+      <div class="bd-item"><div class="bd-num" style="color:var(--green)"  id="r-correct"></div><div class="bd-lbl">Correct</div></div>
+      <div class="bd-item"><div class="bd-num" style="color:var(--red)"    id="r-wrong"></div>  <div class="bd-lbl">Wrong</div></div>
+      <div class="bd-item"><div class="bd-num" style="color:var(--muted)"  id="r-total"></div>  <div class="bd-lbl">Total</div></div>
+    </div>
+    <div class="review-list" id="review-list"></div>
+    <button id="restart-btn">Try Again →</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  QUESTION BANK — purely data-driven; every question is generated at runtime
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ACCOUNTS = {
+  // Assets 1xxx
+  "Savings Account (Asset)":        { code:"1102", class:"ASSET"     },
+  "Cash in Hand (Asset)":           { code:"1101", class:"ASSET"     },
+  "ICICI Savings (Asset)":          { code:"1103", class:"ASSET"     },
+  "Investments / MF (Asset)":       { code:"1200", class:"ASSET"     },
+  "Equity Portfolio (Asset)":       { code:"1201", class:"ASSET"     },
+  "Fixed Deposit (Asset)":          { code:"1203", class:"ASSET"     },
+  // Liabilities 2xxx
+  "Credit Card Payable (Liability)":{ code:"2100", class:"LIABILITY" },
+  "Home Loan Payable (Liability)":  { code:"2201", class:"LIABILITY" },
+  "Car Loan Payable (Liability)":   { code:"2202", class:"LIABILITY" },
+  "Transfer Clearing (Liability)":  { code:"2999", class:"LIABILITY" },
+  // Equity 3xxx
+  "Opening Balance Equity":         { code:"3001", class:"EQUITY"    },
+  // Income 4xxx
+  "Salary Income":                  { code:"4100", class:"INCOME"    },
+  "Interest Income":                { code:"4200", class:"INCOME"    },
+  "Dividend Income":                { code:"4300", class:"INCOME"    },
+  "Capital Gains":                  { code:"4400", class:"INCOME"    },
+  "Refunds Received":               { code:"4600", class:"INCOME"    },
+  "Cashback Income":                { code:"4700", class:"INCOME"    },
+  "Other Income":                   { code:"4900", class:"INCOME"    },
+  // Expenses 5xxx
+  "Food & Dining (Expense)":        { code:"5100", class:"EXPENSE"   },
+  "Transportation (Expense)":       { code:"5200", class:"EXPENSE"   },
+  "Housing / Rent (Expense)":       { code:"5300", class:"EXPENSE"   },
+  "Utilities (Expense)":            { code:"5400", class:"EXPENSE"   },
+  "Healthcare (Expense)":           { code:"5500", class:"EXPENSE"   },
+  "Education (Expense)":            { code:"5600", class:"EXPENSE"   },
+  "Shopping (Expense)":             { code:"5700", class:"EXPENSE"   },
+  "Entertainment (Expense)":        { code:"5800", class:"EXPENSE"   },
+  "Insurance Premium (Expense)":    { code:"5900", class:"EXPENSE"   },
+  "Loan Interest (Expense)":        { code:"5600", class:"EXPENSE"   },
+  "Miscellaneous (Expense)":        { code:"5999", class:"EXPENSE"   },
+};
+
+const DR_NORMAL = ["ASSET","EXPENSE"];      // DR increases
+const CR_NORMAL = ["LIABILITY","EQUITY","INCOME"]; // CR increases
+
+function isDebitNormal(cls) { return DR_NORMAL.includes(cls); }
+function normalSide(cls)    { return isDebitNormal(cls) ? "DR" : "CR"; }
+function oppositeSide(side) { return side === "DR" ? "CR" : "DR"; }
+
+// ── Scenario templates ─────────────────────────────────────────────────────
+
+const SCENARIOS = {
+  easy: [
+    // Account-class identification
+    { type:"account_class",
+      scenario:"You receive ₹50,000 salary credited to your HDFC savings account.",
+      question:"What account class is 'Savings Account'?",
+      answer:"ASSET",
+      distractors:["LIABILITY","INCOME","EXPENSE"],
+      why:"A savings account is something you *own* — cash/bank balances are Assets." },
+
+    { type:"account_class",
+      scenario:"You have an outstanding credit card balance of ₹12,000 that you owe HDFC.",
+      question:"What account class is 'Credit Card Payable'?",
+      answer:"LIABILITY",
+      distractors:["ASSET","EXPENSE","EQUITY"],
+      why:"A credit card balance is money you *owe* — that makes it a Liability." },
+
+    { type:"account_class",
+      scenario:"You pay ₹800 at Swiggy for dinner.",
+      question:"What account class is 'Food & Dining'?",
+      answer:"EXPENSE",
+      distractors:["ASSET","LIABILITY","INCOME"],
+      why:"Money flowing *away* from you for consumption is an Expense." },
+
+    { type:"account_class",
+      scenario:"Your employer deposits your monthly salary into your bank.",
+      question:"What account class is 'Salary Income'?",
+      answer:"INCOME",
+      distractors:["ASSET","EXPENSE","EQUITY"],
+      why:"Money flowing *to* you that makes you richer is Income." },
+
+    { type:"account_class",
+      scenario:"You set up accounts for the first time and record your starting bank balance.",
+      question:"What account class is 'Opening Balance Equity'?",
+      answer:"EQUITY",
+      distractors:["ASSET","LIABILITY","INCOME"],
+      why:"Your net worth (assets minus liabilities) is Equity. An opening balance initialises your equity." },
+
+    // Normal side
+    { type:"normal_side",
+      scenario:"You are journalising a transaction that increases your savings account balance.",
+      question:"A savings account (Asset) INCREASES when you post a ___",
+      answer:"DEBIT (DR)",
+      distractors:["CREDIT (CR)"],
+      why:"Assets live on the LEFT (DR) side of the accounting equation. DR increases an Asset." },
+
+    { type:"normal_side",
+      scenario:"You just bought groceries on your credit card — your outstanding balance goes up.",
+      question:"Credit Card Payable (Liability) INCREASES when you post a ___",
+      answer:"CREDIT (CR)",
+      distractors:["DEBIT (DR)"],
+      why:"Liabilities live on the RIGHT (CR) side of the equation. CR increases a Liability." },
+
+    { type:"normal_side",
+      scenario:"You paid your Netflix subscription — your expense account goes up.",
+      question:"Entertainment Expense INCREASES when you post a ___",
+      answer:"DEBIT (DR)",
+      distractors:["CREDIT (CR)"],
+      why:"Expenses mirror Assets — DR increases an Expense account." },
+
+    { type:"normal_side",
+      scenario:"Interest is earned on your savings account.",
+      question:"Interest Income INCREASES when you post a ___",
+      answer:"CREDIT (CR)",
+      distractors:["DEBIT (DR)"],
+      why:"Income mirrors Liability/Equity — CR increases an Income account." },
+
+    // Golden rule
+    { type:"mcq",
+      scenario:"At the end of posting a salary receipt, your journal shows DR Savings ₹80,000 | CR Salary Income ₹80,000.",
+      question:"Is this journal entry balanced?",
+      answer:"Yes — total DR = total CR = ₹80,000",
+      distractors:["No — DR is on the wrong side","No — CR is on the wrong side","Cannot tell without more lines"],
+      why:"The golden rule: sum of all Debits must equal sum of all Credits. 80,000 = 80,000 ✓" },
+
+    { type:"mcq",
+      scenario:"Someone told you 'I debited my credit card' when making a purchase.",
+      question:"In accounting terms, what actually happened to Credit Card Payable?",
+      answer:"It was CREDITED — the liability increased",
+      distractors:["It was DEBITED — the liability decreased","It was DEBITED — the liability increased","Nothing changed"],
+      why:"A CC purchase adds to your outstanding balance, so CC Payable (Liability) INCREASES → CR. Everyday language 'debited my card' refers to the bank's view, not accounting." },
+
+    { type:"mcq",
+      scenario:"Your bank statement shows 'CR ₹10,000' for a salary deposit.",
+      question:"What does that CR mean *in your personal ledger* (your books)?",
+      answer:"Your Savings Account is DEBITED — asset increases",
+      distractors:["Your Savings Account is CREDITED — asset increases","Your Savings Account is CREDITED — asset decreases","No entry is needed"],
+      why:"Bank statements are from the *bank's* perspective — CR = bank owes you more. In your ledger, savings is your Asset, so it's DR when it increases." },
+  ],
+
+  medium: [
+    // DR/CR identification for specific transactions
+    { type:"journal_side",
+      scenario:"You pay ₹22,000 house rent from your savings account.",
+      question:"Which side does each account go?",
+      drAccount:"Housing / Rent (Expense)",
+      crAccount:"Savings Account (Asset)",
+      drWrong:"Savings Account (Asset)",
+      crWrong:"Housing / Rent (Expense)",
+      why:"Expense increases → DR Housing. Asset decreases → CR Savings. The equation balances." },
+
+    { type:"journal_side",
+      scenario:"You receive ₹3,500 dividend payment from Infosys into your savings account.",
+      question:"Which side does each account go?",
+      drAccount:"Savings Account (Asset)",
+      crAccount:"Dividend Income",
+      drWrong:"Dividend Income",
+      crWrong:"Savings Account (Asset)",
+      why:"Asset increases → DR Savings. Income increases → CR Dividend Income." },
+
+    { type:"journal_side",
+      scenario:"You swipe your credit card for a ₹5,800 Indigo flight ticket.",
+      question:"Which side does each account go?",
+      drAccount:"Transportation (Expense)",
+      crAccount:"Credit Card Payable (Liability)",
+      drWrong:"Credit Card Payable (Liability)",
+      crWrong:"Transportation (Expense)",
+      why:"Expense increases → DR Transport. Liability increases → CR CC Payable." },
+
+    { type:"journal_side",
+      scenario:"You pay your ₹15,000 credit card bill from your savings account.",
+      question:"Which side does each account go?",
+      drAccount:"Credit Card Payable (Liability)",
+      crAccount:"Savings Account (Asset)",
+      drWrong:"Savings Account (Asset)",
+      crWrong:"Credit Card Payable (Liability)",
+      why:"Liability DECREASES (you paid it off) → DR CC Payable. Asset DECREASES → CR Savings." },
+
+    { type:"journal_side",
+      scenario:"You receive an IRCTC refund of ₹1,259 back to your savings account after a cancelled ticket.",
+      question:"Which side does each account go?",
+      drAccount:"Savings Account (Asset)",
+      crAccount:"Refunds Received",
+      drWrong:"Refunds Received",
+      crWrong:"Savings Account (Asset)",
+      why:"Asset increases → DR Savings. Income (refund) increases → CR Refunds Received." },
+
+    { type:"journal_side",
+      scenario:"You invest ₹10,000 in a SIP mutual fund from your savings account.",
+      question:"Which side does each account go?",
+      drAccount:"Investments / MF (Asset)",
+      crAccount:"Savings Account (Asset)",
+      drWrong:"Savings Account (Asset)",
+      crWrong:"Investments / MF (Asset)",
+      why:"New asset (fund units) increases → DR Investments. Savings Asset decreases → CR Savings." },
+
+    { type:"journal_side",
+      scenario:"You receive ₹500 cashback credited on your credit card, reducing your outstanding balance.",
+      question:"Which side does each account go?",
+      drAccount:"Credit Card Payable (Liability)",
+      crAccount:"Cashback Income",
+      drWrong:"Cashback Income",
+      crWrong:"Credit Card Payable (Liability)",
+      why:"Liability DECREASES (outstanding reduces) → DR CC Payable. Income increases → CR Cashback." },
+
+    // Category / account identification
+    { type:"mcq",
+      scenario:"You pay ₹25,000 SBI home loan EMI. The EMI comprises ₹18,000 principal and ₹7,000 interest.",
+      question:"Which two accounts does the principal portion touch (as counterparts to Savings)?",
+      answer:"DR Home Loan Payable (reduces debt) + DR Loan Interest (expense)",
+      distractors:[
+        "DR one Expense account for the full ₹25,000",
+        "CR Home Loan Payable + CR Loan Interest",
+        "DR Savings Account + CR Expense"
+      ],
+      why:"Principal repayment reduces a Liability (DR Home Loan Payable). Interest is a pure expense (DR Loan Interest). You can't treat the whole EMI as one expense." },
+
+    { type:"mcq",
+      scenario:"You transfer ₹20,000 from HDFC savings to ICICI savings — your own accounts.",
+      question:"What is the correct counterpart account for the HDFC statement debit row?",
+      answer:"Transfer Clearing (2999) — suspense account",
+      distractors:["ICICI Savings (direct)","Miscellaneous Expense","Income - Other"],
+      why:"Own-account transfers use a Transfer Clearing account (2999) as a bridge. ICICI will credit this same clearing account when the money arrives, netting it to zero." },
+
+    { type:"mcq",
+      scenario:"Your bank statement shows a debit of ₹15,000 labeled 'HDFC CC BILL PAYMENT'.",
+      question:"What category and counterpart account should this map to?",
+      answer:"CC_PAYMENT → Transfer Clearing (2999)",
+      distractors:[
+        "EXPENSE_OTHER → Miscellaneous (5999)",
+        "TRANSFER → Transfer Clearing (2999)",
+        "INCOME_REFUND → Refunds Received (4600)"
+      ],
+      why:"A CC bill payment from bank is NOT an expense — you already recorded the expense when you swiped. It reduces your CC liability. Use CC_PAYMENT → Transfer Clearing as the bridge." },
+
+    { type:"mcq",
+      scenario:"You open a new ledger. Your savings account has ₹1,00,000. You record the opening balance.",
+      question:"Select the correct journal entry:",
+      answer:"DR Savings Account ₹1,00,000  |  CR Opening Balance Equity ₹1,00,000",
+      distractors:[
+        "CR Savings Account ₹1,00,000  |  DR Opening Balance Equity ₹1,00,000",
+        "DR Savings Account ₹1,00,000  |  CR Salary Income ₹1,00,000",
+        "DR Opening Balance Equity ₹1,00,000  |  CR Savings Account ₹1,00,000"
+      ],
+      why:"Asset increases → DR Savings. Equity increases → CR Opening Balance. This is a one-time setup entry that initialises your net worth." },
+  ],
+
+  hard: [
+    // Fill-in-the-blanks for journal entries
+    { type:"fill_journal",
+      scenario:"Event: Employer credits ₹80,000 salary to your HDFC savings account.",
+      rows:[
+        { indent:false, label:"DR", accountKey:"Savings Account (Asset)",  amountKey:"src",  blanks:["side"] },
+        { indent:true,  label:"CR", accountKey:"Salary Income",            amountKey:"src",  blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] },
+      amount:"80,000",
+      answers:{ row0_side:"DR", row1_side:"CR" },
+      why:"Asset INCREASES → DR Savings. Income INCREASES → CR Salary. Sum DR = Sum CR = ₹80,000." },
+
+    { type:"fill_journal",
+      scenario:"Event: You buy groceries worth ₹1,800 via UPI from your savings account.",
+      rows:[
+        { indent:false, label:"DR", accountKey:"Food & Dining (Expense)",  amountKey:"src", blanks:["side"] },
+        { indent:true,  label:"CR", accountKey:"Savings Account (Asset)",  amountKey:"src", blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] },
+      amount:"1,800",
+      answers:{ row0_side:"DR", row1_side:"CR" },
+      why:"Expense INCREASES → DR Food & Dining. Asset DECREASES → CR Savings." },
+
+    { type:"fill_journal",
+      scenario:"Event: You buy a ₹3,000 flight on your credit card (not yet paid).",
+      rows:[
+        { indent:false, label:"?", accountKey:"Transportation (Expense)",       amountKey:"src", blanks:["side"] },
+        { indent:true,  label:"?", accountKey:"Credit Card Payable (Liability)",amountKey:"src", blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] },
+      amount:"3,000",
+      answers:{ row0_side:"DR", row1_side:"CR" },
+      why:"Expense INCREASES → DR Transport. Liability INCREASES → CR CC Payable." },
+
+    { type:"fill_journal",
+      scenario:"Event: You receive ₹500 cashback credited directly on your credit card (reducing outstanding).",
+      rows:[
+        { indent:false, label:"?", accountKey:"Credit Card Payable (Liability)",amountKey:"src", blanks:["side"] },
+        { indent:true,  label:"?", accountKey:"Cashback Income",               amountKey:"src", blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] },
+      amount:"500",
+      answers:{ row0_side:"DR", row1_side:"CR" },
+      why:"Liability DECREASES (outstanding reduces) → DR CC Payable. Income INCREASES → CR Cashback." },
+
+    { type:"fill_journal",
+      scenario:"Event: You pay ₹15,000 to clear your credit card bill from savings.",
+      rows:[
+        { indent:false, label:"?", accountKey:"Credit Card Payable (Liability)",amountKey:"src", blanks:["side"] },
+        { indent:true,  label:"?", accountKey:"Savings Account (Asset)",        amountKey:"src", blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] },
+      amount:"15,000",
+      answers:{ row0_side:"DR", row1_side:"CR" },
+      why:"Liability DECREASES (paid off) → DR CC Payable. Asset DECREASES → CR Savings." },
+
+    // Account-identification fill-ins
+    { type:"identify_account",
+      scenario:"ATM cash withdrawal of ₹10,000 from savings. The money now sits in your wallet.",
+      question:"What is the COUNTERPART (debit) account for this withdrawal?",
+      answer:"Cash in Hand (Asset)",
+      distractors:["Miscellaneous (Expense)","Transfer Clearing (Liability)","Other Income"],
+      why:"You didn't spend the cash yet — you converted one Asset (bank) into another (cash). DR Cash in Hand / CR Savings." },
+
+    { type:"identify_account",
+      scenario:"You invest ₹50,000 in a fixed deposit from savings.",
+      question:"What is the DEBIT account for this transaction?",
+      answer:"Fixed Deposit (Asset)",
+      distractors:["Investments / MF (Asset)","Miscellaneous (Expense)","Savings Account (Asset)"],
+      why:"FD is still your money, just locked away — it is an Asset. DR FD / CR Savings. Net worth unchanged." },
+
+    { type:"identify_account",
+      scenario:"Zerodha shows a stock dividend of ₹2,000 credited to your linked savings account.",
+      question:"What is the CREDIT account for this transaction?",
+      answer:"Dividend Income",
+      distractors:["Capital Gains","Salary Income","Cashback Income"],
+      why:"Money received as a dividend is INCOME. Specifically Dividend Income (4300), not Capital Gains (which is from selling assets)." },
+
+    { type:"identify_account",
+      scenario:"You sell mutual fund units and receive ₹12,000 back to savings — ₹2,000 more than you invested.",
+      question:"The ₹2,000 gain should be credited to which account?",
+      answer:"Capital Gains",
+      distractors:["Refunds Received","Dividend Income","Other Income"],
+      why:"Profit from selling an investment = Capital Gains (4400). It is NOT a refund (which reverses a past expense) or dividend (which is a periodic income)." },
+
+    // Equation / balance hard MCQs
+    { type:"mcq",
+      scenario:"Balance sheet shows: Assets ₹5,00,000 | Liabilities ₹1,50,000. You take a new ₹50,000 personal loan (cash arrives in bank).",
+      question:"After the loan entry, what are Assets and Liabilities?",
+      answer:"Assets ₹5,50,000 | Liabilities ₹2,00,000  (Equity unchanged)",
+      distractors:[
+        "Assets ₹5,50,000 | Liabilities ₹1,50,000  (Equity +₹50,000)",
+        "Assets ₹5,00,000 | Liabilities ₹2,00,000  (Equity −₹50,000)",
+        "Assets ₹5,00,000 | Liabilities ₹1,50,000  (no change)"
+      ],
+      why:"DR Savings +₹50,000 (asset up) | CR Personal Loan +₹50,000 (liability up). Equity = Assets − Liabilities stays the same (₹3,50,000). The equation A = L + E holds." },
+
+    { type:"mcq",
+      scenario:"A friend says: 'I recorded a ₹10,000 refund as income — the bank statement showed a credit.'",
+      question:"Is this accounting treatment correct?",
+      answer:"Partially correct — it should go to Refunds Received (4600), not a generic income account",
+      distractors:[
+        "Fully correct — any money in is income",
+        "Wrong — refunds should be debited to the expense account",
+        "Wrong — refunds should never be recorded"
+      ],
+      why:"A refund reverses a past expense. You should post it to 'Refunds Received (4600)', not 'Salary' or 'Other Income'. Wrong account → inflated income figure at tax time." },
+
+    { type:"mcq",
+      scenario:"Journal entry: DR Credit Card Payable ₹20,000 | CR Transfer Clearing ₹20,000. This was generated from a CC statement row.",
+      question:"What real-world event does this entry record?",
+      answer:"CC bill payment received on the CC side (the bank side already posted CR Savings / DR Transfer Clearing)",
+      distractors:[
+        "A purchase of ₹20,000 on the credit card",
+        "A refund of ₹20,000 on the credit card",
+        "An ATM withdrawal using the credit card"
+      ],
+      why:"DR CC Payable = liability decreasing = bill was paid. Transfer Clearing is the bridge between bank statement (which already recorded the opposite leg). Together they net to zero." },
+
+    { type:"mcq",
+      scenario:"You have four accounts: Savings ₹1,00,000 DR balance, Home Loan ₹80,000 CR balance, Salary ₹50,000 CR balance, Rent ₹20,000 DR balance.",
+      question:"What is your net worth (Equity)?",
+      answer:"₹20,000 (Assets ₹1,00,000 + Expense DR ₹20,000 net against Loan ₹80,000 + Income ₹50,000)",
+      distractors:[
+        "₹50,000",
+        "₹−10,000",
+        "Cannot tell from these numbers"
+      ],
+      why:"Equity = Assets − Liabilities = 1,00,000 − 80,000 = 20,000. (Expenses reduce equity; Income grows equity — they are already reflected in retained earnings during closing.)" },
+  ]
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUTO-GENERATED QUESTION ENGINE
+//  Add a row to TX_DATA → get 3 Hard questions + 1 Medium question for free.
+//  No other code changes needed.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TX_DATA = [
+  // ── Income credited to savings ────────────────────────────────────────
+  { scenario:"Employer credits ₹80,000 salary to your HDFC savings account.",         dr:"Savings Account (Asset)", cr:"Salary Income",              amount:"80,000" },
+  { scenario:"Freelance client pays ₹35,000 via NEFT to your savings account.",        dr:"Savings Account (Asset)", cr:"Salary Income",              amount:"35,000" },
+  { scenario:"₹1,200 quarterly interest credited to your savings account.",            dr:"Savings Account (Asset)", cr:"Interest Income",             amount:"1,200" },
+  { scenario:"FD maturity interest ₹4,500 credited to savings.",                       dr:"Savings Account (Asset)", cr:"Interest Income",             amount:"4,500" },
+  { scenario:"Infosys dividend ₹3,500 credited directly to your savings account.",     dr:"Savings Account (Asset)", cr:"Dividend Income",             amount:"3,500" },
+  { scenario:"TCS quarterly dividend ₹1,800 transferred to savings.",                  dr:"Savings Account (Asset)", cr:"Dividend Income",             amount:"1,800" },
+  { scenario:"IRCTC refund ₹1,259 credited to savings for a cancelled train ticket.",  dr:"Savings Account (Asset)", cr:"Refunds Received",            amount:"1,259" },
+  { scenario:"Amazon refund ₹799 for a returned product credited to savings.",         dr:"Savings Account (Asset)", cr:"Refunds Received",            amount:"799"   },
+  { scenario:"Makemytrip hotel cancellation refund ₹3,400 received in savings.",       dr:"Savings Account (Asset)", cr:"Refunds Received",            amount:"3,400" },
+  { scenario:"Amazon Pay cashback ₹300 credited to your savings account.",             dr:"Savings Account (Asset)", cr:"Cashback Income",             amount:"300"   },
+  { scenario:"Paytm rewards cashback ₹150 credited to savings.",                       dr:"Savings Account (Asset)", cr:"Cashback Income",             amount:"150"   },
+  { scenario:"Capital gain portion ₹2,000 from mutual fund sale credited to savings.", dr:"Savings Account (Asset)", cr:"Capital Gains",               amount:"2,000" },
+  { scenario:"Profit of ₹5,500 from selling Zerodha equity, received in savings.",    dr:"Savings Account (Asset)", cr:"Capital Gains",               amount:"5,500" },
+  // ── Bank expenses ─────────────────────────────────────────────────────
+  { scenario:"₹850 UPI payment to Swiggy for dinner.",                                dr:"Food & Dining (Expense)",      cr:"Savings Account (Asset)", amount:"850"   },
+  { scenario:"₹1,200 BigBasket grocery delivery paid via UPI.",                        dr:"Food & Dining (Expense)",      cr:"Savings Account (Asset)", amount:"1,200" },
+  { scenario:"₹650 Zomato lunch order paid from savings.",                             dr:"Food & Dining (Expense)",      cr:"Savings Account (Asset)", amount:"650"   },
+  { scenario:"₹450 Uber ride paid via UPI from savings.",                              dr:"Transportation (Expense)",     cr:"Savings Account (Asset)", amount:"450"   },
+  { scenario:"₹5,600 IndiGo flight ticket purchased via net banking.",                 dr:"Transportation (Expense)",     cr:"Savings Account (Asset)", amount:"5,600" },
+  { scenario:"₹280 metro card top-up from savings.",                                   dr:"Transportation (Expense)",     cr:"Savings Account (Asset)", amount:"280"   },
+  { scenario:"₹22,000 monthly house rent paid via NEFT.",                              dr:"Housing / Rent (Expense)",     cr:"Savings Account (Asset)", amount:"22,000"},
+  { scenario:"₹1,500 BESCOM electricity bill paid online.",                            dr:"Utilities (Expense)",          cr:"Savings Account (Asset)", amount:"1,500" },
+  { scenario:"₹799 Jio annual mobile recharge paid from savings.",                     dr:"Utilities (Expense)",          cr:"Savings Account (Asset)", amount:"799"   },
+  { scenario:"₹349 Airtel broadband bill auto-paid from savings.",                     dr:"Utilities (Expense)",          cr:"Savings Account (Asset)", amount:"349"   },
+  { scenario:"₹3,200 Apollo pharmacy purchase paid via UPI.",                          dr:"Healthcare (Expense)",         cr:"Savings Account (Asset)", amount:"3,200" },
+  { scenario:"₹8,500 path lab test and consultation fee paid from savings.",           dr:"Healthcare (Expense)",         cr:"Savings Account (Asset)", amount:"8,500" },
+  { scenario:"₹4,999 Coursera annual subscription paid from savings.",                 dr:"Education (Expense)",          cr:"Savings Account (Asset)", amount:"4,999" },
+  { scenario:"₹12,000 school annual fee paid to DPS via NEFT.",                        dr:"Education (Expense)",          cr:"Savings Account (Asset)", amount:"12,000"},
+  { scenario:"₹6,500 Amazon gadget purchase paid via UPI.",                            dr:"Shopping (Expense)",           cr:"Savings Account (Asset)", amount:"6,500" },
+  { scenario:"₹3,299 Flipkart electronics order paid from savings.",                   dr:"Shopping (Expense)",           cr:"Savings Account (Asset)", amount:"3,299" },
+  { scenario:"₹999 Netflix monthly subscription auto-debited from savings.",           dr:"Entertainment (Expense)",      cr:"Savings Account (Asset)", amount:"999"   },
+  { scenario:"₹179 Spotify Premium auto-deducted from savings.",                       dr:"Entertainment (Expense)",      cr:"Savings Account (Asset)", amount:"179"   },
+  { scenario:"₹12,000 LIC annual premium auto-debited from savings.",                  dr:"Insurance Premium (Expense)",  cr:"Savings Account (Asset)", amount:"12,000"},
+  { scenario:"₹8,500 HDFC health insurance annual premium paid.",                      dr:"Insurance Premium (Expense)",  cr:"Savings Account (Asset)", amount:"8,500" },
+  // ── Credit card purchases ─────────────────────────────────────────────
+  { scenario:"Zomato dinner ₹1,100 charged to HDFC credit card.",                      dr:"Food & Dining (Expense)",      cr:"Credit Card Payable (Liability)", amount:"1,100" },
+  { scenario:"Dunzo grocery delivery ₹950 charged to credit card.",                    dr:"Food & Dining (Expense)",      cr:"Credit Card Payable (Liability)", amount:"950"   },
+  { scenario:"Myntra clothing ₹4,500 purchased on credit card.",                       dr:"Shopping (Expense)",           cr:"Credit Card Payable (Liability)", amount:"4,500" },
+  { scenario:"Croma electronics ₹18,000 purchased on credit card.",                    dr:"Shopping (Expense)",           cr:"Credit Card Payable (Liability)", amount:"18,000"},
+  { scenario:"Indigo flight ₹8,200 booked on credit card.",                            dr:"Transportation (Expense)",     cr:"Credit Card Payable (Liability)", amount:"8,200" },
+  { scenario:"Uber ride ₹550 charged to credit card.",                                 dr:"Transportation (Expense)",     cr:"Credit Card Payable (Liability)", amount:"550"   },
+  { scenario:"BookMyShow movie tickets ₹800 on credit card.",                          dr:"Entertainment (Expense)",      cr:"Credit Card Payable (Liability)", amount:"800"   },
+  { scenario:"MedPlus medicines ₹2,400 charged to credit card.",                       dr:"Healthcare (Expense)",         cr:"Credit Card Payable (Liability)", amount:"2,400" },
+  { scenario:"Udemy course ₹1,299 purchased on credit card.",                          dr:"Education (Expense)",          cr:"Credit Card Payable (Liability)", amount:"1,299" },
+  { scenario:"HDFC Ergo travel insurance ₹3,600 charged to credit card.",              dr:"Insurance Premium (Expense)",  cr:"Credit Card Payable (Liability)", amount:"3,600" },
+  // ── CC credits ────────────────────────────────────────────────────────
+  { scenario:"₹500 cashback credited on HDFC credit card, reducing outstanding.",      dr:"Credit Card Payable (Liability)", cr:"Cashback Income",   amount:"500"   },
+  { scenario:"Flipkart return ₹2,000 credited back on credit card statement.",         dr:"Credit Card Payable (Liability)", cr:"Refunds Received",  amount:"2,000" },
+  { scenario:"Amazon MX card loyalty points redeemed for ₹350, credited on statement.",dr:"Credit Card Payable (Liability)", cr:"Cashback Income",   amount:"350"   },
+  // ── Payments and asset conversions ───────────────────────────────────
+  { scenario:"₹15,000 credit card bill paid from savings via NEFT.",                   dr:"Credit Card Payable (Liability)", cr:"Savings Account (Asset)", amount:"15,000"},
+  { scenario:"₹32,000 credit card outstanding cleared from savings.",                  dr:"Credit Card Payable (Liability)", cr:"Savings Account (Asset)", amount:"32,000"},
+  { scenario:"₹10,000 withdrawn from ATM; cash now in your wallet.",                   dr:"Cash in Hand (Asset)",        cr:"Savings Account (Asset)", amount:"10,000"},
+  { scenario:"₹5,000 ATM cash withdrawal; money physically in hand.",                  dr:"Cash in Hand (Asset)",        cr:"Savings Account (Asset)", amount:"5,000" },
+  { scenario:"₹50,000 fixed deposit created from savings account.",                    dr:"Fixed Deposit (Asset)",       cr:"Savings Account (Asset)", amount:"50,000"},
+  { scenario:"₹10,000 SIP mutual fund investment from savings.",                       dr:"Investments / MF (Asset)",    cr:"Savings Account (Asset)", amount:"10,000"},
+  { scenario:"₹5,000 ELSS tax-saver fund purchased from savings.",                     dr:"Investments / MF (Asset)",    cr:"Savings Account (Asset)", amount:"5,000" },
+  { scenario:"₹50,000 personal loan amount credited to your savings account.",         dr:"Savings Account (Asset)",     cr:"Home Loan Payable (Liability)", amount:"50,000"},
+];
+
+// Account pools — used to pick plausible wrong-answer distractors
+const _POOLS = {
+  ASSET:     ["Savings Account (Asset)","Cash in Hand (Asset)","Fixed Deposit (Asset)","Investments / MF (Asset)","Equity Portfolio (Asset)","ICICI Savings (Asset)"],
+  LIABILITY: ["Credit Card Payable (Liability)","Home Loan Payable (Liability)","Car Loan Payable (Liability)","Transfer Clearing (Liability)"],
+  INCOME:    ["Salary Income","Interest Income","Dividend Income","Capital Gains","Refunds Received","Cashback Income","Other Income"],
+  EXPENSE:   ["Food & Dining (Expense)","Transportation (Expense)","Housing / Rent (Expense)","Utilities (Expense)","Healthcare (Expense)","Education (Expense)","Shopping (Expense)","Entertainment (Expense)","Insurance Premium (Expense)","Miscellaneous (Expense)"],
+  EQUITY:    ["Opening Balance Equity"],
+};
+
+function _acctClass(name) {
+  for (const [cls, pool] of Object.entries(_POOLS)) { if (pool.includes(name)) return cls; }
+  return "ASSET";
+}
+
+// Pick N distractors: same-class preferred (more educational) then cross-class
+function _pickD(correct, exclude, n) {
+  const cls  = _acctClass(correct);
+  const all  = Object.values(_POOLS).flat().filter(a => a !== correct && a !== exclude);
+  const same = shuffle(all.filter(a => _acctClass(a) === cls));
+  const rest = shuffle(all.filter(a => _acctClass(a) !== cls));
+  return [...same, ...rest].slice(0, n);
+}
+
+function _why(dr, cr) {
+  const dc = _acctClass(dr), cc = _acctClass(cr);
+  const drRule = DR_NORMAL.includes(dc) ? `${dc} INCREASES` : `${dc} DECREASES`;
+  const crRule = CR_NORMAL.includes(cc) ? `${cc} INCREASES` : `${cc} DECREASES`;
+  return `${drRule} → DR ${dr}. ${crRule} → CR ${cr}.`;
+}
+
+// Each TX row → 3 Hard questions + 1 Medium question
+(function _injectGenerated() {
+  TX_DATA.forEach(tx => {
+    const why = tx.why || _why(tx.dr, tx.cr);
+
+    // Hard: fill-in DR/CR dropdowns
+    SCENARIOS.hard.push({ type:"fill_journal", _level:"hard",
+      scenario: tx.scenario,
+      rows:[
+        { indent:false, label:"?", accountKey:tx.dr, amountKey:"src", blanks:["side"] },
+        { indent:true,  label:"?", accountKey:tx.cr, amountKey:"src", blanks:["side"] },
+      ],
+      choices:{ side:["DR","CR"] }, amount:tx.amount,
+      answers:{ row0_side:"DR", row1_side:"CR" }, why });
+
+    // Hard: identify which account is DEBITED
+    SCENARIOS.hard.push({ type:"identify_account", _level:"hard",
+      scenario: tx.scenario,
+      question:"Which account is DEBITED in this transaction?",
+      answer: tx.dr, distractors:_pickD(tx.dr, tx.cr, 3), why });
+
+    // Hard: identify which account is CREDITED
+    SCENARIOS.hard.push({ type:"identify_account", _level:"hard",
+      scenario: tx.scenario,
+      question:"Which account is CREDITED in this transaction?",
+      answer: tx.cr, distractors:_pickD(tx.cr, tx.dr, 3), why });
+
+    // Medium: choose correct DR/CR pair
+    SCENARIOS.medium.push({ type:"journal_side", _level:"medium",
+      scenario: tx.scenario,
+      question:"Which side does each account go?",
+      drAccount:tx.dr, crAccount:tx.cr, drWrong:tx.cr, crWrong:tx.dr, why });
+  });
+})();
+
+// ── Runtime state ──────────────────────────────────────────────────────────
+
+let activeLevel = "easy";
+let numQuestions = 5;
+let queue = [];
+let qIdx  = 0;
+let score = 0;
+let log   = [];   // {question, correct, snapshot} — snapshot stores answered state for Back
+
+// Per-level rotation: tracks indices of recently-seen questions so they go
+// to the back of the pool on the next run, guaranteeing variety.
+const seenByLevel = { easy: new Set(), medium: new Set(), hard: new Set() };
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Build queue: unseen questions first (shuffled), then seen ones (shuffled).
+// After a full cycle through all questions the seen-set resets automatically.
+function buildQueue() {
+  const lvl  = activeLevel;
+  const pool = (SCENARIOS[lvl] || []).map((q, i) => ({ ...q, _level: lvl, _idx: i }));
+  const seen = seenByLevel[lvl] || new Set();
+
+  // If every question has been seen, reset for a fresh cycle
+  if (seen.size >= pool.length) seen.clear();
+
+  const fresh = shuffle(pool.filter(q => !seen.has(q._idx)));
+  const used  = shuffle(pool.filter(q =>  seen.has(q._idx)));
+  const chosen = [...fresh, ...used].slice(0, Math.min(numQuestions, pool.length));
+
+  // Mark the chosen questions as seen for next run
+  chosen.forEach(q => seen.add(q._idx));
+
+  return chosen;
+}
+
+// ── Setup UI ──────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeLevel = btn.dataset.level;
+    document.querySelectorAll('.level-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.level === activeLevel);
+    });
+  });
+});
+
+document.getElementById('quit-btn').addEventListener('click', () => {
+  document.getElementById('quiz').style.display = 'none';
+  document.getElementById('setup').style.display = 'block';
+});
+
+document.querySelectorAll('.qty-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    numQuestions = parseInt(btn.dataset.qty);
+  });
+});
+
+document.getElementById('start-btn').addEventListener('click', startQuiz);
+document.getElementById('restart-btn').addEventListener('click', () => {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('setup').style.display = 'block';
+  // sync level buttons to current activeLevel
+  document.querySelectorAll('.level-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === activeLevel);
+  });
+});
+
+// ── Quiz flow ──────────────────────────────────────────────────────────────
+
+function startQuiz() {
+  queue = buildQueue();
+  if (!queue.length) { alert('No questions available for selected levels.'); return; }
+  qIdx = 0; score = 0; log = [];
+  document.getElementById('setup').style.display  = 'none';
+  document.getElementById('quiz').style.display   = 'block';
+  document.getElementById('results').style.display= 'none';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = queue[qIdx];
+  const total = queue.length;
+
+  // Progress
+  document.getElementById('prog').style.width = ((qIdx / total) * 100) + '%';
+  document.getElementById('q-counter').textContent = `Question ${qIdx + 1} / ${total}`;
+
+  const badge = document.getElementById('q-level-badge');
+  badge.textContent = q._level.charAt(0).toUpperCase() + q._level.slice(1);
+  badge.className = `q-level ${q._level}`;
+
+  document.getElementById('q-type-badge').textContent = typeLabel(q.type);
+  document.getElementById('scenario').textContent = q.scenario;
+  document.getElementById('feedback').style.display = 'none';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('btn-check').style.display = 'inline-block';
+  document.getElementById('btn-back').style.display = qIdx > 0 ? 'inline-block' : 'none';
+  document.getElementById('hint').textContent = '';
+
+  const body = document.getElementById('q-body');
+  body.innerHTML = '';
+
+  if (q.type === 'account_class' || q.type === 'mcq' || q.type === 'identify_account' || q.type === 'normal_side') {
+    renderMCQ(q, body);
+  } else if (q.type === 'journal_side') {
+    renderJournalSide(q, body);
+  } else if (q.type === 'fill_journal') {
+    renderFillJournal(q, body);
+  }
+
+  document.getElementById('btn-check').onclick = () => checkAnswer(q);
+  document.getElementById('btn-next').onclick  = nextQuestion;
+  document.getElementById('btn-back').onclick  = goBack;
+
+  // Set question text
+  document.getElementById('q-text').textContent =
+    q.question || (q.type === 'journal_side' ? q.question : '');
+}
+
+function typeLabel(t) {
+  return { account_class:"Account Type", normal_side:"DR / CR Rule",
+           mcq:"Multiple Choice", journal_side:"Journal Entry — Which Side",
+           fill_journal:"Fill in the Journal", identify_account:"Identify Account" }[t] || t;
+}
+
+// ── MCQ renderer ──────────────────────────────────────────────────────────
+
+function renderMCQ(q, container) {
+  document.getElementById('q-text').textContent = q.question;
+  const options = shuffle([q.answer, ...q.distractors]);
+  const labels  = ['A','B','C','D'];
+
+  const wrap = document.createElement('div');
+  wrap.className = 'options';
+
+  options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.dataset.value = opt;
+    btn.innerHTML = `<span class="opt-label">${labels[i]}</span> ${opt}`;
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+    wrap.appendChild(btn);
+  });
+
+  container.appendChild(wrap);
+}
+
+function checkMCQ(q) {
+  const selected = document.querySelector('.option.selected');
+  if (!selected) { showHint('Please select an answer first.'); return false; }
+  const isCorrect = selected.dataset.value === q.answer;
+
+  document.querySelectorAll('.option').forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.value === q.answer) btn.classList.add('correct');
+    else if (btn.classList.contains('selected') && !isCorrect) btn.classList.add('wrong');
+  });
+  return isCorrect;
+}
+
+// ── Journal Side renderer ─────────────────────────────────────────────────
+
+function renderJournalSide(q, container) {
+  document.getElementById('q-text').textContent = q.question;
+  const opts = shuffle([
+    { dr: q.drAccount, cr: q.crAccount },
+    { dr: q.drWrong,   cr: q.crWrong  }
+  ]);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'options';
+
+  opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.dataset.dr = o.dr;
+    btn.dataset.cr = o.cr;
+    btn.innerHTML = `<span class="opt-label" style="min-width:20px">${['A','B'][i]}</span>
+      <span style="font-family:var(--mono);font-size:.88rem">
+        <span style="color:#93c5fd">DR</span> ${o.dr}<br>
+        <span style="padding-left:16px;color:#c4b5fd">CR</span> ${o.cr}
+      </span>`;
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+    wrap.appendChild(btn);
+  });
+
+  container.appendChild(wrap);
+}
+
+function checkJournalSide(q) {
+  const selected = document.querySelector('.option.selected');
+  if (!selected) { showHint('Please select an answer first.'); return false; }
+
+  const isCorrect = selected.dataset.dr === q.drAccount;
+  document.querySelectorAll('.option').forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.dr === q.drAccount) btn.classList.add('correct');
+    else if (btn.classList.contains('selected') && !isCorrect) btn.classList.add('wrong');
+  });
+  return isCorrect;
+}
+
+// ── Fill Journal renderer ─────────────────────────────────────────────────
+
+function renderFillJournal(q, container) {
+  document.getElementById('q-text').textContent =
+    `Select the correct DR / CR for each row. Amount: ₹${q.amount}`;
+
+  const tbl = document.createElement('table');
+  tbl.className = 'journal-table';
+  tbl.innerHTML = `<thead><tr><th>Side</th><th>Account</th><th>₹ Amount</th></tr></thead>`;
+  const body = document.createElement('tbody');
+
+  q.rows.forEach((row, ri) => {
+    const tr = document.createElement('tr');
+    tr.className = row.indent ? 'cr-row' : 'dr-row';
+
+    // Side: always a select in fill_journal
+    const sideCell = document.createElement('td');
+    const sel = document.createElement('select');
+    sel.className = 'blank-select';
+    sel.id = `sel_row${ri}_side`;
+    ['— pick —','DR','CR'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+    sideCell.appendChild(sel);
+
+    const accCell = document.createElement('td');
+    accCell.textContent = row.accountKey;
+
+    const amtCell = document.createElement('td');
+    amtCell.textContent = `₹${q.amount}`;
+
+    tr.appendChild(sideCell);
+    tr.appendChild(accCell);
+    tr.appendChild(amtCell);
+    body.appendChild(tr);
+  });
+
+  tbl.appendChild(body);
+  container.appendChild(tbl);
+}
+
+function checkFillJournal(q) {
+  let allCorrect = true;
+  q.rows.forEach((row, ri) => {
+    const sel = document.getElementById(`sel_row${ri}_side`);
+    const expected = q.answers[`row${ri}_side`];
+    const got = sel ? sel.value : '';
+
+    if (got !== expected) {
+      allCorrect = false;
+      if (sel) sel.classList.add('wrong-sel');
+    } else {
+      if (sel) sel.classList.add('correct-sel');
+    }
+    if (sel) sel.disabled = true;
+  });
+  return allCorrect;
+}
+
+// ── Check dispatcher ──────────────────────────────────────────────────────
+
+function checkAnswer(q) {
+  let isCorrect = false;
+
+  if (q.type === 'fill_journal')   isCorrect = checkFillJournal(q);
+  else if (q.type === 'journal_side') isCorrect = checkJournalSide(q);
+  else isCorrect = checkMCQ(q);
+
+  if (isCorrect === false && document.getElementById('hint').textContent) return; // validation only
+
+  if (isCorrect) score++;
+  // Snapshot the rendered answer state so Back can replay it
+  const bodyHtml = document.getElementById('q-body').innerHTML;
+  const fbEl = document.getElementById('feedback');
+  log.push({
+    question: q.scenario.slice(0, 80),
+    correct: isCorrect,
+    snapshot: {
+      bodyHtml,
+      fbClass:   fbEl.className,
+      fbHtml:    fbEl.innerHTML,
+      scoreAdded: isCorrect,   // so we can undo the score if going back
+    }
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.style.display = 'block';
+  fb.className = `feedback ${isCorrect ? 'correct-fb' : 'wrong-fb'}`;
+  fb.innerHTML = `<strong>${isCorrect ? '✓ Correct!' : '✗ Not quite'}</strong>
+    <span class="why">${q.why}</span>`;
+
+  document.getElementById('btn-check').style.display = 'none';
+  document.getElementById('btn-next').style.display  = 'inline-block';
+}
+
+function nextQuestion() {
+  qIdx++;
+  if (qIdx >= queue.length) showResults();
+  else renderQuestion();
+}
+
+function goBack() {
+  if (qIdx <= 0) return;
+  // Undo score for the question we're going back to
+  const prev = log[qIdx - 1];
+  if (prev && prev.snapshot && prev.snapshot.scoreAdded) score--;
+  // Remove both current (unanswered) and previous (answered) log entries
+  log.splice(qIdx - 1, 2);
+  qIdx--;
+  renderQuestion();
+  // Replay the answered snapshot
+  const snap = prev && prev.snapshot;
+  if (!snap) return;
+  document.getElementById('q-body').innerHTML = snap.bodyHtml;
+  // Disable all inputs so they can't be changed
+  document.getElementById('q-body').querySelectorAll('button,select').forEach(el => el.disabled = true);
+  const fb = document.getElementById('feedback');
+  fb.className = snap.fbClass;
+  fb.innerHTML = snap.fbHtml;
+  fb.style.display = 'block';
+  document.getElementById('btn-check').style.display = 'none';
+  document.getElementById('btn-next').style.display  = 'inline-block';
+  document.getElementById('btn-back').style.display  = qIdx > 0 ? 'inline-block' : 'none';
+  document.getElementById('hint').textContent = '';
+}
+
+function showHint(msg) {
+  document.getElementById('hint').textContent = msg;
+}
+
+// ── Results ───────────────────────────────────────────────────────────────
+
+function showResults() {
+  document.getElementById('prog').style.width = '100%';
+  document.getElementById('quiz').style.display    = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  const total = queue.length;
+  const pct   = Math.round((score / total) * 100);
+
+  document.getElementById('r-pct').textContent   = pct + '%';
+  document.getElementById('r-frac').textContent  = `${score}/${total}`;
+  document.getElementById('r-correct').textContent = score;
+  document.getElementById('r-wrong').textContent  = total - score;
+  document.getElementById('r-total').textContent  = total;
+
+  const titles = [
+    [90, "Accounting Pro! 🏆", "Excellent command of double-entry principles."],
+    [70, "Solid Foundation ✓",  "You understand the core rules well. Keep practising the harder ones."],
+    [50, "Getting There 📚",    "Review the DR/CR table and account classes, then retry."],
+    [  0,"Keep Studying 💡",    "Start with Section 3 of the guide — derive the rules from the equation."]
+  ];
+  const [, title, sub] = titles.find(([t]) => pct >= t);
+  document.getElementById('r-title').textContent = title;
+  document.getElementById('r-sub').textContent   = sub;
+
+  const rl = document.getElementById('review-list');
+  rl.innerHTML = '';
+  log.forEach(item => {
+    const div = document.createElement('div');
+    div.className = `review-item ${item.correct ? 'ok' : 'bad'}`;
+    div.innerHTML = `<span class="review-icon">${item.correct ? '✓' : '✗'}</span>
+      <div><div>${item.question}…</div></div>`;
+    rl.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>

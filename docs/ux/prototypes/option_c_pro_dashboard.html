@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option C: Pro Dashboard (Full Flow)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        
+        .pro-input {
+            width: 100%; height: 32px; background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 0 8px; font-size: 13px; transition: all 0.1s;
+        }
+        .pro-input:hover { border-color: #E2E8F0; background: #fff; }
+        .pro-input:focus { border-color: #3B82F6; outline: none; background: white; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.05); }
+
+        .pro-table th { text-xs font-bold text-slate-400 uppercase tracking-widest pt-4 pb-2 px-4 border-b border-slate-100 bg-slate-50/30; }
+        .pro-table td { padding: 4px 12px; border-bottom: 1px solid #F1F5F9; }
+
+        .section-card { background: white; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
+        
+        .ai-glow { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(147, 51, 234, 0); } 100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); } }
+
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-sm">
+
+    <!-- Global Header -->
+    <header class="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-20">
+        <div class="flex items-center gap-6">
+            <div class="font-black text-xl tracking-tighter">Ledger.</div>
+            <div class="h-6 w-px bg-slate-200"></div>
+            <div class="space-x-8 flex">
+                <button class="text-xs font-bold text-slate-900 border-b-2 border-slate-900 pb-4 mt-4 h-14">Initialization</button>
+                <button class="text-xs font-bold text-slate-400 hover:text-slate-600 pb-4 mt-4 h-14">Workspace Settings</button>
+                <button class="text-xs font-bold text-slate-400 hover:text-slate-600 pb-4 mt-4 h-14">User Roles</button>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-200 px-2 py-1 rounded">Dev Instance</span>
+            <button class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold text-xs hover:bg-black transition-all shadow-lg shadow-indigo-100" onclick="compile()">Compile & Review</button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Main Workspace (75%) -->
+        <main class="flex-1 overflow-y-auto p-10 bg-slate-50/50" id="main-view">
+            
+            <div id="init-view" class="max-w-5xl mx-auto space-y-10 slide-up">
+                
+                <!-- STAGE 1: ENTITY -->
+                <section>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-id-card text-slate-300"></i>
+                            <h2 class="font-bold text-slate-800">Entity Profiling <span class="text-xs font-normal text-slate-400 ml-2">Stage 1 of 4</span></h2>
+                        </div>
+                    </div>
+                    <div class="section-card p-6 grid grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Entity Name</label>
+                            <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500" value="Vamsi K" id="user-name">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">System Classification</label>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500" id="persona">
+                                <option value="salaried">Salaried Professional</option>
+                                <option value="business">Business Owner</option>
+                                <option value="investor">Active Investor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Baseline Locality</label>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-bold text-slate-400" disabled>
+                                <option>India / INR (₹)</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STAGE 2: COA -->
+                <section>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-sitemap text-slate-300"></i>
+                            <h2 class="font-bold text-slate-800">Chart of Accounts & Opening Balance <span class="text-xs font-normal text-slate-400 ml-2">Stage 2 of 4</span></h2>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded text-xs font-bold border border-emerald-100 italic">Total Assets: ₹<span id="ast-total">350,000</span></div>
+                            <div class="bg-rose-50 text-rose-700 px-3 py-1 rounded text-xs font-bold border border-rose-100 italic">Total Liab: ₹<span id="liab-total">0</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-card">
+                        <table class="w-full pro-table text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Class</th>
+                                    <th>Account Identifier</th>
+                                    <th>Institution</th>
+                                    <th class="text-right">Balance (₹)</th>
+                                    <th class="w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="coa-body">
+                                <tr>
+                                    <td class="text-slate-300 text-center font-mono text-[10px]">01</td>
+                                    <td><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ASSET_BANK</span></td>
+                                    <td class="font-medium">HDFC Savings A/C</td>
+                                    <td><input type="text" class="pro-input" value="HDFC Bank"></td>
+                                    <td><input type="number" class="pro-input text-right font-bold tabular-nums" value="350000" onkeyup="recalc()"></td>
+                                    <td class="text-slate-300 text-center"><i class="fas fa-times hover:text-rose-500 cursor-pointer"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-slate-300 text-center font-mono text-[10px]">02</td>
+                                    <td><span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ASSET_PF</span></td>
+                                    <td class="font-medium">EPF Account</td>
+                                    <td><input type="text" class="pro-input" value="Govt of India"></td>
+                                    <td><input type="number" class="pro-input text-right font-bold tabular-nums" value="1200000" onkeyup="recalc()"></td>
+                                    <td class="text-slate-300 text-center"><i class="fas fa-times hover:text-rose-500 cursor-pointer"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-slate-300 text-center font-mono text-[10px]">03</td>
+                                    <td><input type="text" class="pro-input italic text-slate-400" placeholder="New row placeholder..."></td>
+                                    <td colspan="4"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- STAGE 3: PARAMETERS -->
+                <section>
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fas fa-sliders text-slate-300"></i>
+                        <h2 class="font-bold text-slate-800">Financial Ambition Parameters <span class="text-xs font-normal text-slate-400 ml-2">Stage 3 of 4</span></h2>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="section-card p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Retirement_Target_Year</span>
+                                <span class="text-lg font-black text-indigo-600">2058</span>
+                            </div>
+                            <input type="range" class="w-full accent-indigo-600" min="2030" max="2070" value="2058">
+                            <div class="text-[10px] text-slate-400 mt-2 italic">Result: 32 years of accumulation remaining.</div>
+                        </div>
+                        <div class="section-card p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Emergency_Provision_Mos</span>
+                                <span class="text-lg font-black text-indigo-600">6</span>
+                            </div>
+                            <input type="range" class="w-full accent-indigo-600" min="3" max="12" value="6">
+                            <div class="text-[10px] text-slate-400 mt-2 italic">Result: ₹4,50,000 threshold required.</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- COMPILATION RESULT (STAGE 4) -->
+            <div id="clarity-view" class="max-w-5xl mx-auto space-y-10 slide-up hidden">
+                <div class="flex items-center gap-4 mb-10">
+                    <button class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center hover:bg-white" onclick="back()"><i class="fas fa-arrow-left text-xs"></i></button>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tight">Clarity Dashboard</h1>
+                        <p class="text-sm text-slate-500 italic">Workspace <span id="finish-name">Acme</span> compiled successfully.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="col-span-1 section-card p-6">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Global Net Worth</div>
+                        <div class="text-2xl font-black text-slate-900 mb-1">₹<span id="res-nw">0</span></div>
+                        <div class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">▲ Starting Position</div>
+                    </div>
+                    <div class="col-span-1 section-card p-6">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Total Assets</div>
+                        <div class="text-2xl font-black text-emerald-600 italic">₹<span id="res-ast">0</span></div>
+                    </div>
+                    <div class="col-span-1 section-card p-6">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Total Liabilities</div>
+                        <div class="text-2xl font-black text-rose-500 italic">₹<span id="res-liab">0</span></div>
+                    </div>
+                    <div class="col-span-1 section-card p-6 border-indigo-200 bg-indigo-50/20">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Health Score</div>
+                        <div class="text-2xl font-black text-indigo-600">82 <span class="text-xs font-normal">/ 100</span></div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h3 class="font-bold text-xs uppercase tracking-widest text-slate-500">Goal Funding Projected</h3>
+                        <span class="text-[10px] font-bold text-slate-400">Monte Carlo Confidence: 92%</span>
+                    </div>
+                    <div class="p-10 space-y-10">
+                        <div>
+                            <div class="flex justify-between text-xs font-bold mb-3"><span>Retirement 2058</span><span>₹12,45,000 / ₹4,80,00,000</span></div>
+                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600" style="width: 2%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-bold mb-3"><span>Emergency Provision</span><span>₹3,50,000 / ₹4,50,00,000</span><span>77%</span></div>
+                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: 77%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Side: Copilot (25%) -->
+        <aside class="w-[350px] border-l border-slate-200 bg-[#FCFDFE] flex flex-col h-full shrink-0 relative z-10 transition-all">
+            <div class="h-14 border-b border-slate-200 flex items-center px-6 bg-white shrink-0">
+                <i class="fas fa-robot text-indigo-600 mr-2"></i>
+                <div class="text-xs font-bold text-slate-700 uppercase tracking-widest">Copilot Auditor</div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6" id="ai-feed">
+                <!-- System Log -->
+                <div class="flex gap-4">
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 shrink-0"></div>
+                    <div class="text-xs text-slate-500 leading-relaxed">System monitoring initialization of workspace [Vamsi K]. Initializing parameters...</div>
+                </div>
+
+                <!-- Live Suggestion -->
+                <div class="bg-white border border-indigo-100 rounded-xl p-5 shadow-sm ai-glow">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fas fa-sparkles text-indigo-500 text-xs text-purple-600"></i>
+                        <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Active Insight</span>
+                    </div>
+                    <p class="text-[13px] text-slate-600 leading-relaxed mb-4">
+                        Business Owner profiles typically require a **GST_PAYABLE** liability account for quarterly compliance.
+                    </p>
+                    <button class="w-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold py-2 rounded-lg hover:bg-indigo-100 transition-all">Inject GST Account</button>
+                    <button class="w-full text-[11px] font-bold text-slate-400 mt-2 hover:text-slate-600">Ignore Audit Warning</button>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white">
+                <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-3 transition-all focus-within:border-indigo-400">
+                    <span class="text-slate-400 text-xs font-mono mr-2">></span>
+                    <input type="text" class="w-full bg-transparent outline-none text-xs text-slate-700 font-mono" placeholder="Prompt copilot..." id="ai-input" onkeypress="handleAI(event)">
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button class="text-[9px] font-bold text-slate-400 hover:text-indigo-600 border border-slate-200 px-2 py-1 rounded">/add_account</button>
+                    <button class="text-[9px] font-bold text-slate-400 hover:text-indigo-600 border border-slate-200 px-2 py-1 rounded">/set_goal</button>
+                    <button class="text-[9px] font-bold text-slate-400 hover:text-indigo-600 border border-slate-200 px-2 py-1 rounded">/calc_tax</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const state = {
+            assets: 1550000,
+            liab: 0
+        };
+
+        function recalc() {
+            let ast = 0, lib = 0;
+            document.querySelectorAll('input[type="number"]').forEach(i => {
+                const val = Number(i.value) || 0;
+                // Simplified detection for demo
+                if (val > 10000) ast += val; 
+            });
+            state.assets = ast;
+            state.liab = lib;
+            
+            document.getElementById('ast-total').innerText = state.assets.toLocaleString('en-IN');
+            document.getElementById('liab-total').innerText = state.liab.toLocaleString('en-IN');
+        }
+
+        function compile() {
+            document.getElementById('init-view').classList.add('hidden');
+            document.getElementById('clarity-view').classList.remove('hidden');
+            
+            document.getElementById('finish-name').innerText = document.getElementById('user-name').value;
+            document.getElementById('res-nw').innerText = (state.assets - state.liab).toLocaleString('en-IN');
+            document.getElementById('res-ast').innerText = state.assets.toLocaleString('en-IN');
+            document.getElementById('res-liab').innerText = state.liab.toLocaleString('en-IN');
+            
+            // Log message
+            const feed = document.getElementById('ai-feed');
+            feed.innerHTML = `
+                <div class="flex gap-4 mb-6">
+                    <div class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[8px] mt-1"><i class="fas fa-check"></i></div>
+                    <div class="text-xs text-slate-600 leading-relaxed font-bold">Compilation successful. 0 errors, 1 warning. Net worth baseline established.</div>
+                </div>
+            ` + feed.innerHTML;
+        }
+
+        function back() {
+            document.getElementById('clarity-view').classList.add('hidden');
+            document.getElementById('init-view').classList.remove('hidden');
+        }
+
+        function handleAI(e) {
+            if(e.key === 'Enter') {
+                const input = document.getElementById('ai-input');
+                const val = input.value;
+                input.value = '';
+                
+                const feed = document.getElementById('ai-feed');
+                feed.innerHTML = `
+                    <div class="bg-slate-100 border border-slate-200 rounded-lg p-3 text-xs mb-4">
+                        <span class="text-indigo-600 font-bold">></span> ${val}
+                    </div>
+                ` + feed.innerHTML;
+                
+                setTimeout(() => {
+                    feed.innerHTML = `
+                        <div class="flex gap-4 mb-4">
+                            <div class="w-4 h-4 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[8px] mt-1"><i class="fas fa-robot"></i></div>
+                            <div class="text-xs text-slate-500 leading-relaxed italic">I've acknowledged your prompt. Executing transformation... Done.</div>
+                        </div>
+                    ` + feed.innerHTML;
+                }, 800);
+            }
+        }
+        
+        recalc();
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+modules.store: Ledger store dir set to: C:\sources\ledger-3.0\backend\src\ledger_store
+[32m  PDF decrypted successfully.[0m
+
+[1m  Ledger 3.0 — Import Pipeline[0m
+  File:            unencryptedhdfc.pdf
+  Size:            137,848 bytes
+  User:            Rajasekhar  [2m(cli-user)[0m
+  Currency:        INR
+  Account:         CLI-UNENCRYPTEDHDFC
+  Account type:    BANK  (1102 Savings Account)
+  Batch:           094ccf79-2d60-4c86-8d98-9319ea020687
+
+[1m  [1/3] Detecting source type…[0m
+  Source:          UNKNOWN  (confidence [33m0%[0m)
+Traceback (most recent call last):
+  File "C:\sources\ledger-3.0\backend\src\cli.py", line 70, in <module>
+    main()
+    ~~~~^^
+  File "C:\sources\ledger-3.0\backend\src\cli.py", line 66, in main
+    sys.exit(dispatch[args.command](args))
+             ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\sources\ledger-3.0\backend\src\commands\cmd_import.py", line 99, in cmd_import
+    print(_yellow("  \u26a0  Low detection confidence — consider passing --source-type"))
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u26a0' in position 7: character maps to <undefined>

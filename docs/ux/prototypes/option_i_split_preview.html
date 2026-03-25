@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option I: Split-View Previewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        /* Left Side: Configuration */
+        .config-pane {
+            flex: 1;
+            background: #1e293b;
+            border-right: 2px solid #334155;
+            padding: 48px;
+            overflow-y: auto;
+        }
+
+        /* Right Side: Preview */
+        .preview-pane {
+            width: 450px;
+            background: #0f172a;
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .metric-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 24px;
+            border-radius: 24px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .metric-card:hover { border-color: #6366f1; transform: translateX(-5px); }
+
+        .form-section { margin-bottom: 40px; }
+        .input-group { margin-bottom: 24px; }
+        
+        label { 
+            display: block; 
+            font-size: 10px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            color: #94a3b8; 
+            margin-bottom: 8px; 
+            letter-spacing: 0.1em;
+        }
+
+        input, select {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+
+        .health-bar {
+            height: 8px;
+            background: #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .health-fill {
+            height: 100%;
+            background: #10b981;
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        h2 { font-weight: 800; font-size: 24px; margin-bottom: 24px; color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Left: Wizard Configuration -->
+    <main class="config-pane">
+        <div class="max-w-xl mx-auto">
+            <div class="mb-12">
+                <span class="text-indigo-400 font-bold text-xs uppercase tracking-widest">Configuration Shell</span>
+                <h1 class="text-4xl font-black text-white mt-1">Workspace Init.</h1>
+            </div>
+
+            <div class="form-section">
+                <h2>1. Entity Baseline</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label>Display Name</label>
+                        <input type="text" id="name" value="Vamsi K" oninput="u()">
+                    </div>
+                    <div class="input-group">
+                        <label>Age</label>
+                        <input type="number" id="age" value="30" oninput="u()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>2. Capital Allocation</h2>
+                <div class="space-y-4" id="accounts">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label>Asset Description</label>
+                            <input type="text" value="HDFC Savings" oninput="u()">
+                        </div>
+                        <div>
+                            <label>Balance (₹)</label>
+                            <input type="number" value="1200000" class="balance" oninput="u()">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label>Asset Description</label>
+                            <input type="text" value="Zerodha Stocks" oninput="u()">
+                        </div>
+                        <div>
+                            <label>Balance (₹)</label>
+                            <input type="number" value="4500000" class="balance" oninput="u()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>3. Obligations</h2>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label>Liability Description</label>
+                        <input type="text" value="Home Loan" oninput="u()">
+                    </div>
+                    <div>
+                        <label>Outstanding (₹)</label>
+                        <input type="number" id="liab" value="2500000" oninput="u()">
+                    </div>
+                </div>
+            </div>
+
+            <button class="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold hover:bg-white hover:text-indigo-600 transition-all" onclick="location.reload()">Compile Environment</button>
+        </div>
+    </main>
+
+    <!-- Right: Live Preview -->
+    <aside class="preview-pane">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-indigo-400">Live Health Preview</h2>
+        
+        <div class="metric-card">
+            <label>Calculated Net Worth</label>
+            <div class="text-3xl font-black text-white font-mono" id="nw">₹0</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="flex justify-between items-end mb-2">
+                <label>Financial Health Score</label>
+                <span class="text-emerald-400 font-bold text-sm" id="score-val">0%</span>
+            </div>
+            <div class="health-bar">
+                <div class="health-fill" id="score-bar"></div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-4 leading-relaxed">Based on Debt-to-Asset ratio (D/A) and Liquidity index.</p>
+        </div>
+
+        <div class="metric-card">
+            <label>Double-Entry Log</label>
+            <div class="text-[10px] font-mono text-slate-400 space-y-1 mt-2" id="log">
+                <div>[07:30:12] Init system...</div>
+                <div>[07:30:13] Mapping entity to 'Individual'</div>
+            </div>
+        </div>
+
+        <div class="mt-auto bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
+            <div class="flex items-center gap-3 mb-3">
+                <i class="fas fa-sparkles text-indigo-400"></i>
+                <span class="text-xs font-bold text-indigo-400 uppercase">AI Auditor</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed" id="ai-insight">Awaiting inputs to generate financial trajectory analysis...</p>
+        </div>
+    </aside>
+
+    <script>
+        function u() {
+            const balances = document.querySelectorAll('.balance');
+            let totalAssets = 0;
+            balances.forEach(b => totalAssets += Number(b.value));
+            
+            const liab = Number(document.getElementById('liab').value);
+            const nw = totalAssets - liab;
+
+            document.getElementById('nw').innerText = '₹' + nw.toLocaleString('en-IN');
+            
+            // Health Score Logic
+            let score = 0;
+            if (totalAssets > 0) {
+                const ratio = liab / totalAssets;
+                score = Math.max(0, 100 - (ratio * 100));
+            }
+            
+            document.getElementById('score-val').innerText = Math.round(score) + '%';
+            document.getElementById('score-bar').style.width = score + '%';
+
+            // Log update
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.innerText = `[${new Date().toLocaleTimeString()}] NW updated: ${nw}`;
+            log.prepend(entry);
+            if (log.children.length > 5) log.lastChild.remove();
+
+            // AI Insight
+            const ai = document.getElementById('ai-insight');
+            if (score > 70) ai.innerText = "Health score is optimal. High asset coverage detected.";
+            else if (score > 40) ai.innerText = "Leverage is moderate. Consider accelerating liability payoff.";
+            else ai.innerText = "Warning: Debt ratio is critical. Equity injection required.";
+        }
+
+        window.onload = u;
+    </script>
+</body>
+</html>

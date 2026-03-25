@@ -1,0 +1,45 @@
+# Ledger 3.0 — Python dependencies
+# Generated from pyproject.toml
+# Install: pip install -r requirements.txt
+# Install with dev extras: pip install -r requirements-dev.txt
+
+# ── API ───────────────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# ── PDF parsing ───────────────────────────────────────────────────────────────
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+
+# ── Table extraction (optional — requires ghostscript + opencv) ───────────────
+camelot-py[cv]>=0.11.0
+
+# ── OCR (optional — requires tesseract binary + poppler) ─────────────────────
+pytesseract>=0.3.10
+pdf2image>=1.16.0
+Pillow>=10.0.0
+
+# ── Spreadsheet ───────────────────────────────────────────────────────────────
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlrd>=2.0.0
+msoffcrypto-tool>=5.4.0   # decrypt OLE2-encrypted XLSX (SBI, HDFC new-format)
+
+# ── LLM providers ─────────────────────────────────────────────────────────────
+google-genai
+openai>=1.30.0
+anthropic>=0.25.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dateutil>=2.9.0
+
+# ── Database (ORM persistence) ────────────────────────────────────────────────
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# ── Authentication ────────────────────────────────────────────────────────────
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0

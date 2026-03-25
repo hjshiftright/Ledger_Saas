@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger - Option H: Atomic Glassmorphism</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glass-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 48px;
+            width: 500px;
+            height: 600px;
+            padding: 60px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            color: white;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .step-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .step-hidden { display: none !important; }
+
+        input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            outline: none;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        input:focus { border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.15); }
+
+        .btn-next {
+            background: white;
+            color: #764ba2;
+            padding: 20px;
+            border-radius: 24px;
+            font-weight: 800;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            margin-top: 40px;
+        }
+        .btn-next:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0,0,0,0.2); background: rgba(255,255,255,0.9); }
+
+        .progress-dots {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .dot { width: 6px; height: 6px; border-radius: 10px; background: rgba(255,255,255,0.2); transition: all 0.3s; }
+        .dot.active { width: 24px; background: white; }
+
+        .persona-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .persona-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            border-radius: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .persona-btn:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3); }
+        .persona-btn.selected { background: white; color: #764ba2; }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            animation: float 10s infinite alternate;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="orb w-96 h-96 bg-indigo-400 opacity-50 -top-20 -left-20"></div>
+    <div class="orb w-96 h-96 bg-purple-400 opacity-50 -bottom-20 -right-20" style="animation-delay: -5s"></div>
+
+    <div class="glass-container">
+        <div class="progress-dots" id="dots"></div>
+
+        <!-- Step 1: Welcome -->
+        <div class="step-content" id="step-1">
+            <div class="text-4xl text-center mb-6">✨</div>
+            <h1 class="text-4xl font-black text-center mb-4 font-heading">Financial <br> Mindfulness.</h1>
+            <p class="text-center text-white/70 leading-relaxed font-medium">Capture your financial reality in 12 atomic steps.</p>
+            <button class="btn-next" onclick="next(1)">Begin Journey</button>
+        </div>
+
+        <!-- Step 2: Name -->
+        <div class="step-content step-hidden" id="step-2">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Step 02/12</span>
+            <h2 class="text-3xl font-black mb-12 font-heading">What may we call you?</h2>
+            <input type="text" id="name" placeholder="Name" autofocus>
+            <button class="btn-next" onclick="next(2)">Next <i class="fas fa-arrow-right text-xs"></i></button>
+        </div>
+
+        <!-- Step 3: Persona -->
+        <div class="step-content step-hidden" id="step-3">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Step 03/12</span>
+            <h2 class="text-3xl font-black mb-8 font-heading">Your lifestyle?</h2>
+            <div class="persona-grid">
+                <div class="persona-btn" onclick="sel(this)">💼 Salaried</div>
+                <div class="persona-btn" onclick="sel(this)">🏬 Business</div>
+                <div class="persona-btn" onclick="sel(this)">📊 Investor</div>
+                <div class="persona-btn" onclick="sel(this)">🌱 Starter</div>
+            </div>
+            <button class="btn-next" onclick="next(3)">Selection Done</button>
+        </div>
+
+        <!-- Step 4: Asset -->
+        <div class="step-content step-hidden" id="step-4">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Step 04/12</span>
+            <h2 class="text-3xl font-black mb-12 font-heading">Primary Asset?</h2>
+            <input type="text" id="asset-name" value="Savings Account">
+            <button class="btn-next" onclick="next(4)">Continue</button>
+        </div>
+
+        <!-- Step 5: Balance -->
+        <div class="step-content step-hidden" id="step-5">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Step 05/12</span>
+            <h2 class="text-3xl font-black mb-12 font-heading">Current Balance?</h2>
+            <input type="number" id="asset-val" placeholder="₹ Value">
+            <button class="btn-next" onclick="next(5)">Validate</button>
+        </div>
+
+        <!-- Step 6: Final Clarity -->
+        <div class="step-content step-hidden" id="step-6">
+            <h2 class="text-4xl font-black text-center mb-6 font-heading">Clarity Achieved.</h2>
+            <div class="p-8 rounded-[40px] bg-white text-[#764ba2] text-center">
+                <div class="text-[10px] font-bold uppercase mb-2">Stabilized Net Worth</div>
+                <div class="text-5xl font-black tracking-tighter" id="final-val">₹0</div>
+            </div>
+            <button class="btn-next" onclick="location.reload()">Finish</button>
+        </div>
+    </div>
+
+    <script>
+        const total = 6; // Simplified for demo
+        const dots = document.getElementById('dots');
+        for(let i=1; i<=total; i++) {
+            const d = document.createElement('div');
+            d.className = 'dot' + (i===1 ? ' active' : '');
+            d.id = 'dot-' + i;
+            dots.appendChild(d);
+        }
+
+        function next(curr) {
+            document.getElementById('step-' + curr).classList.add('step-hidden');
+            const nxt = curr + 1;
+            if (nxt <= total) {
+                document.getElementById('step-' + nxt).classList.remove('step-hidden');
+                document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+                document.getElementById('dot-' + nxt).classList.add('active');
+            }
+            if (nxt === 6) {
+                const val = document.getElementById('asset-val').value || 0;
+                document.getElementById('final-val').innerText = '₹' + Number(val).toLocaleString('en-IN');
+            }
+        }
+
+        function sel(el) {
+            document.querySelectorAll('.persona-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+    </script>
+</body>
+</html>

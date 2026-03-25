@@ -1,0 +1,47 @@
+# Parser Implementation Task Checklist
+
+- [ ] Initialize Python project/environment (`pyproject.toml` or `requirements.txt`).
+- [ ] Implement Common Data Models (`src/common/`).
+  - [ ] Define enums: `ExtractionMethod`, `SourceType`, `TxnTypeHint`.
+  - [ ] Define data models (Pydantic): `RawParsedRow`, `ParseMetadata`.
+  - [ ] Write unit tests for common data models.
+- [ ] Implement LLM Processing Module (`src/llm/`).
+  - [ ] Define base interfaces: `LLMProvider`.
+  - [ ] Implement Gemini Provider (`gemini_provider.py`).
+  - [ ] Write unit tests for LLM providers (using mocking).
+- [ ] Implement Parser Engine (`src/parser/`).
+  - [ ] Define base parser classes and interfaces.
+- [ ] Verify test suite runs successfully with `pytest`.
+- [ ] Implement Core Application Setup (`src/`).
+  - [ ] Implement `src/config.py` utilizing `pydantic-settings` to manage environment variables (e.g. `GEMINI_API_KEY`).
+  - [ ] Implement `src/main.py` to serve as the FastAPI integration and CLI/test entry point.
+- [ ] Implement Specific Parsers (`src/parser/`).
+  - [ ] Implement `CASParser` (CAMS, KFintech, MF Central - PDF).
+  - [ ] Implement `ZerodhaParser` (Holdings, Tradebook, Tax P&L, Capital Gains - CSV/XLSX).
+  - [ ] Implement `HDFCBankParser` (PDF, CSV).
+  - [ ] Implement `SBIBankParser` (PDF, XLS).
+  - [ ] Implement `ICICIBankParser` (PDF, CSV, XLS).
+  - [ ] Implement `AxisBankParser` (PDF, XLS).
+  - [ ] Implement `KotakBankParser` (PDF, CSV).
+  - [ ] Implement `IndusIndBankParser` (PDF).
+  - [ ] Implement `IDFCBankParser` (PDF, CSV).
+  - [ ] Implement `GenericParser` with AI-assisted column mapping fallbacks.
+- [ ] Write unit tests for all specific parsers.
+- [ ] Implement Submodules (`src/`).
+  - [ ] SM-A: Account Registry
+    - [ ] Define data models (`AccountType`, `AccountSubType`, `Account`, etc.) in `src/accounts/models.py`.
+    - [ ] Implement business logic and tree operations in `src/accounts/service.py`.
+    - [ ] Implement REST endpoints in `src/api/routers/accounts.py` and register in `main.py`.
+    - [ ] Write unit tests to verify business rules (BR-A-01 -> BR-A-11) in `tests/test_api_accounts.py`.
+  - [ ] SM-B: Document Ingestion
+  [ ] SM-E: Schema Normalization
+  - [ ] SM-F: Deduplication Engine
+  - [ ] SM-G: Categorization Engine
+  - [ ] SM-H: Confidence Scoring
+  - [ ] SM-I: Transaction Proposal
+  - [ ] SM-J: Smart AI Processing
+  - [ ] SM-K: Pipeline Orchestration API
+- [ ] Implement REST API (`src/api/`).
+  - [ ] Setup FastAPI app with standard error handling and dependencies.
+  - [ ] Implement API routers following `API-STANDARDS.md`.
+- [ ] Verify test suite runs successfully with `pytest`.
