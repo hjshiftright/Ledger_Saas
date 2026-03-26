@@ -1,4 +1,8 @@
-const BASE = "http://127.0.0.1:8000/api/v1";
+// In Docker the frontend is served by Nginx which proxies /api/ to the API
+// container, so VITE_API_BASE_URL is left empty and calls use a relative path.
+// For local development outside Docker set VITE_API_BASE_URL=http://127.0.0.1:8000
+// in frontend/.env.local (or rely on the Vite dev-server proxy in vite.config.js).
+const BASE = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 const ONBOARDING_BASE = `${BASE}/onboarding`;
 
 class ApiError extends Error {

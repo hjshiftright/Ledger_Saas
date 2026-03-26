@@ -1,11 +1,26 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 echo ==============================================
 echo        Starting Ledger Application
 echo ==============================================
 
-:: Check for python (prefer venv if it exists, otherwise check host)
+:: ─────────────────────────────────────────────────────────────────────────────
+:: PostgreSQL connection settings — change these if you use a different host or
+:: credentials.  The DATABASE_URL is passed to the Python process as an env var
+:: so pydantic-settings picks it up automatically.
+:: ─────────────────────────────────────────────────────────────────────────────
+set PG_USER=ledgeradmin
+set PG_PASS=ledger123
+set PG_DB=ledgerdb
+set PG_HOST=127.0.0.1
+set PG_PORT=5432
+set DATABASE_URL=postgresql://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:: Locate Python
+:: ─────────────────────────────────────────────────────────────────────────────
 set PYTHON_EXE=python
 if exist ".venv\Scripts\python.exe" (
     set PYTHON_EXE=".venv\Scripts\python.exe"
@@ -24,13 +39,12 @@ if %errorlevel% equ 0 (
     goto :check_done
 )
 
-echo [ERROR] Python was not found (checked py, python).
-echo Please install Python 3.11+ and ensure it is added to your PATH.
+echo [ERROR] Python was not found. Install Python 3.11+ and add it to PATH.
 pause
 exit /b 1
 
 :check_done
-:: Set up virtual environment if it doesn't exist
+:: Create virtual environment if missing
 if not exist ".venv" (
     echo [INFO] Creating virtual environment...
     %PYTHON_EXE% -m venv .venv
@@ -44,16 +58,12 @@ if not exist ".venv" (
 set PYTHON_EXE=".venv\Scripts\python.exe"
 
 :venv_ready
-
-:: Activate virtual environment
 echo [INFO] Activating virtual environment...
 call .venv\Scripts\activate
 
-:: Ensure pip is up to date
 echo [INFO] Updating pip...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip >nul 2>&1
 
-:: Install requirements
 echo [INFO] Installing requirements...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
@@ -62,12 +72,34 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Set up Frontend
+:: ─────────────────────────────────────────────────────────────────────────────
+:: Wait for PostgreSQL to accept connections (up to ~60 s)
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [INFO] Waiting for PostgreSQL at %PG_HOST%:%PG_PORT%...
+set /a PG_TRIES=0
+:pg_wait
+".venv\Scripts\python.exe" -c "import psycopg2, os, sys; psycopg2.connect(os.environ['DATABASE_URL']).close(); sys.exit(0)" >nul 2>&1
+if %errorlevel% equ 0 goto :pg_ready
+set /a PG_TRIES+=1
+if %PG_TRIES% geq 30 (
+    echo [ERROR] Cannot connect to PostgreSQL at %PG_HOST%:%PG_PORT%/%PG_DB%.
+    echo         Verify the database is running and the credentials in this script are correct.
+    pause
+    exit /b 1
+)
+timeout /t 2 /nobreak >nul
+goto :pg_wait
+
+:pg_ready
+echo [INFO] PostgreSQL is ready.
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:: Build the frontend
+:: ─────────────────────────────────────────────────────────────────────────────
 echo [INFO] Setting up frontend...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js is not installed or not in PATH.
-    echo Please install Node.js to build the frontend.
     pause
     exit /b 1
 )
@@ -94,13 +126,15 @@ if %errorlevel% neq 0 (
 )
 cd ..
 
-:: Add src directory to PYTHONPATH so imports work correctly
+:: ─────────────────────────────────────────────────────────────────────────────
+:: Launch the API server (serves the built frontend from /frontend/dist)
+:: ─────────────────────────────────────────────────────────────────────────────
 set PYTHONPATH=%cd%\backend\src
 
-:: Start the application
 echo ==============================================
 echo [INFO] Launching Ledger API server...
-echo [INFO] The frontend will be available at http://127.0.0.1:8000/
+echo [INFO] Database : PostgreSQL at %PG_HOST%:%PG_PORT%/%PG_DB%
+echo [INFO] App URL  : http://127.0.0.1:8000/
 echo ==============================================
 ".venv\Scripts\python.exe" backend\src\main.py
 

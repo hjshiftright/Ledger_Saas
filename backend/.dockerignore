@@ -1,0 +1,33 @@
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# SQLite database files (PostgreSQL is used in Docker)
+src/ledger.db
+*.db
+*.sqlite3
+
+# Test files
+tests/
+test_*.py
+
+# Development / inspection scripts
+inspect_*.py
+debug.txt
+
+# Ledger store (runtime-generated, not source)
+src/ledger_store/
+
+# Git
+.git/
+.gitignore

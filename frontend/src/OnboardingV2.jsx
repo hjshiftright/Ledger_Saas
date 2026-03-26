@@ -694,12 +694,12 @@ function S1({ data, setData, onNext }) {
           {name
             ? <motion.div key={name} initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} className="space-y-0.5 shrink-0">
                 <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 1 of 4 ———</p>
-                <p className="text-2xl font-bold text-slate-900 leading-tight">Great to meet you, {name}!</p>
+                <p className="text-2xl font-extrabold text-slate-900 leading-tight">Great to meet you, {name}!</p>
                 <p className="text-slate-500">Let's set up the right foundation for your journey.</p>
               </motion.div>
             : <motion.div key="default" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} className="space-y-0.5 shrink-0">
                 <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 1 of 4 ———</p>
-                <p className="text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">Let's personalize your ledger.</p>
+                <p className="text-2xl font-extrabold text-slate-900 leading-tight">Let's personalize your ledger.</p>
                 <p className="text-slate-500">Tell us a bit about yourself so we can set up the right foundation.</p>
               </motion.div>
           }
@@ -856,7 +856,7 @@ function S2({ data, setData, onNext, onBack, name }) {
         {/* Story Header */}
         <div className="space-y-0.5">
           <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 2 of 4 ———</p>
-          <p className="text-xl font-extrabold text-slate-900 leading-tight">
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">
             {subStep === 0 ? "What do you currently own?" : steps[subStep-1]?.label}
           </p>
           <p className="text-slate-500 text-sm">
@@ -1032,7 +1032,7 @@ function S2({ data, setData, onNext, onBack, name }) {
                 </div>
               </div>
               <div className="flex justify-between">
-                <button onClick={() => setSubStep(1)} className="text-slate-400 hover:text-slate-600 font-medium text-sm">← Previous</button>
+                <button onClick={() => setSubStep(1)} className="text-slate-400 hover:text-slate-600 font-medium text-sm">← Back</button>
                 <button onClick={() => setSubStep(3)} className="bg-indigo-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-indigo-700 transition">Next: Retirement →</button>
               </div>
             </motion.div>
@@ -1215,7 +1215,7 @@ function S3({ data, setData, onNext, onBack, name }) {
         {/* Story Header */}
         <div className="space-y-0.5">
           <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 3 of 4 ———</p>
-          <p className="text-xl font-extrabold text-slate-900 leading-tight">
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">
             {subStep === 0 ? "Mapping your obligations" : steps[subStep-1]?.label}
           </p>
           <p className="text-slate-500 text-sm">
@@ -1329,7 +1329,7 @@ function S3({ data, setData, onNext, onBack, name }) {
               </div>
 
               <div className="flex justify-between pt-2">
-                <button onClick={() => setSubStep(1)} className="text-slate-400 hover:text-slate-600 font-medium text-sm">← Previous</button>
+                <button onClick={() => setSubStep(1)} className="text-slate-400 hover:text-slate-600 font-medium text-sm">← Back</button>
                 <button onClick={() => setSubStep(3)} className="bg-indigo-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-indigo-700 transition text-sm">One last step →</button>
               </div>
             </motion.div>
@@ -1624,7 +1624,7 @@ function S4({ data, setData, onNext, onBack, profile, owned, name }) {
         {/* Header */}
         <div className="space-y-1">
           <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 4 of 4 ———</p>
-          <p className="text-3xl font-extrabold text-slate-900 leading-tight">
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">
             {name ? `${name}, what are you saving for?` : 'What are you saving for?'}
           </p>
           <p className="text-slate-500 leading-relaxed">
@@ -1702,8 +1702,8 @@ function S4({ data, setData, onNext, onBack, profile, owned, name }) {
         </AnimatePresence>
 
         <div className="sticky bottom-0 bg-slate-50 pt-4 pb-8 border-t border-slate-200/60 z-10 flex items-center justify-between gap-4">
-          <button onClick={onBack} className="text-slate-400 hover:text-slate-600 font-bold text-sm px-4">← Back</button>
-          <button onClick={onNext} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 transition transform hover:-translate-y-0.5 max-w-sm">
+          <button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition"><ArrowLeft size={15} /> Back</button>
+          <button onClick={onNext} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-100 transition max-w-sm flex items-center justify-center gap-2">
             {planCount > 0 ? `Visualise ${planCount} goal${planCount > 1 ? 's' : ''} →` : 'Build My Ledger →'}
           </button>
         </div>
@@ -1938,11 +1938,12 @@ function GoalViz({ savings, profile, onNext, onBack }) {
   return (
     <div className="flex flex-col gap-5 px-4 sm:px-8 max-w-3xl mx-auto w-full pb-10">
       {/* header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">
+      <div className="space-y-0.5">
+        <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 5 of 6 ———</p>
+        <h2 className="text-2xl font-extrabold text-slate-900 leading-tight">
           Invest ₹{totalMonthly.toLocaleString('en-IN')}/mo towards {goals.length} goal{goals.length !== 1 ? 's' : ''} this year
         </h2>
-        <p className="text-slate-500 mt-1 text-sm">
+        <p className="text-slate-500 text-sm">
           Step up your SIP by {(GV_STEPUP * 100).toFixed(2)}% every year · 12% assumed returns
         </p>
       </div>
@@ -2112,10 +2113,8 @@ function Done({ profile, owned, owed, savings, onComplete }) {
   return (
     <div className="max-w-2xl mx-auto space-y-8 py-8 px-4">
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-          <Sparkles size={14} /> Analysis Complete
-        </div>
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight">
+        <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 6 of 6 ———</p>
+        <h2 className="text-2xl font-extrabold text-slate-900 leading-tight">
           {name ? `Your picture is ready, ${name}!` : "Your financial picture is ready!"}
         </h2>
         <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
@@ -2127,7 +2126,7 @@ function Done({ profile, owned, owed, savings, onComplete }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Net Worth Card */}
-        <div className="col-span-1 md:col-span-2 bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm relative overflow-hidden">
+        <div className="col-span-1 md:col-span-2 bg-white rounded-2xl border border-slate-200 p-8 shadow-sm relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Your Net Worth Today</p>
@@ -2209,7 +2208,7 @@ function Done({ profile, owned, owed, savings, onComplete }) {
 
       <div className="space-y-4 pt-4">
         <button onClick={handleEnter} disabled={saving}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white font-black py-5 rounded-[24px] transition transform hover:-translate-y-1 shadow-2xl shadow-indigo-200 text-lg flex items-center justify-center gap-3 group">
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg shadow-indigo-200 text-lg flex items-center justify-center gap-3 group">
           {saving
             ? <span className="animate-pulse">Saving your ledger…</span>
             : <><span>Enter Your Ledger</span> <ArrowRight className="group-hover:translate-x-1 transition-transform" /></>}

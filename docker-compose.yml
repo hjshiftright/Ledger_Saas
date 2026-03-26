@@ -1,0 +1,60 @@
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ledger
+      POSTGRES_USER:     ledger
+      POSTGRES_PASSWORD: ledger_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+      start_period: 10s
+
+  # ── API Server (FastAPI + Uvicorn) ───────────────────────────────────────────
+  api:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL:    postgresql://ledger:ledger_secret@db:5432/ledger
+      APP_ENV:         production
+      APP_HOST:        0.0.0.0
+      APP_PORT:        "8000"
+      APP_DEBUG:       "false"
+      # Change this to a long random string before going to production
+      SECRET_KEY:      change-me-before-going-to-production
+      ALLOWED_ORIGINS: "http://localhost,http://localhost:80"
+      # Optional: uncomment and fill in to enable LLM features
+      # GEMINI_API_KEY:     your-key-here
+      # OPENAI_API_KEY:     your-key-here
+      # ANTHROPIC_API_KEY:  your-key-here
+    # Expose port 8000 on the host for direct API access / debugging.
+    # Remove or comment this out if you only want access via the web container.
+    ports:
+      - "8000:8000"
+
+  # ── Web Server (Nginx + React SPA) ───────────────────────────────────────────
+  web:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+
+volumes:
+  postgres_data:

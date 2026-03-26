@@ -1,0 +1,90 @@
+# =============================================================================
+# Ledger SaaS — .gitignore
+# =============================================================================
+
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+
+# ── Virtual environment ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+
+# ── Database / runtime data ───────────────────────────────────────────────────
+# SQLite files (project now uses PostgreSQL; .db files are runtime data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded statement files and processed storage
+storage/
+
+# JSON-backed ledger store (runtime-generated, not source)
+backend/src/ledger_store/
+
+
+# ── Frontend build artifacts ─────────────────────────────────────────────────
+# Also covered by frontend/.gitignore; listed here for root-level clarity
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+
+# ── Environment & secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+
+# ── IDE & editor ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+
+# ── Claude Code local settings ───────────────────────────────────────────────
+# settings.local.json holds machine-specific overrides (tool permissions, etc.)
+# settings.json (if present) may contain shared team config — keep that tracked
+.claude/settings.local.json
+
+
+# ── Operating system ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+
+# ── Test & script output files ───────────────────────────────────────────────
+# Auto-generated output from test runs and ad-hoc API scripts
+all_tests.txt
+inst_out.txt
+test_out.txt
+test_output.txt
+unit_out.txt
+
+# Code-export / canvas artifacts
+canvas_code.txt
+canvas_code_utf8.txt
+
+# Inline debug log left in source tree
+backend/src/debug.txt
+
+
+# ── One-off dev / inspection scripts ─────────────────────────────────────────
+# bank-specific inspection scripts in backend root (not part of production code)
+backend/inspect_*.py
