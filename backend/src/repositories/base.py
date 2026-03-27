@@ -1,5 +1,5 @@
-﻿from typing import TypeVar, Generic, Type, Sequence, Optional
-from sqlalchemy.orm import Session
+from typing import TypeVar, Generic, Type, Sequence, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from db.models.base import Base
 
@@ -7,49 +7,51 @@ T = TypeVar("T", bound=Base)
 
 class BaseRepository(Generic[T]):
     """Generic repository mapping standard CRUD ops to object entities."""
-    def __init__(self, model: Type[T], session: Session):
+    def __init__(self, model: Type[T], session: AsyncSession):
         self.model = model
         self.session = session
 
-    def get_by_id(self, entity_id: int) -> Optional[T]:
-        return self.session.get(self.model, entity_id)
+    async def get_by_id(self, entity_id: int) -> Optional[T]:
+        return await self.session.get(self.model, entity_id)
 
-    def get_by_id_or_raise(self, entity_id: int) -> T:
-        entity = self.get_by_id(entity_id)
+    async def get_by_id_or_raise(self, entity_id: int) -> T:
+        entity = await self.get_by_id(entity_id)
         if entity is None:
             raise ValueError(f"{self.model.__name__} with ID {entity_id} not found")
         return entity
 
-    def count(self) -> int:
+    async def count(self) -> int:
         stmt = select(func.count()).select_from(self.model)
-        return self.session.scalar(stmt) or 0
+        res = await self.session.scalar(stmt)
+        return res or 0
 
-    def list_paginated(self, offset: int = 0, limit: int = 100) -> Sequence[T]:
+    async def list_paginated(self, offset: int = 0, limit: int = 100) -> Sequence[T]:
         stmt = select(self.model).offset(offset).limit(limit)
-        return self.session.scalars(stmt).all()
+        res = await self.session.scalars(stmt)
+        return res.all()
 
-    def create(self, entity: T) -> T:
+    async def create(self, entity: T) -> T:
         """Create operation using Python Objects"""
         self.session.add(entity)
-        self.session.flush() # Securely assigns ID without committing txn
+        await self.session.flush() # Securely assigns ID without committing txn
         return entity
 
-    def create_many(self, entities: list[T]) -> list[T]:
+    async def create_many(self, entities: list[T]) -> list[T]:
         self.session.add_all(entities)
-        self.session.flush()
+        await self.session.flush()
         return entities
 
-    def update(self, entity: T) -> T:
+    async def update(self, entity: T) -> T:
         """Update operation using Python Objects"""
-        merged = self.session.merge(entity)
-        self.session.flush()
+        merged = await self.session.merge(entity)
+        await self.session.flush()
         return merged
 
-    def delete(self, entity: T) -> None:
+    async def delete(self, entity: T) -> None:
         """Delete operation using Python Objects"""
-        self.session.delete(entity)
-        self.session.flush()
+        await self.session.delete(entity)
+        await self.session.flush()
 
-    def delete_by_id(self, entity_id: int) -> None:
-        entity = self.get_by_id_or_raise(entity_id)
-        self.delete(entity)
+    async def delete_by_id(self, entity_id: int) -> None:
+        entity = await self.get_by_id_or_raise(entity_id)
+        await self.delete(entity)

@@ -1,14 +1,14 @@
 from typing import Any
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.reporting import NetWorthHistory
 from repositories.base import BaseRepository
 
 
 class SqlAlchemySnapshotRepository(BaseRepository[NetWorthHistory]):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         super().__init__(NetWorthHistory, session)
 
-    def save_net_worth(self, data: dict) -> NetWorthHistory:
+    async def save_net_worth(self, data: dict) -> NetWorthHistory:
         from datetime import date
         mapped = data.copy()
         if isinstance(mapped.get("snapshot_date"), str):
@@ -16,5 +16,5 @@ class SqlAlchemySnapshotRepository(BaseRepository[NetWorthHistory]):
 
         snapshot = NetWorthHistory(**mapped)
         self.session.add(snapshot)
-        self.session.flush()
+        await self.session.flush()
         return snapshot

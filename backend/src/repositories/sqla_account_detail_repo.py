@@ -1,16 +1,16 @@
 from datetime import date as datetime_date
 from typing import Any, Type
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.accounts import (
     BankAccount, FixedDeposit, CreditCard, Loan, BrokerageAccount
 )
 
 
 class SqlAlchemyAccountDetailRepository:
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def _get_model_for_type(self, detail_type: str) -> Type:
+    async def _get_model_for_type(self, detail_type: str) -> Type:
         mapping = {
             "BANK_ACCOUNT": BankAccount,
             "FIXED_DEPOSIT": FixedDeposit,
@@ -23,15 +23,15 @@ class SqlAlchemyAccountDetailRepository:
             raise ValueError(f"Unknown account detail type: {detail_type}")
         return model
 
-    def create_detail(self, detail_type: str, data: dict) -> Any:
+    async def create_detail(self, detail_type: str, data: dict) -> Any:
         model_class = self._get_model_for_type(detail_type)
         mapped_data = self._map_data(detail_type, data)
         detail = model_class(**mapped_data)
         self.session.add(detail)
-        self.session.flush()
+        await self.session.flush()
         return detail
 
-    def _map_data(self, detail_type: str, data: dict) -> dict:
+    async def _map_data(self, detail_type: str, data: dict) -> dict:
         mapped = data.copy()
         for k in list(mapped.keys()):
             if k in ("start_date", "maturity_date", "deposit_date", "disbursement_date", "opening_date"):

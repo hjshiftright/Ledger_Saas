@@ -11,3 +11,14 @@ class Base(DeclarativeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
+
+class TenantScopedMixin:
+    """Add this mixin to every tenant-scoped model."""
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+    )

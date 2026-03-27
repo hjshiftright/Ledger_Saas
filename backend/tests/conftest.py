@@ -217,3 +217,90 @@ Scheme: Axis Bluechip Fund - Direct Growth (ISIN: INF846K01EW2)
 Date          Transaction         Amount (₹)  Units     Price       Unit Balance
 05-Jan-2026   SIP                 2000.00     10.512    190.2500    50.512
 """
+
+# ── PostgreSQL Testcontainers Setup ──────────────────────────────────────────
+
+import asyncio
+from typing import AsyncGenerator
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
+from testcontainers.postgres import PostgresContainer
+from db.models.base import Base
+
+@pytest_asyncio.fixture(scope="session")
+async def postgres_engine() -> AsyncGenerator[AsyncEngine, None]:
+    """Provides a session-scoped async SQLAlchemy engine connected to Testcontainers."""
+    with PostgresContainer("postgres:16-alpine", driver="asyncpg") as postgres:
+        # Get connection URL and replace protocol for asyncpg
+        url = postgres.get_connection_url().replace("postgresql+psycopg2", "postgresql+asyncpg")
+        
+        engine = create_async_engine(
+            url,
+            pool_size=5,
+            max_overflow=10,
+        )
+        
+        
+        # Ensure all models are loaded into Base.metadata before creating tables
+        from db.models import users, accounts, transactions, tenants, securities, recurring, goals, budgets, imports, tax, categories
+        
+        # Create all tables explicitly for tests without running full alembic logic
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            
+            # Apply RLS infrastructure for tests
+            from sqlalchemy import text
+            await conn.execute(text("CREATE ROLE app_service LOGIN PASSWORD 'test' NOSUPERUSER NOCREATEDB NOCREATEROLE"))
+            await conn.execute(text("GRANT USAGE ON SCHEMA public TO app_service"))
+            await conn.execute(text("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_service"))
+            await conn.execute(text("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_service"))
+            
+            # current_tenant_id function
+            await conn.execute(text('''
+                CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS UUID
+                LANGUAGE sql STABLE SECURITY DEFINER AS $$
+                    SELECT NULLIF(current_setting('app.tenant_id', TRUE), '')::UUID;
+                $$;
+            '''))
+            
+            # Enable RLS on specific test tables
+            tenant_tables = [
+                "transactions", "transaction_lines", "transaction_charges", "attachments",
+                "accounts", "financial_institutions", "bank_accounts", "fixed_deposits", 
+                "credit_cards", "loans", "brokerage_accounts"
+            ]
+            for table in tenant_tables:
+                await conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))
+                await conn.execute(text(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY"))
+                await conn.execute(text(f'''
+                    CREATE POLICY tenant_isolation ON {table}
+                        AS PERMISSIVE FOR ALL TO app_service
+                        USING (tenant_id = current_tenant_id())
+                        WITH CHECK (tenant_id = current_tenant_id())
+                '''))
+            
+        yield engine
+        
+        await engine.dispose()
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(postgres_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+    """Provides a function-scoped async session. Rolls back changes after each test."""
+    SessionFactory = async_sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=postgres_engine,
+        expire_on_commit=False,
+    )
+    
+    async with SessionFactory() as session:
+        # We can implement a nested transaction or rely on explicit TRUNCATE
+        # Given RLS context and nested transaction behavior in asyncpg, 
+        # a savepoint or simplest approach is yielded session and test handles it,
+        # or we just let it roll back.
+        await session.begin_nested()
+        
+        yield session
+        
+        await session.rollback()
+

@@ -1,6 +1,6 @@
 ﻿from decimal import Decimal
 from datetime import date
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, case
 from db.models.transactions import TransactionLine, Transaction
 from db.models.accounts import Account
@@ -9,7 +9,7 @@ from db.models.reporting import MonthlySnapshot
 class ReportingRepository:
     """Read-only repository for reporting queries. No create/update/delete."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
     def get_account_balance_at_date(
@@ -32,7 +32,7 @@ class ReportingRepository:
             )
             .limit(1)
         )
-        snapshot = self.session.scalar(snapshot_stmt)
+        snapshot = await self.session.scalar(snapshot_stmt)
 
         if snapshot:
             base_balance = snapshot.closing_balance
@@ -73,7 +73,7 @@ class ReportingRepository:
                 )
             )
         )
-        result = self.session.execute(delta_stmt).one()
+        result = await self.session.execute(delta_stmt).one()
 
         # Step 3: Get account type to determine normal balance direction
         account = self.session.get(Account, account_id)
@@ -107,7 +107,7 @@ class ReportingRepository:
             .group_by(Account.id, Account.name, Account.account_type)
             .order_by(Account.account_type, Account.code)
         )
-        rows = self.session.execute(stmt).all()
+        rows = await self.session.execute(stmt).all()
         return [
             {
                 "account_id": r.account_id,

@@ -1,48 +1,97 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import text
 from config import get_settings
 
-_settings = get_settings()
+settings = get_settings()
 
-_is_postgres = _settings.database_url.startswith("postgresql")
+# ── Primary engine (app_service role — RLS enforced) ──────────────────────────
+# Used by all normal API requests. RLS isolates data per tenant.
+engine = create_async_engine(
+    settings.database_url,
+    pool_size=20,
+    max_overflow=40,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    connect_args={
+        "server_settings": {
+            "application_name": "ledger_api",
+            "jit": "off",
+        }
+    },
+)
 
-# PostgreSQL gets a proper connection pool; SQLite gets check_same_thread=False
-# so it works safely with FastAPI's multi-threaded request handling.
-_engine_kwargs: dict = {"pool_pre_ping": True}
-if _is_postgres:
-    _engine_kwargs.update({
-        "pool_size": 5,
-        "max_overflow": 10,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
-    })
-else:
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+SessionFactory = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
-engine = create_engine(_settings.database_url, **_engine_kwargs)
-SessionFactory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+# ── Admin engine (superadmin role — bypasses RLS) ─────────────────────────────
+# Used ONLY by admin API routes (auth, provisioning, billing support).
+# NEVER expose this session through tenant-facing endpoints.
+admin_engine = create_async_engine(
+    settings.admin_database_url,
+    pool_size=3,
+    max_overflow=5,
+    pool_pre_ping=True,
+    connect_args={
+        "server_settings": {
+            "application_name": "ledger_admin",
+        }
+    },
+)
+
+AdminSessionFactory = async_sessionmaker(
+    admin_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
 
-def get_session():
-    """FastAPI Dependency enforcing Unit of Work pattern (1 transaction / request)."""
-    session = SessionFactory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+async def get_session() -> AsyncSession:
+    """Provides a raw async session without tenant context (for global tables)."""
+    async with SessionFactory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
-def init_db(bind_engine=None) -> None:
-    """Create all database tables. Safe to call multiple times (uses CREATE IF NOT EXISTS)."""
-    # Import all model modules so their classes are registered with Base.metadata
-    from db.models import (  # noqa: F401
-        accounts, budgets, categories, goals, imports,
-        recurring, reporting, securities, system, tax,
-        transactions, users,
-    )
-    from db.models.base import Base
-    Base.metadata.create_all(bind=bind_engine or engine)
+async def get_session_with_context(tenant_id: str, user_id: str = "0") -> AsyncSession:
+    """FastAPI dependency: sets both app.tenant_id and app.user_id for RLS enforcement.
+
+    Uses is_local=TRUE so the settings are transaction-scoped — safe with PgBouncer
+    transaction-mode pooling (resets automatically on COMMIT/ROLLBACK).
+    """
+    async with SessionFactory() as session:
+        await session.execute(
+            text(
+                "SELECT set_config('app.tenant_id', :tid, TRUE),"
+                "       set_config('app.user_id',   :uid, TRUE)"
+            ),
+            {"tid": str(tenant_id), "uid": str(user_id)},
+        )
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_admin_session() -> AsyncSession:
+    """FastAPI dependency for admin routes — uses superadmin role, bypasses RLS.
+
+    Only inject this into routes protected by require_admin_role().
+    """
+    async with AdminSessionFactory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

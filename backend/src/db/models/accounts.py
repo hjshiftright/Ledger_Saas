@@ -1,8 +1,9 @@
-from sqlalchemy import String, Integer, Boolean, Numeric, Date, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Boolean, Numeric, Date, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.models.base import Base
 from decimal import Decimal
 from datetime import date, datetime
+from db.models.base import TenantScopedMixin
 
 class Currency(Base):
     __tablename__ = "currencies"
@@ -12,22 +13,26 @@ class Currency(Base):
     decimal_places: Mapped[int] = mapped_column(Integer, default=2)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-class Account(Base):
+class Account(TenantScopedMixin, Base):
     __tablename__ = "accounts"
-    
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"), nullable=True)
-    code: Mapped[str] = mapped_column(String)
-    name: Mapped[str] = mapped_column(String)
-    account_type: Mapped[str] = mapped_column(String)
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    account_type: Mapped[str] = mapped_column(String, nullable=False)
     account_subtype: Mapped[str | None] = mapped_column(String, nullable=True)
     currency_code: Mapped[str] = mapped_column(String, default="INR")
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     is_placeholder: Mapped[bool] = mapped_column(Boolean, default=False)
-    normal_balance: Mapped[str] = mapped_column(String)
+    normal_balance: Mapped[str] = mapped_column(String, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        # Account codes are unique within a tenant, not globally
+        UniqueConstraint("tenant_id", "code", name="uq_account_tenant_code"),
+    )
 
     # Self-referential hierarchy
     parent: Mapped["Account | None"] = relationship(
@@ -35,7 +40,7 @@ class Account(Base):
     )
     children: Mapped[list["Account"]] = relationship(back_populates="parent")
 
-class FinancialInstitution(Base):
+class FinancialInstitution(TenantScopedMixin, Base):
     __tablename__ = "financial_institutions"
     name: Mapped[str] = mapped_column(String)
     institution_type: Mapped[str] = mapped_column(String)
@@ -50,7 +55,7 @@ class FinancialInstitution(Base):
     loans: Mapped[list["Loan"]] = relationship(back_populates="institution")
     brokerage_accounts: Mapped[list["BrokerageAccount"]] = relationship(back_populates="institution")
 
-class BankAccount(Base):
+class BankAccount(TenantScopedMixin, Base):
     __tablename__ = "bank_accounts"
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), unique=True)
     institution_id: Mapped[int] = mapped_column(ForeignKey("financial_institutions.id"))
@@ -66,7 +71,7 @@ class BankAccount(Base):
     institution: Mapped["FinancialInstitution"] = relationship(back_populates="bank_accounts")
     account: Mapped["Account"] = relationship()
 
-class FixedDeposit(Base):
+class FixedDeposit(TenantScopedMixin, Base):
     __tablename__ = "fixed_deposits"
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), unique=True)
     institution_id: Mapped[int] = mapped_column(ForeignKey("financial_institutions.id"))
@@ -85,7 +90,7 @@ class FixedDeposit(Base):
     institution: Mapped["FinancialInstitution"] = relationship(back_populates="fixed_deposits")
     account: Mapped["Account"] = relationship()
 
-class CreditCard(Base):
+class CreditCard(TenantScopedMixin, Base):
     __tablename__ = "credit_cards"
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), unique=True)
     institution_id: Mapped[int] = mapped_column(ForeignKey("financial_institutions.id"))
@@ -102,7 +107,7 @@ class CreditCard(Base):
     institution: Mapped["FinancialInstitution"] = relationship(back_populates="credit_cards")
     account: Mapped["Account"] = relationship()
 
-class Loan(Base):
+class Loan(TenantScopedMixin, Base):
     __tablename__ = "loans"
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), unique=True)
     institution_id: Mapped[int] = mapped_column(ForeignKey("financial_institutions.id"))
@@ -124,7 +129,7 @@ class Loan(Base):
     institution: Mapped["FinancialInstitution"] = relationship(back_populates="loans")
     account: Mapped["Account"] = relationship(foreign_keys=[account_id])
 
-class BrokerageAccount(Base):
+class BrokerageAccount(TenantScopedMixin, Base):
     __tablename__ = "brokerage_accounts"
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), unique=True)
     institution_id: Mapped[int] = mapped_column(ForeignKey("financial_institutions.id"))

@@ -53,7 +53,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Absolute path anchored to src/ so the DB is always at backend/src/ledger.db
 # regardless of cwd (running from repo root, backend/, or backend/src/).
 _SRC_DIR = Path(__file__).parent
-_DEFAULT_DB_URL = "sqlite:///" + str(_SRC_DIR / "ledger.db").replace("\\", "/")
+_DEFAULT_DB_URL = "postgresql+asyncpg://app_service:password@localhost:6432/ledger"
 
 
 class Settings(BaseSettings):
@@ -133,7 +133,11 @@ class Settings(BaseSettings):
 
     database_url: str = Field(
         default=_DEFAULT_DB_URL,
-        description="SQLAlchemy database URL (e.g. sqlite:///./ledger.db or postgresql://...)",
+        description="SQLAlchemy database URL for app_service role (with RLS enforced)",
+    )
+    admin_database_url: str = Field(
+        default="postgresql+asyncpg://superadmin:password@localhost:5432/ledger",
+        description="SQLAlchemy database URL for superadmin role (bypasses RLS; admin routes only)",
     )
 
     def is_development(self) -> bool:
