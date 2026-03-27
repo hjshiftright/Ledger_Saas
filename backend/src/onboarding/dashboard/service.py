@@ -44,16 +44,19 @@ class DashboardService:
         self._profiles = profile_repo
         self._goals = goal_repo
 
-    def save_dashboard(self, data: DashboardSaveRequest) -> DashboardDataResponse:
+    def save_dashboard(self, data: DashboardSaveRequest, user_id: str) -> DashboardDataResponse:
+        uid = int(user_id)
         # 1. Save Profile
         profile_data = {
+            "user_id": uid,
             "display_name": data.name,
             "age": data.age,
             "monthly_income": data.monthly_income,
             "monthly_expenses": data.monthly_expenses,
         }
-        # Assuming we only have one profile for now, or use display_name as key
-        existing = self._profiles.get_by_name(data.name)
+        # Find existing profile for this user
+        existing_list = self._profiles.list(limit=1, filters={"user_id": uid})
+        existing = existing_list[0] if existing_list else None
         if existing:
             self._profiles.update(existing.id, profile_data)
         else:
@@ -123,11 +126,13 @@ class DashboardService:
                 "target_date": f"{target_year}-{today.month:02d}-01",
             })
 
-        return self.get_dashboard()
+        return self.get_dashboard(user_id)
 
-    def get_dashboard(self) -> DashboardDataResponse:
-        # Load profile — return the most recent one (highest id)
-        profiles = self._profiles.list(limit=1, sort_by="id", sort_desc=True)
+    def get_dashboard(self, user_id: str = None) -> DashboardDataResponse:
+        # Load profile scoped to the current user when user_id is provided
+        uid = int(user_id) if user_id else None
+        filters = {"user_id": uid} if uid else None
+        profiles = self._profiles.list(limit=1, sort_by="id", sort_desc=True, filters=filters)
         profile = profiles[0] if profiles else None
         
         # Load assets/liabilities from accounts

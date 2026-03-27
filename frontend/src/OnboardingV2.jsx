@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   ArrowRight, ArrowLeft, Check,
-  Send, X, PlusCircle, CheckCircle2, Sparkles, Target, Zap, Home
+  Send, X, PlusCircle, CheckCircle2, Sparkles, Target, Zap, Home, Pencil
 } from 'lucide-react';
 import { API } from './api.js';
 
@@ -602,16 +602,16 @@ function AiPanel({ step, onApply }) {
 // ─── STEPPER ──────────────────────────────────────────────────────────────────
 
 function Stepper({ step, onGoTo }) {
-  const currentPhase = step === 1 ? 1 : (step === 2 || step === 3) ? 2 : step === 4 ? 3 : 4;
-  
+  const currentPhase = step <= 2 ? 1 : step <= 5 ? 2 : step <= 7 ? 3 : 4;
+
   return (
     <div className="flex items-center justify-center gap-0">
       {PHASES.map((p, idx) => {
         const done = currentPhase > p.id;
         const active = currentPhase === p.id;
-        
+
         // Mapping phase back to first step of that phase for navigation
-        const stepToJump = p.id === 1 ? 1 : p.id === 2 ? 2 : p.id === 3 ? 4 : 5;
+        const stepToJump = p.id === 1 ? 1 : p.id === 2 ? 3 : p.id === 3 ? 6 : 8;
 
         return (
           <React.Fragment key={p.id}>
@@ -878,9 +878,14 @@ function S2({ data, setData, onNext, onBack, name }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setSubStep(1)} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center gap-2 group">
-                  Start the tour <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={onBack} className="flex items-center gap-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+                    <ArrowLeft size={16} /> Back
+                  </button>
+                  <button onClick={() => setSubStep(1)} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center gap-2 group">
+                    Start the tour <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1238,9 +1243,14 @@ function S3({ data, setData, onNext, onBack, name }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setSubStep(1)} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 transition flex items-center justify-center gap-2 group">
-                  Continue the audit <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={onBack} className="flex items-center gap-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+                    <ArrowLeft size={16} /> Back
+                  </button>
+                  <button onClick={() => setSubStep(1)} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 transition flex items-center justify-center gap-2 group">
+                    Continue the audit <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -2224,6 +2234,358 @@ function Done({ profile, owned, owed, savings, onComplete }) {
   );
 }
 
+// ─── SUMMARY: PROFILE ─────────────────────────────────────────────────────────
+
+function SummaryProfile({ profile, onNext, onBack, onEdit }) {
+  const name = firstName(profile.name);
+  const pt = PROFILE_TYPES.find(p => p.id === profile.profileType);
+
+  return (
+    <Layout step={2} onApplyAI={() => {}}>
+      <div className="w-full max-w-2xl space-y-4 pb-4">
+        <div className="space-y-0.5">
+          <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 2 of 9 ———</p>
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">Looking good, {name}!</p>
+          <p className="text-slate-500 text-sm">Here's what we captured about you. Edit anything that looks off.</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg">{pt?.emoji || '🌟'}</span>
+              <p className="font-bold text-slate-800">{profile.name}</p>
+              {pt && <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">{pt.label}</span>}
+            </div>
+            <button onClick={() => onEdit(1)} className="flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition shrink-0 ml-2">
+              <Pencil size={12} /> Edit
+            </button>
+          </div>
+
+          <div className="px-5 py-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Age</p>
+              <p className="text-sm font-semibold text-slate-800">{profile.age} years</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">City</p>
+              <p className="text-sm font-semibold text-slate-800">{profile.city || '—'}</p>
+            </div>
+            {profile.maritalStatus && (
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Marital Status</p>
+                <p className="text-sm font-semibold text-slate-800 capitalize">{profile.maritalStatus}</p>
+              </div>
+            )}
+            {profile.numChildren > 0 && (
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Children</p>
+                <p className="text-sm font-semibold text-slate-800">{profile.numChildren}</p>
+              </div>
+            )}
+            {profile.parentsSupport && (
+              <div className="col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Supporting Parents</p>
+                <p className="text-sm font-semibold text-slate-800">Yes</p>
+              </div>
+            )}
+          </div>
+
+          {pt && (
+            <div className="px-5 pb-4">
+              <div className="bg-indigo-50 rounded-xl p-3">
+                <p className="text-xs text-indigo-700 font-medium">{pt.desc}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onBack} className="flex items-center gap-1 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button onClick={onNext} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg shadow-indigo-200 text-base flex items-center justify-center gap-3 group">
+            <span>Looks good — map my finances</span>
+            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+// ─── SUMMARY: FINANCIAL ───────────────────────────────────────────────────────
+
+function SummaryFinancial({ owned, owed, onNext, onBack, onEdit }) {
+  const totalAssets = [
+    sum(owned.bankAccounts, 'balance'),
+    parseInt(owned.cashInHand) || 0,
+    sum(owned.stocks, 'value'),
+    sum(owned.mutualFunds, 'value'),
+    parseInt(owned.epf?.balance) || 0,
+    parseInt(owned.nps?.balance) || 0,
+    (parseInt(owned.gold?.jewellery) || 0) + (parseInt(owned.gold?.coins) || 0) + (parseInt(owned.gold?.digital) || 0),
+    sum(owned.fixedDeposits, 'amount'),
+    sum(owned.foreignInvestments, 'amountInr'),
+    sum(owned.otherAssets, 'value'),
+  ].reduce((a, b) => a + b, 0);
+
+  const totalLiabilities = [
+    sum(owed.creditCards, 'outstanding'),
+    sum(owed.homeLoans, 'outstanding'),
+    sum(owed.vehicleLoans, 'outstanding'),
+    sum(owed.educationLoans, 'outstanding'),
+    sum(owed.personalLoans, 'outstanding'),
+    sum(owed.otherLoans, 'amount'),
+  ].reduce((a, b) => a + b, 0);
+
+  const netWorth = totalAssets - totalLiabilities;
+
+  const assetRows = [
+    { label: 'Bank & Cash',     emoji: '🏦', amount: sum(owned.bankAccounts, 'balance') + (parseInt(owned.cashInHand) || 0) },
+    { label: 'Stocks',          emoji: '📈', amount: sum(owned.stocks, 'value') },
+    { label: 'Mutual Funds',    emoji: '📦', amount: sum(owned.mutualFunds, 'value') },
+    { label: 'EPF / NPS',       emoji: '🛡️', amount: (parseInt(owned.epf?.balance) || 0) + (parseInt(owned.nps?.balance) || 0) },
+    { label: 'Gold',            emoji: '🥇', amount: (parseInt(owned.gold?.jewellery) || 0) + (parseInt(owned.gold?.coins) || 0) + (parseInt(owned.gold?.digital) || 0) },
+    { label: 'Fixed Deposits',  emoji: '🔒', amount: sum(owned.fixedDeposits, 'amount') },
+    { label: 'Foreign / Crypto',emoji: '🌍', amount: sum(owned.foreignInvestments, 'amountInr') },
+    { label: 'Other Assets',    emoji: '➕', amount: sum(owned.otherAssets, 'value') },
+  ].filter(r => r.amount > 0);
+
+  const liabilityRows = [
+    { label: 'Credit Cards',    emoji: '💳', amount: sum(owed.creditCards, 'outstanding') },
+    { label: 'Home Loan',       emoji: '🏠', amount: sum(owed.homeLoans, 'outstanding') },
+    { label: 'Vehicle Loan',    emoji: '🚗', amount: sum(owed.vehicleLoans, 'outstanding') },
+    { label: 'Education Loan',  emoji: '🎓', amount: sum(owed.educationLoans, 'outstanding') },
+    { label: 'Personal Loan',   emoji: '💸', amount: sum(owed.personalLoans, 'outstanding') },
+    { label: 'Other Loans',     emoji: '➕', amount: sum(owed.otherLoans, 'amount') },
+  ].filter(r => r.amount > 0);
+
+  return (
+    <Layout step={5} onApplyAI={() => {}}>
+      <div className="w-full max-w-3xl space-y-4 pb-4">
+        <div className="space-y-0.5">
+          <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 5 of 9 ———</p>
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">Your financial snapshot</p>
+          <p className="text-slate-500 text-sm">Complete picture of assets and liabilities. Edit anything to refine.</p>
+        </div>
+
+        {/* Net worth hero */}
+        <div className={`rounded-2xl p-5 flex items-center justify-between ${netWorth >= 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+          <div>
+            <p className={`text-xs font-bold uppercase tracking-widest mb-0.5 ${netWorth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>Net Worth</p>
+            <p className={`text-3xl font-black ${netWorth >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{inr(Math.abs(netWorth))}{netWorth < 0 ? ' (negative)' : ''}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{inr(totalAssets)} assets − {inr(totalLiabilities)} liabilities</p>
+          </div>
+          <div className="text-4xl">{netWorth >= 0 ? '📈' : '⚠️'}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Assets */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">💼</span>
+                <p className="font-bold text-sm text-slate-700">Assets</p>
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{inr(totalAssets)}</span>
+              </div>
+              <button onClick={() => onEdit(3)} className="flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition">
+                <Pencil size={11} /> Edit
+              </button>
+            </div>
+            <div className="px-4 py-3 space-y-2">
+              {assetRows.length === 0
+                ? <p className="text-xs text-slate-400 italic">No assets entered yet.</p>
+                : assetRows.map(r => (
+                  <div key={r.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{r.emoji}</span>
+                      <span className="text-xs text-slate-600">{r.label}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">{inr(r.amount)}</span>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+
+          {/* Liabilities */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📋</span>
+                <p className="font-bold text-sm text-slate-700">Liabilities</p>
+                <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{inr(totalLiabilities)}</span>
+              </div>
+              <button onClick={() => onEdit(4)} className="flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition">
+                <Pencil size={11} /> Edit
+              </button>
+            </div>
+            <div className="px-4 py-3 space-y-2">
+              {liabilityRows.length === 0
+                ? <p className="text-xs text-slate-400 italic">No liabilities entered yet.</p>
+                : liabilityRows.map(r => (
+                  <div key={r.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{r.emoji}</span>
+                      <span className="text-xs text-slate-600">{r.label}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">{inr(r.amount)}</span>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onBack} className="flex items-center gap-1 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button onClick={onNext} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg shadow-indigo-200 text-base flex items-center justify-center gap-3 group">
+            <span>Spot on — now set my goals</span>
+            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+// ─── SUMMARY: GOALS ───────────────────────────────────────────────────────────
+
+function SummaryGoals({ savings, profile, owned, onNext, onBack, onEdit }) {
+  const name = firstName(profile.name);
+  const userAge = parseInt(profile?.age) || 30;
+
+  const activeGoals = [];
+
+  if (savings.retire?.on) {
+    const retireAge = parseInt(savings.retire.retireAge) || 60;
+    const monthly = parseInt(savings.retire.monthly) || 0;
+    const years = Math.max(0, retireAge - userAge);
+    const corpus = monthly ? Math.round(monthly * 12 * 25 * Math.pow(1.06, years)) : 0;
+    activeGoals.push({
+      emoji: '🌅', label: 'Retirement',
+      details: [
+        savings.retire.retireAge ? `Retire at ${savings.retire.retireAge}` : null,
+        monthly ? `${inr(monthly)}/mo expenses` : null,
+        corpus ? `Target: ${inr(corpus)} corpus` : null,
+      ].filter(Boolean),
+    });
+  }
+
+  if (savings.emergency?.on) {
+    const months = savings.emergency.months || 6;
+    const monthly = parseInt(savings.emergency.monthlyExpenses) || 0;
+    const target = monthly * months;
+    activeGoals.push({
+      emoji: '🛡️', label: 'Emergency Fund',
+      details: [
+        `${months} months coverage`,
+        monthly ? `${inr(monthly)}/mo expenses` : null,
+        target ? `Target: ${inr(target)}` : null,
+      ].filter(Boolean),
+    });
+  }
+
+  (savings.education || []).forEach(edu => {
+    activeGoals.push({
+      emoji: '🎓', label: `Education${edu.childName ? ` — ${edu.childName}` : ''}`,
+      details: [
+        edu.yearsNeeded ? `In ${edu.yearsNeeded} years` : null,
+        edu.amountNeeded ? `Target: ${inr(edu.amountNeeded)}` : null,
+      ].filter(Boolean),
+    });
+  });
+
+  if (savings.home?.on) {
+    activeGoals.push({
+      emoji: '🏠', label: 'Home Purchase',
+      details: [
+        savings.home.targetAmount ? `Target: ${inr(savings.home.targetAmount)}` : null,
+        savings.home.inYears ? `In ${savings.home.inYears} years` : null,
+      ].filter(Boolean),
+    });
+  }
+
+  (savings.vacation || []).forEach(v => {
+    activeGoals.push({
+      emoji: '✈️', label: `Holiday${v.destination ? ` — ${v.destination}` : ''}`,
+      details: [
+        v.budget ? `Budget: ${inr(v.budget)}` : null,
+        v.inYears ? `In ${v.inYears} years` : null,
+      ].filter(Boolean),
+    });
+  });
+
+  (savings.custom || []).forEach(c => {
+    activeGoals.push({
+      emoji: '✨', label: c.description || 'Custom Goal',
+      details: [
+        c.amountNeeded ? `Target: ${inr(c.amountNeeded)}` : null,
+        c.inYears ? `In ${c.inYears} years` : null,
+      ].filter(Boolean),
+    });
+  });
+
+  return (
+    <Layout step={7} onApplyAI={() => {}}>
+      <div className="w-full max-w-2xl space-y-4 pb-4">
+        <div className="space-y-0.5">
+          <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Step 7 of 9 ———</p>
+          <p className="text-2xl font-extrabold text-slate-900 leading-tight">Your goals, {name}</p>
+          <p className="text-slate-500 text-sm">
+            {activeGoals.length} goal{activeGoals.length !== 1 ? 's' : ''} locked in. Edit anytime to refine the details.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="font-bold text-sm text-slate-700">Planned Goals</p>
+            <button onClick={() => onEdit(6)} className="flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition">
+              <Pencil size={11} /> Edit Goals
+            </button>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {activeGoals.length === 0
+              ? (
+                <div className="px-5 py-8 text-center">
+                  <p className="text-slate-400 text-sm">No goals added yet.</p>
+                  <button onClick={() => onEdit(6)} className="mt-2 text-indigo-600 text-sm font-bold hover:underline">
+                    Add Goals →
+                  </button>
+                </div>
+              )
+              : activeGoals.map((g, i) => (
+                <div key={i} className="px-5 py-3 flex items-start gap-3">
+                  <span className="text-xl mt-0.5">{g.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-slate-800">{g.label}</p>
+                    {g.details.length > 0 && (
+                      <p className="text-xs text-slate-500 mt-0.5">{g.details.join(' · ')}</p>
+                    )}
+                  </div>
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onBack} className="flex items-center gap-1 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button onClick={onNext} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg shadow-indigo-200 text-base flex items-center justify-center gap-3 group">
+            <span>All set — show my projections</span>
+            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
 // ─── ROOT EXPORT ──────────────────────────────────────────────────────────────
 
 export default function OnboardingV2({ onComplete }) {
@@ -2241,14 +2603,17 @@ export default function OnboardingV2({ onComplete }) {
     exit:    { opacity:0, x:-28 },
   };
 
-  // Pre-seed S2 with persona-appropriate accounts when leaving S1
-  const goToS2 = () => {
+  // After S1: go to Profile Summary
+  const afterS1 = () => setStep(2);
+
+  // After Profile Summary: pre-seed S2 with persona defaults, then go to Assets
+  const goToAssets = () => {
     setOwned(prev => {
       if (prev.bankAccounts.length > 0) return prev; // user already edited — don't overwrite
       const defs = PERSONA_DEFAULTS[profile.profileType] || PERSONA_DEFAULTS.other;
       return { ...prev, ...defs };
     });
-    setStep(2);
+    setStep(3);
   };
 
   return (
@@ -2257,7 +2622,9 @@ export default function OnboardingV2({ onComplete }) {
         <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <span className="text-base font-bold text-indigo-700 shrink-0">Ledger</span>
           <Stepper step={step} onGoTo={s => s < step && setStep(s)} />
-          <span className="text-xs text-slate-400 shrink-0 hidden sm:block">{step <= 4 ? `Phase ${step === 1 ? 1 : (step === 2 || step === 3) ? 2 : step === 4 ? 3 : 4} of 4` : 'Done!'}</span>
+          <span className="text-xs text-slate-400 shrink-0 hidden sm:block">
+            {step <= 2 ? 'Phase 1 of 4' : step <= 5 ? 'Phase 2 of 4' : step <= 7 ? 'Phase 3 of 4' : step === 8 ? 'Phase 4 of 4' : 'Done!'}
+          </span>
         </div>
       </header>
 
@@ -2265,30 +2632,45 @@ export default function OnboardingV2({ onComplete }) {
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div key="s1" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
-              <S1 data={profile} setData={setProfile} onNext={goToS2} />
+              <S1 data={profile} setData={setProfile} onNext={afterS1} />
             </motion.div>
           )}
           {step === 2 && (
-            <motion.div key="s2" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
-              <S2 data={owned} setData={setOwned} onNext={() => setStep(3)} onBack={() => setStep(1)} name={name} />
+            <motion.div key="sum-profile" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-4">
+              <SummaryProfile profile={profile} onNext={goToAssets} onBack={() => setStep(1)} onEdit={s => setStep(s)} />
             </motion.div>
           )}
           {step === 3 && (
-            <motion.div key="s3" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
-              <S3 data={owed} setData={setOwed} onNext={() => setStep(4)} onBack={() => setStep(2)} name={name} />
+            <motion.div key="s2" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
+              <S2 data={owned} setData={setOwned} onNext={() => setStep(4)} onBack={() => setStep(2)} name={name} />
             </motion.div>
           )}
           {step === 4 && (
-            <motion.div key="s4" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
-              <S4 data={savings} setData={setSavings} onNext={() => setStep(5)} onBack={() => setStep(3)} profile={profile} owned={owned} name={name} />
+            <motion.div key="s3" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
+              <S3 data={owed} setData={setOwed} onNext={() => setStep(5)} onBack={() => setStep(3)} name={name} />
             </motion.div>
           )}
           {step === 5 && (
-            <motion.div key="s5" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-6">
-              <GoalViz savings={savings} profile={profile} onNext={() => setStep(6)} onBack={() => setStep(4)} />
+            <motion.div key="sum-financial" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-4">
+              <SummaryFinancial owned={owned} owed={owed} onNext={() => setStep(6)} onBack={() => setStep(4)} onEdit={s => setStep(s)} />
             </motion.div>
           )}
           {step === 6 && (
+            <motion.div key="s4" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full">
+              <S4 data={savings} setData={setSavings} onNext={() => setStep(7)} onBack={() => setStep(5)} profile={profile} owned={owned} name={name} />
+            </motion.div>
+          )}
+          {step === 7 && (
+            <motion.div key="sum-goals" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-4">
+              <SummaryGoals savings={savings} profile={profile} owned={owned} onNext={() => setStep(8)} onBack={() => setStep(6)} onEdit={s => setStep(s)} />
+            </motion.div>
+          )}
+          {step === 8 && (
+            <motion.div key="s5" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-6">
+              <GoalViz savings={savings} profile={profile} onNext={() => setStep(9)} onBack={() => setStep(7)} />
+            </motion.div>
+          )}
+          {step === 9 && (
             <motion.div key="s6" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration:0.2 }} className="h-full overflow-y-auto py-6">
               <Done profile={profile} owned={owned} owed={owed} savings={savings} onComplete={onComplete} />
             </motion.div>
