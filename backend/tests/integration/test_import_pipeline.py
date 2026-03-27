@@ -27,8 +27,16 @@ from jose import jwt
 from config import get_settings
 
 _settings = get_settings()
-def make_token(user_id: str) -> str:
-    return jwt.encode({"sub": user_id}, _settings.secret_key, algorithm="HS256")
+_DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+_ALICE_TENANT_ID   = "00000000-0000-0000-0000-000000000002"
+
+
+def make_token(user_id: str, tenant_id: str = _DEFAULT_TENANT_ID) -> str:
+    return jwt.encode(
+        {"sub": user_id, "tenant_id": tenant_id},
+        _settings.secret_key,
+        algorithm="HS256",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -37,8 +45,13 @@ def make_token(user_id: str) -> str:
 
 @pytest.fixture(scope="module")
 def app():
-    """Single FastAPI application instance shared across all classes in this module."""
-    return create_app()
+    """Single FastAPI application instance shared across all classes in this module.
+
+    Uses the module-level app so that dependency_overrides applied in conftest
+    (aiosqlite engine) take effect.
+    """
+    from main import app as _app
+    return _app
 
 
 @pytest.fixture(scope="class")
@@ -155,7 +168,7 @@ class TestDevAuth:
 
     def test_explicit_bearer_token_still_works(self, client: TestClient):
         """A valid Bearer token must always be accepted regardless of env."""
-        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice')}"})
+        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice', _ALICE_TENANT_ID)}"})
         assert resp.status_code == 200
 
     def test_non_bearer_scheme_rejected(self, client: TestClient):
@@ -183,7 +196,7 @@ class TestDevAuth:
             files={"file": ("bank_statement.csv", io.BytesIO(_hdfc_csv()), "text/csv")},
         )
         # Alice's list must be empty
-        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice')}"})
+        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice', _ALICE_TENANT_ID)}"})
         assert resp.json()["total"] == 0
 
 
@@ -277,7 +290,7 @@ class TestBatchLifecycleAPI:
     def test_user_isolation_in_list(self, client: TestClient):
         """test-user's batch must NOT appear in alice's list."""
         _upload(client, _hdfc_csv(), "bank_statement.csv")  # uploaded by test-user
-        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice')}"})
+        resp = client.get("/api/v1/imports", headers={"Authorization": f"Bearer {make_token('alice', _ALICE_TENANT_ID)}"})
         assert resp.json()["total"] == 0
 
 

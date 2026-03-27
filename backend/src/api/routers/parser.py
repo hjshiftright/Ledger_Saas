@@ -18,7 +18,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from api.deps import CurrentUser
+from api.deps import CurrentUserPayload
 from api.routers.imports import _batches
 from core.models.column_mapping import ColumnMapping, ColumnPreview
 from core.models.enums import BatchStatus, SourceType
@@ -138,13 +138,13 @@ class SourceTypeInfo(BaseModel):
     summary="Trigger parsing for an uploaded batch",
     operation_id="triggerParse",
 )
-def trigger_parse(
+async def trigger_parse(
     batch_id: str,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     body: ParseTriggerRequest | None = None,
 ) -> ParseTriggerResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
 
     runnable_states = {
@@ -203,7 +203,7 @@ def trigger_parse(
         try:
             from commands._helpers import _get_db_session as _p_db, _resolve_llm_provider as _p_llm  # noqa: PLC0415
             _p_sess = _p_db()
-            _parse_llm = _p_llm(_p_sess, user_id, body.llm_provider_id or None)
+            _parse_llm = _p_llm(_p_sess, body.llm_provider_id or None)
             _p_sess.close()
         except Exception:
             pass
@@ -248,9 +248,9 @@ def trigger_parse(
     summary="Poll parse status for a batch",
     operation_id="getParseStatus",
 )
-def get_parse_status(batch_id: str, user_id: CurrentUser) -> ParseStatusResponse:
+async def get_parse_status(batch_id: str, auth: CurrentUserPayload) -> ParseStatusResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
     return ParseStatusResponse(
         batch_id=batch_id,
@@ -272,15 +272,15 @@ def get_parse_status(batch_id: str, user_id: CurrentUser) -> ParseStatusResponse
     summary="Retrieve paginated raw parsed rows for a batch",
     operation_id="getParseRows",
 )
-def get_parse_rows(
+async def get_parse_rows(
     batch_id: str,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
     min_confidence: Annotated[float, Query(ge=0.0, le=1.0)] = 0.0,
 ) -> RawRowsResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
 
     rows = _parsed_rows.get(batch_id, [])
@@ -325,13 +325,13 @@ def get_parse_rows(
     summary="Auto-detect column mapping for a generic CSV file",
     operation_id="getColumnPreview",
 )
-def get_column_preview(
+async def get_column_preview(
     batch_id: str,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     body: ColumnPreviewRequest,
 ) -> ColumnPreview:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
 
     # Attempt heuristic mapping from header names
@@ -364,7 +364,7 @@ def get_column_preview(
     summary="Save a confirmed column mapping",
     operation_id="saveColumnMapping",
 )
-def save_column_mapping(body: ColumnMappingRequest, user_id: CurrentUser) -> ColumnMappingResponse:
+async def save_column_mapping(body: ColumnMappingRequest, auth: CurrentUserPayload) -> ColumnMappingResponse:
     mapping_id = str(uuid.uuid4())
     mapping = ColumnMapping(
         mapping_id=mapping_id,
@@ -390,7 +390,7 @@ def save_column_mapping(body: ColumnMappingRequest, user_id: CurrentUser) -> Col
     summary="Retrieve a saved column mapping",
     operation_id="getColumnMapping",
 )
-def get_column_mapping(mapping_id: str, user_id: CurrentUser) -> ColumnMappingResponse:
+async def get_column_mapping(mapping_id: str, auth: CurrentUserPayload) -> ColumnMappingResponse:
     mapping = _column_mappings.get(mapping_id)
     if mapping is None:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Column mapping not found."})
@@ -405,7 +405,7 @@ def get_column_mapping(mapping_id: str, user_id: CurrentUser) -> ColumnMappingRe
     summary="List all supported source types and their expected file formats",
     operation_id="listSourceTypes",
 )
-def list_source_types() -> list[SourceTypeInfo]:
+async def list_source_types() -> list[SourceTypeInfo]:
     from core.models.enums import PDF_SOURCE_TYPES, CSV_SOURCE_TYPES
     items: list[SourceTypeInfo] = []
     for s in SourceType:

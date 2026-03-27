@@ -1,4 +1,4 @@
-﻿"""SM-G Categorization Engine.
+"""SM-G Categorization Engine.
 
 Applies a rule cascade to assign each NormalizedTransaction to an account
 from the user's Chart of Accounts (or a default category code).
@@ -118,17 +118,17 @@ _BUILTIN_RULES: list[CategoryRule] = [
     CategoryRule(r"fd\b|fixed.?deposit|term.?dep", "INVESTMENT",            80),
 ]
 
-def _get_user_rules(user_id: str, session) -> list["CategoryRule"]:
-    """Load user rules from SQLite for the given user."""
+async def _get_user_rules(session) -> list["CategoryRule"]:
+    """Load tenant's category rules from the DB (RLS enforces tenant scoping)."""
     from sqlalchemy import select  # noqa: PLC0415
     from db.models.categories import UserCategoryRule  # noqa: PLC0415
-    rows = session.execute(
-        select(UserCategoryRule).where(UserCategoryRule.user_id == user_id)
-    ).scalars().all()
+    rows = (await session.scalars(
+        select(UserCategoryRule).where(UserCategoryRule.is_active.is_(True))
+    )).all()
     return [
         CategoryRule(
             pattern=r.pattern,
-            category_code=r.category_code,
+            category_code=r.category_name,
             priority=r.priority,
         )
         for r in rows
@@ -162,15 +162,14 @@ class CategorizeBatchResult:
 class CategorizeService:
     """SM-G: Assign categories to normalized transactions."""
 
-    def categorize_batch(
+    async def categorize_batch(
         self,
-        user_id: str,
         batch_id: str,
         rows: list[NormalizedTransaction],
         session=None,
     ) -> CategorizeBatchResult:
         result = CategorizeBatchResult(batch_id=batch_id)
-        compiled = self._compile_rules(user_id, session)
+        compiled = await self._compile_rules(session)
 
         for row in rows:
             cat_result = self._categorize_row(row, compiled)
@@ -181,9 +180,8 @@ class CategorizeService:
 
         return result
 
-    def learn_from_correction(
+    async def learn_from_correction(
         self,
-        user_id: str,
         narration_pattern: str,
         category_code: str,
         session=None,
@@ -193,26 +191,25 @@ class CategorizeService:
         from db.models.categories import UserCategoryRule  # noqa: PLC0415
 
         escaped = re.escape(narration_pattern.lower())
-        # Remove existing rule for same pattern (case-insensitive)
-        session.execute(
+        # Remove existing active rule for same pattern
+        await session.execute(
             delete(UserCategoryRule).where(
-                UserCategoryRule.user_id == user_id,
                 UserCategoryRule.pattern == escaped,
             )
         )
         session.add(UserCategoryRule(
-            user_id=user_id,
             pattern=escaped,
-            category_code=category_code,
+            category_name=category_code,
+            match_type="REGEX",
             priority=100,
         ))
-        session.flush()
+        await session.flush()
 
-    def _compile_rules(self, user_id: str, session=None) -> list[tuple[re.Pattern[str], str, float]]:
+    async def _compile_rules(self, session=None) -> list[tuple[re.Pattern[str], str, float]]:
         """Return compiled (pattern, code, confidence) tuples sorted by priority desc."""
         all_rules = list(_BUILTIN_RULES)
         if session is not None:
-            all_rules.extend(_get_user_rules(user_id, session))
+            all_rules.extend(await _get_user_rules(session))
         all_rules.sort(key=lambda r: -r.priority)
         return [
             (re.compile(r.pattern, re.IGNORECASE), r.category_code,

@@ -17,14 +17,14 @@ class SqlAlchemyInstitutionRepository(BaseRepository[FinancialInstitution]):
         return inst
 
     async def get(self, institution_id: int) -> Optional[FinancialInstitution]:
-        return self.get_by_id(institution_id)
+        return await self.get_by_id(institution_id)
 
     async def list(self) -> Sequence[FinancialInstitution]:
         stmt = select(FinancialInstitution).where(FinancialInstitution.is_active == True)
         return (await self.session.scalars(stmt)).all()
 
     async def update(self, institution_id: int, updates: dict) -> Optional[FinancialInstitution]:
-        inst = self.get(institution_id)
+        inst = await self.get(institution_id)
         if inst:
             data = self._map_data(updates)
             for key, value in data.items():
@@ -33,7 +33,7 @@ class SqlAlchemyInstitutionRepository(BaseRepository[FinancialInstitution]):
             await self.session.flush()
         return inst
 
-    async def _map_data(self, data: dict) -> dict:
+    def _map_data(self, data: dict) -> dict:
         mapped = data.copy()
         if "website_url" in mapped:
             mapped["website"] = mapped.pop("website_url")

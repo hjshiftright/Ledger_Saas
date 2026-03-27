@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from .schemas import DashboardSaveRequest, DashboardDataResponse
 from .service import DashboardService
-from api.deps import DBSession, CurrentUser
+from api.deps import TenantDBSession, CurrentUserPayload
 from repositories.sqla_account_repo import AccountRepository
 from repositories.sqla_transaction_repo import TransactionRepository
 from repositories.sqla_profile_repo import SqlAlchemyProfileRepository
@@ -9,7 +9,7 @@ from repositories.sqla_goal_repo import SqlAlchemyGoalRepository
 
 router = APIRouter(prefix="/api/v1/onboarding/dashboard", tags=["onboarding_dashboard"])
 
-def get_dashboard_service(session: DBSession) -> DashboardService:
+def get_dashboard_service(session: TenantDBSession) -> DashboardService:
     return DashboardService(
         AccountRepository(session),
         TransactionRepository(session),
@@ -18,16 +18,16 @@ def get_dashboard_service(session: DBSession) -> DashboardService:
     )
 
 @router.post("/save", response_model=DashboardDataResponse)
-def save_dashboard(
+async def save_dashboard(
     request: DashboardSaveRequest,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     service: DashboardService = Depends(get_dashboard_service)
 ):
-    return service.save_dashboard(request, user_id)
+    return await service.save_dashboard(request, int(auth.user_id))
 
 @router.get("", response_model=DashboardDataResponse)
-def get_dashboard(
-    user_id: CurrentUser,
+async def get_dashboard(
+    auth: CurrentUserPayload,
     service: DashboardService = Depends(get_dashboard_service)
 ):
-    return service.get_dashboard(user_id)
+    return await service.get_dashboard(int(auth.user_id))

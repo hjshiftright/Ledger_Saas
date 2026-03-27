@@ -69,7 +69,7 @@ class SmartProcessor:
         self._confidence = ConfidenceService()
         self._propose   = ProposalService()
 
-    def process_batch(
+    async def process_batch(
         self,
         user_id: str,
         batch_id: str,
@@ -95,7 +95,7 @@ class SmartProcessor:
         rows = dedup_result.new
 
         # Stage 3: Categorize (SM-G)
-        self._categorize.categorize_batch(user_id=user_id, batch_id=batch_id, rows=rows, session=opts.session)
+        await self._categorize.categorize_batch(batch_id=batch_id, rows=rows, session=opts.session)
 
         # Stage 4: Confidence (SM-H)
         conf_result = self._confidence.score_batch(batch_id=batch_id, rows=rows)

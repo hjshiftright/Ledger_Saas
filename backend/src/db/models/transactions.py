@@ -8,7 +8,7 @@ from db.models.base import TenantScopedMixin
 
 class Transaction(TenantScopedMixin, Base):
     __tablename__ = "transactions"
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
     effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     transaction_number: Mapped[str | None] = mapped_column(String, nullable=True)

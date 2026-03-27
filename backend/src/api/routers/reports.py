@@ -22,9 +22,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import case, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, DBSession, SettingsDep
+from api.deps import CurrentUserPayload, TenantDBSession, SettingsDep
 from db.models.accounts import Account
 from db.models.transactions import Transaction, TransactionLine
 
@@ -35,8 +35,8 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 # Low-level SQL helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _debit_credit_sums(
-    session: Session,
+async def _debit_credit_sums(
+    session: AsyncSession,
     account_ids: list[int],
     from_date: date | None,
     to_date: date,
@@ -83,7 +83,8 @@ def _debit_credit_sums(
         # they are balance-sheet initialisers, not real income or expense activity.
         stmt = stmt.where(Transaction.transaction_type != "OPENING_BALANCE")
 
-    rows = session.execute(stmt).all()
+    result = await session.execute(stmt)
+    rows = result.all()
     return {r.account_id: (Decimal(str(r.d)), Decimal(str(r.c))) for r in rows}
 
 
@@ -92,12 +93,13 @@ def _signed_balance(d: Decimal, c: Decimal, normal_balance: str) -> Decimal:
     return (d - c) if normal_balance == "DEBIT" else (c - d)
 
 
-def _load_accounts(session: Session, account_types: list[str]) -> list[Account]:
-    return session.execute(
+async def _load_accounts(session: AsyncSession, account_types: list[str]) -> list[Account]:
+    result = await session.execute(
         select(Account)
         .where(Account.account_type.in_(account_types))
         .where(Account.is_active == True)  # noqa: E712
-    ).scalars().all()
+    )
+    return list(result.scalars().all())
 
 
 def _type_total(
@@ -112,8 +114,8 @@ def _type_total(
     )
 
 
-def _period_items(
-    session: Session,
+async def _period_items(
+    session: AsyncSession,
     accounts: list[Account],
     account_types: list[str],
     from_date: date,
@@ -123,7 +125,7 @@ def _period_items(
     leafs = [a for a in accounts if a.account_type in account_types and not a.is_placeholder]
     if not leafs:
         return []
-    sums = _debit_credit_sums(session, [a.id for a in leafs], from_date, to_date)
+    sums = await _debit_credit_sums(session, [a.id for a in leafs], from_date, to_date)
     result = []
     for acc in leafs:
         d, c = sums.get(acc.id, (Decimal(0), Decimal(0)))
@@ -203,9 +205,9 @@ def _month_end(year: int, month: int) -> date:
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/summary", summary="Dashboard KPIs — net worth, cash flow, top expenses")
-def reports_summary(
-    user_id: CurrentUser,
-    session: DBSession,
+async def reports_summary(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     as_of: date | None     = Query(default=None, description="Balance-sheet date (default today)"),
     from_date: date | None = Query(default=None, description="Period start (default 1st of this month)"),
     to_date: date | None   = Query(default=None, description="Period end (default today)"),
@@ -215,16 +217,16 @@ def reports_summary(
     to_date   = to_date   or today
     from_date = from_date or date(today.year, today.month, 1)
 
-    all_accs = _load_accounts(session, ["ASSET", "LIABILITY", "INCOME", "EXPENSE"])
+    all_accs = await _load_accounts(session, ["ASSET", "LIABILITY", "INCOME", "EXPENSE"])
     bs_leafs = [a for a in all_accs if a.account_type in ("ASSET", "LIABILITY") and not a.is_placeholder]
-    bs_sums  = _debit_credit_sums(session, [a.id for a in bs_leafs], None, as_of)
+    bs_sums  = await _debit_credit_sums(session, [a.id for a in bs_leafs], None, as_of)
 
     total_assets      = _type_total(bs_leafs, bs_sums, "ASSET")
     total_liabilities = _type_total(bs_leafs, bs_sums, "LIABILITY")
     net_worth         = total_assets - total_liabilities
 
-    income_items  = _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
-    expense_items = _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
+    income_items  = await _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
+    expense_items = await _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
     period_income   = sum(i["amount"] for i in income_items)
     period_expenses = sum(e["amount"] for e in expense_items)
     net_income      = period_income - period_expenses
@@ -255,9 +257,9 @@ def reports_summary(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/income-expense", summary="Income & Expense statement for a period")
-def income_expense(
-    user_id: CurrentUser,
-    session: DBSession,
+async def income_expense(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     from_date: date | None = Query(default=None),
     to_date: date | None   = Query(default=None),
 ):
@@ -265,9 +267,9 @@ def income_expense(
     to_date   = to_date   or today
     from_date = from_date or date(today.year, today.month, 1)
 
-    all_accs      = _load_accounts(session, ["INCOME", "EXPENSE"])
-    income_items  = _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
-    expense_items = _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
+    all_accs      = await _load_accounts(session, ["INCOME", "EXPENSE"])
+    income_items  = await _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
+    expense_items = await _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
 
     total_income   = sum(i["amount"] for i in income_items)
     total_expenses = sum(e["amount"] for e in expense_items)
@@ -301,17 +303,17 @@ def income_expense(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/balance-sheet", summary="Asset & Liability snapshot as a tree")
-def balance_sheet(
-    user_id: CurrentUser,
-    session: DBSession,
+async def balance_sheet(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     as_of: date | None = Query(default=None),
 ):
     today = date.today()
     as_of = as_of or today
 
-    all_accs = _load_accounts(session, ["ASSET", "LIABILITY"])
+    all_accs = await _load_accounts(session, ["ASSET", "LIABILITY"])
     leafs    = [a for a in all_accs if not a.is_placeholder]
-    sums     = _debit_credit_sums(session, [a.id for a in leafs], None, as_of)
+    sums     = await _debit_credit_sums(session, [a.id for a in leafs], None, as_of)
 
     asset_tree     = _strip_internal(_build_tree(all_accs, sums, None, "ASSET"))
     liability_tree = _strip_internal(_build_tree(all_accs, sums, None, "LIABILITY"))
@@ -334,13 +336,13 @@ def balance_sheet(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/net-worth-history", summary="Monthly net worth over the last N months")
-def net_worth_history(
-    user_id: CurrentUser,
-    session: DBSession,
+async def net_worth_history(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=12, ge=1, le=60),
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["ASSET", "LIABILITY"])
+    all_accs = await _load_accounts(session, ["ASSET", "LIABILITY"])
     leafs    = [a for a in all_accs if not a.is_placeholder]
     leaf_ids = [a.id for a in leafs]
 
@@ -348,7 +350,7 @@ def net_worth_history(
     for i in range(months - 1, -1, -1):
         year, month = _month_offset(today, i)
         snap_date   = today if i == 0 else _month_end(year, month)
-        sums        = _debit_credit_sums(session, leaf_ids, None, snap_date)
+        sums        = await _debit_credit_sums(session, leaf_ids, None, snap_date)
         assets      = _type_total(leafs, sums, "ASSET")
         liabilities = _type_total(leafs, sums, "LIABILITY")
         result.append({
@@ -368,13 +370,13 @@ def net_worth_history(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/monthly-trend", summary="Monthly income vs expense bars")
-def monthly_trend(
-    user_id: CurrentUser,
-    session: DBSession,
+async def monthly_trend(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=12, ge=1, le=60),
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["INCOME", "EXPENSE"])
+    all_accs = await _load_accounts(session, ["INCOME", "EXPENSE"])
 
     result = []
     for i in range(months - 1, -1, -1):
@@ -382,8 +384,8 @@ def monthly_trend(
         from_date   = date(year, month, 1)
         to_date     = today if i == 0 else _month_end(year, month)
 
-        income_items  = _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
-        expense_items = _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
+        income_items  = await _period_items(session, all_accs, ["INCOME"],  from_date, to_date)
+        expense_items = await _period_items(session, all_accs, ["EXPENSE"], from_date, to_date)
         income   = sum(i["amount"] for i in income_items)
         expenses = sum(e["amount"] for e in expense_items)
         result.append({
@@ -402,9 +404,9 @@ def monthly_trend(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/expense-categories", summary="Category-wise expense breakdown with percentages")
-def expense_categories(
-    user_id: CurrentUser,
-    session: DBSession,
+async def expense_categories(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     from_date: date | None = Query(default=None),
     to_date: date | None   = Query(default=None),
 ):
@@ -412,8 +414,8 @@ def expense_categories(
     to_date   = to_date   or today
     from_date = from_date or date(today.year, today.month, 1)
 
-    expense_accs = _load_accounts(session, ["EXPENSE"])
-    items        = _period_items(session, expense_accs, ["EXPENSE"], from_date, to_date)
+    expense_accs = await _load_accounts(session, ["EXPENSE"])
+    items        = await _period_items(session, expense_accs, ["EXPENSE"], from_date, to_date)
     total        = sum(i["amount"] for i in items)
     sorted_items = sorted(items, key=lambda x: x["amount"], reverse=True)
 
@@ -438,9 +440,9 @@ def expense_categories(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/accounts-list", summary="Flat list of active leaf accounts")
-def accounts_list(
-    user_id: CurrentUser,
-    session: DBSession,
+async def accounts_list(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     account_type: str | None = Query(default=None, description="Filter by ASSET|LIABILITY|INCOME|EXPENSE"),
 ):
     stmt = (
@@ -451,7 +453,7 @@ def accounts_list(
     )
     if account_type:
         stmt = stmt.where(Account.account_type == account_type.upper())
-    accounts = session.execute(stmt).scalars().all()
+    accounts = (await session.execute(stmt)).scalars().all()
     return [
         {"id": a.id, "code": a.code, "name": a.name, "account_type": a.account_type}
         for a in accounts
@@ -463,10 +465,10 @@ def accounts_list(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/account-statement/{account_id}", summary="Per-account transaction ledger with running balance")
-def account_statement(
+async def account_statement(
     account_id: int,
-    user_id: CurrentUser,
-    session: DBSession,
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     from_date: date | None = Query(default=None),
     to_date: date | None   = Query(default=None),
 ):
@@ -474,12 +476,12 @@ def account_statement(
     to_date   = to_date   or today
     from_date = from_date or date(today.year, today.month, 1)
 
-    account = session.get(Account, account_id)
+    account = await session.get(Account, account_id)
     if not account:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Account not found."})
 
     # Opening balance = all activity strictly before from_date
-    open_sums = _debit_credit_sums(session, [account_id], None, from_date - timedelta(days=1))
+    open_sums = await _debit_credit_sums(session, [account_id], None, from_date - timedelta(days=1))
     d0, c0    = open_sums.get(account_id, (Decimal(0), Decimal(0)))
     opening   = _signed_balance(d0, c0, account.normal_balance)
 
@@ -493,7 +495,8 @@ def account_statement(
         .where(Transaction.is_void == False)  # noqa: E712
         .order_by(Transaction.transaction_date, Transaction.id)
     )
-    rows = session.execute(stmt).all()
+    result = await session.execute(stmt)
+    rows = result.all()
 
     entries: list[dict] = []
     running = opening
@@ -537,9 +540,9 @@ _SECTION_LABELS = {"ASSET": "Assets", "LIABILITY": "Liabilities",
 
 
 @router.get("/trial-balance", summary="Trial Balance — all accounts with Dr/Cr columns")
-def trial_balance(
-    user_id: CurrentUser,
-    session: DBSession,
+async def trial_balance(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     as_of: date | None = Query(default=None, description="Snapshot date (default today)"),
 ):
     """Classic two-column Trial Balance.
@@ -551,9 +554,9 @@ def trial_balance(
     today = date.today()
     as_of = as_of or today
 
-    all_accs = _load_accounts(session, _SECTION_ORDER)
+    all_accs = await _load_accounts(session, _SECTION_ORDER)
     leafs    = [a for a in all_accs if not a.is_placeholder]
-    sums     = _debit_credit_sums(session, [a.id for a in leafs], None, as_of)
+    sums     = await _debit_credit_sums(session, [a.id for a in leafs], None, as_of)
 
     grand_dr = Decimal("0")
     grand_cr = Decimal("0")
@@ -614,9 +617,9 @@ def trial_balance(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/general-ledger", summary="General Ledger — per-account T-account entries grouped by category")
-def general_ledger(
-    user_id: CurrentUser,
-    session: DBSession,
+async def general_ledger(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     from_date: date | None   = Query(default=None),
     to_date: date | None     = Query(default=None),
     account_type: str | None = Query(default=None, description="ASSET|LIABILITY|INCOME|EXPENSE (default: all)"),
@@ -639,7 +642,7 @@ def general_ledger(
         else _SECTION_ORDER
     )
 
-    all_accs = _load_accounts(session, types_to_load)
+    all_accs = await _load_accounts(session, types_to_load)
     leafs    = [a for a in all_accs if not a.is_placeholder]
 
     sections: list[dict[str, Any]] = []
@@ -655,14 +658,14 @@ def general_ledger(
 
         for acc in type_accs:
             # Opening balance = all activity strictly before from_date
-            open_sums = _debit_credit_sums(
+            open_sums = await _debit_credit_sums(
                 session, [acc.id], None, from_date - timedelta(days=1)
             )
             d0, c0  = open_sums.get(acc.id, (Decimal("0"), Decimal("0")))
             opening = _signed_balance(d0, c0, acc.normal_balance)
 
             # Fetch period transactions
-            txn_rows = session.execute(
+            _txn_r = await session.execute(
                 select(Transaction, TransactionLine)
                 .join(TransactionLine, TransactionLine.transaction_id == Transaction.id)
                 .where(TransactionLine.account_id == acc.id)
@@ -670,7 +673,8 @@ def general_ledger(
                 .where(Transaction.transaction_date <= to_date)
                 .where(Transaction.is_void == False)  # noqa: E712
                 .order_by(Transaction.transaction_date, Transaction.id)
-            ).all()
+            )
+            txn_rows = _txn_r.all()
 
             if not txn_rows and opening == Decimal("0"):
                 continue  # skip dormant zero-balance accounts
@@ -746,13 +750,13 @@ def general_ledger(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard/net-asset-value", summary="Net Asset Value dashboard — history, distribution, insights")
-def dashboard_nav(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_nav(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=12, ge=3, le=60),
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["ASSET", "LIABILITY"])
+    all_accs = await _load_accounts(session, ["ASSET", "LIABILITY"])
     leafs    = [a for a in all_accs if not a.is_placeholder]
     leaf_ids = [a.id for a in leafs]
 
@@ -761,7 +765,7 @@ def dashboard_nav(
     for i in range(months - 1, -1, -1):
         year, month = _month_offset(today, i)
         snap  = today if i == 0 else _month_end(year, month)
-        sums  = _debit_credit_sums(session, leaf_ids, None, snap)
+        sums  = await _debit_credit_sums(session, leaf_ids, None, snap)
         assets = _type_total(leafs, sums, "ASSET")
         liabs  = _type_total(leafs, sums, "LIABILITY")
         history.append({
@@ -772,7 +776,7 @@ def dashboard_nav(
         })
 
     # Current snapshot
-    now_sums   = _debit_credit_sums(session, leaf_ids, None, today)
+    now_sums   = await _debit_credit_sums(session, leaf_ids, None, today)
     now_assets = _type_total(leafs, now_sums, "ASSET")
     now_liabs  = _type_total(leafs, now_sums, "LIABILITY")
     now_nw     = now_assets - now_liabs
@@ -844,21 +848,21 @@ def dashboard_nav(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard/cash-flow", summary="Cash flow dashboard — patterns, insights, suggestions")
-def dashboard_cash_flow(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_cash_flow(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=12, ge=3, le=60),
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["INCOME", "EXPENSE"])
+    all_accs = await _load_accounts(session, ["INCOME", "EXPENSE"])
 
     monthly = []
     for i in range(months - 1, -1, -1):
         year, month = _month_offset(today, i)
         fd = date(year, month, 1)
         td = today if i == 0 else _month_end(year, month)
-        inc = float(sum(x["amount"] for x in _period_items(session, all_accs, ["INCOME"],  fd, td)))
-        exp = float(sum(x["amount"] for x in _period_items(session, all_accs, ["EXPENSE"], fd, td)))
+        inc = float(sum(x["amount"] for x in await _period_items(session, all_accs, ["INCOME"],  fd, td)))
+        exp = float(sum(x["amount"] for x in await _period_items(session, all_accs, ["EXPENSE"], fd, td)))
         monthly.append({
             "label":        f"{year}-{month:02d}",
             "income":       inc,
@@ -868,8 +872,8 @@ def dashboard_cash_flow(
         })
 
     cur_fd = date(today.year, today.month, 1)
-    cur_inc = _period_items(session, all_accs, ["INCOME"],  cur_fd, today)
-    cur_exp = _period_items(session, all_accs, ["EXPENSE"], cur_fd, today)
+    cur_inc = await _period_items(session, all_accs, ["INCOME"],  cur_fd, today)
+    cur_exp = await _period_items(session, all_accs, ["EXPENSE"], cur_fd, today)
 
     nz = [m for m in monthly if m["income"] > 0]
     return {
@@ -904,14 +908,14 @@ _ASSET_CLASSES = {
 }
 
 @router.get("/dashboard/diversification", summary="Asset diversification dashboard")
-def dashboard_diversification(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_diversification(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["ASSET"])
+    all_accs = await _load_accounts(session, ["ASSET"])
     leafs    = [a for a in all_accs if not a.is_placeholder]
-    sums     = _debit_credit_sums(session, [a.id for a in leafs], None, today)
+    sums     = await _debit_credit_sums(session, [a.id for a in leafs], None, today)
 
     class_totals: dict[str, float] = {}
     for acc in leafs:
@@ -949,13 +953,13 @@ def dashboard_diversification(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard/spending-analysis", summary="Spending analysis — category trends and month-on-month delta")
-def dashboard_spending(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_spending(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=6, ge=2, le=24),
 ):
     today    = date.today()
-    all_accs = _load_accounts(session, ["EXPENSE"])
+    all_accs = await _load_accounts(session, ["EXPENSE"])
     labels: list[str] = []
 
     # Build monthly per-category amounts
@@ -966,7 +970,7 @@ def dashboard_spending(
         td    = today if i == 0 else _month_end(year, month)
         label = f"{year}-{month:02d}"
         labels.append(label)
-        items = _period_items(session, all_accs, ["EXPENSE"], fd, td)
+        items = await _period_items(session, all_accs, ["EXPENSE"], fd, td)
         seen  = set()
         for item in items:
             nm = item["name"]
@@ -981,8 +985,8 @@ def dashboard_spending(
     cur_fd = date(today.year, today.month, 1)
     py, pm = _month_offset(today, 1)
     prev_fd, prev_td = date(py, pm, 1), _month_end(py, pm)
-    cur_map  = {x["name"]: float(x["amount"]) for x in _period_items(session, all_accs, ["EXPENSE"], cur_fd, today)}
-    prev_map = {x["name"]: float(x["amount"]) for x in _period_items(session, all_accs, ["EXPENSE"], prev_fd, prev_td)}
+    cur_map  = {x["name"]: float(x["amount"]) for x in await _period_items(session, all_accs, ["EXPENSE"], cur_fd, today)}
+    prev_map = {x["name"]: float(x["amount"]) for x in await _period_items(session, all_accs, ["EXPENSE"], prev_fd, prev_td)}
 
     delta = sorted(
         [{"category": cat,
@@ -1020,18 +1024,18 @@ _TAX_SAVING_CODES = {
 _SECTION_LIMITS = {"80C": 150000, "80D": 50000, "Sec 24": 200000}
 
 @router.get("/dashboard/tax-optimization", summary="Tax optimization — FY utilization and savings potential")
-def dashboard_tax(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_tax(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
 ):
     today    = date.today()
     fy_start = date(today.year if today.month >= 4 else today.year - 1, 4, 1)
-    all_accs = _load_accounts(session, ["EXPENSE", "ASSET"])
-    fy_items = _period_items(session, all_accs, ["EXPENSE", "ASSET"], fy_start, today)
+    all_accs = await _load_accounts(session, ["EXPENSE", "ASSET"])
+    fy_items = await _period_items(session, all_accs, ["EXPENSE", "ASSET"], fy_start, today)
     expense_map = {x["code"]: float(x["amount"]) for x in fy_items}
 
-    income_accs   = _load_accounts(session, ["INCOME"])
-    inc_items     = _period_items(session, income_accs, ["INCOME"], fy_start, today)
+    income_accs   = await _load_accounts(session, ["INCOME"])
+    inc_items     = await _period_items(session, income_accs, ["INCOME"], fy_start, today)
     annual_income = float(sum(x["amount"] for x in inc_items))
 
     sections = []
@@ -1067,23 +1071,23 @@ def dashboard_tax(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard/life-insights", summary="Life insights — runway, FIRE clock, wealth velocity, lifestyle creep, lazy money, passive orchard")
-def dashboard_life_insights(
-    user_id: CurrentUser,
-    session: DBSession,
+async def dashboard_life_insights(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     months: int = Query(default=12, ge=6, le=36),
 ):
     today = date.today()
 
     # ── Load all account groups ───────────────────────────────────────────
-    asset_accs   = _load_accounts(session, ["ASSET"])
-    liab_accs    = _load_accounts(session, ["LIABILITY"])
-    income_accs  = _load_accounts(session, ["INCOME"])
-    expense_accs = _load_accounts(session, ["EXPENSE"])
+    asset_accs   = await _load_accounts(session, ["ASSET"])
+    liab_accs    = await _load_accounts(session, ["LIABILITY"])
+    income_accs  = await _load_accounts(session, ["INCOME"])
+    expense_accs = await _load_accounts(session, ["EXPENSE"])
 
     asset_leafs = [a for a in asset_accs  if not a.is_placeholder]
     liab_leafs  = [a for a in liab_accs   if not a.is_placeholder]
     bs_ids      = [a.id for a in asset_leafs + liab_leafs]
-    bs_sums     = _debit_credit_sums(session, bs_ids, None, today)
+    bs_sums     = await _debit_credit_sums(session, bs_ids, None, today)
 
     total_assets = _type_total(asset_leafs + liab_leafs, bs_sums, "ASSET")
     total_liabs  = _type_total(asset_leafs + liab_leafs, bs_sums, "LIABILITY")
@@ -1100,8 +1104,8 @@ def dashboard_life_insights(
         year, month = _month_offset(today, i)
         fd  = date(year, month, 1)
         td  = today if i == 0 else _month_end(year, month)
-        inc = float(sum(x["amount"] for x in _period_items(session, income_accs,  ["INCOME"],  fd, td)))
-        exp = float(sum(x["amount"] for x in _period_items(session, expense_accs, ["EXPENSE"], fd, td)))
+        inc = float(sum(x["amount"] for x in await _period_items(session, income_accs,  ["INCOME"],  fd, td)))
+        exp = float(sum(x["amount"] for x in await _period_items(session, expense_accs, ["EXPENSE"], fd, td)))
         monthly_data.append({"label": f"{year}-{month:02d}", "income": round(inc, 2), "expenses": round(exp, 2)})
 
     nz_exp = [m for m in monthly_data if m["expenses"] > 0]
@@ -1115,7 +1119,7 @@ def dashboard_life_insights(
     # ── WEALTH VELOCITY ───────────────────────────────────────────────────
     snap_months = min(11, months - 1)
     y12, m12  = _month_offset(today, snap_months)
-    old_sums  = _debit_credit_sums(session, bs_ids, None, _month_end(y12, m12))
+    old_sums  = await _debit_credit_sums(session, bs_ids, None, _month_end(y12, m12))
     nw_12m_ago    = float(_type_total(asset_leafs + liab_leafs, old_sums, "ASSET")
                          - _type_total(asset_leafs + liab_leafs, old_sums, "LIABILITY"))
     nw_growth_12m = nw_now - nw_12m_ago
@@ -1158,8 +1162,8 @@ def dashboard_life_insights(
 
     # ── GUILT-FREE SPEND ─────────────────────────────────────────────────
     cur_fd  = date(today.year, today.month, 1)
-    cur_inc = float(sum(x["amount"] for x in _period_items(session, income_accs,  ["INCOME"],  cur_fd, today)))
-    cur_exp = float(sum(x["amount"] for x in _period_items(session, expense_accs, ["EXPENSE"], cur_fd, today)))
+    cur_inc = float(sum(x["amount"] for x in await _period_items(session, income_accs,  ["INCOME"],  cur_fd, today)))
+    cur_exp = float(sum(x["amount"] for x in await _period_items(session, expense_accs, ["EXPENSE"], cur_fd, today)))
     fun_budget = max(0.0, avg_inc - avg_exp * 0.70)
 
     # ── PASSIVE ORCHARD ───────────────────────────────────────────────────
@@ -1167,7 +1171,7 @@ def dashboard_life_insights(
     fy_start  = date(today.year if today.month >= 4 else today.year - 1, 4, 1)
     fy_months = max(1, (today.year - fy_start.year) * 12 + today.month - fy_start.month + 1)
     inv_total = float(sum(x["amount"] for x in (
-        _period_items(session, inv_accs, ["INCOME"], fy_start, today) if inv_accs else []
+        await _period_items(session, inv_accs, ["INCOME"], fy_start, today) if inv_accs else []
     )))
     monthly_inv = round(inv_total / fy_months, 2)
     coverage    = round(monthly_inv / avg_exp * 100, 1) if avg_exp > 0 else 0.0
@@ -1260,9 +1264,9 @@ def dashboard_life_insights(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/journal", summary="Journal / Day Book — all transactions as double-entry lines")
-def journal(
-    user_id: CurrentUser,
-    session: DBSession,
+async def journal(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     from_date: date | None = Query(default=None, description="Period start (default: first of current month)"),
     to_date:   date | None = Query(default=None, description="Period end (default: today)"),
     page:      int         = Query(default=1, ge=1, description="Page number (1-based)"),
@@ -1285,22 +1289,23 @@ def journal(
         Transaction.is_void == False,  # noqa: E712
     ]
 
-    total = session.scalar(
+    total = await session.scalar(
         select(func.count(Transaction.id)).where(*base_filter)
     ) or 0
 
-    txns = session.execute(
+    txns_result = await session.execute(
         select(Transaction)
         .where(*base_filter)
         .order_by(Transaction.transaction_date, Transaction.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
-    ).scalars().all()
+    )
+    txns = txns_result.scalars().all()
 
     txn_ids = [t.id for t in txns]
     lines_rows: list = []
     if txn_ids:
-        lines_rows = session.execute(
+        lines_result = await session.execute(
             select(TransactionLine, Account)
             .join(Account, TransactionLine.account_id == Account.id)
             .where(TransactionLine.transaction_id.in_(txn_ids))
@@ -1309,7 +1314,8 @@ def journal(
                 TransactionLine.display_order,
                 TransactionLine.id,
             )
-        ).all()
+        )
+        lines_rows = lines_result.all()
 
     lines_map: dict = defaultdict(lambda: {"debits": [], "credits": []})
     for line, acc in lines_rows:
@@ -1361,10 +1367,10 @@ class InsightsRequest(BaseModel):
 
 
 @router.post("/insights", summary="Generate LLM narrative commentary on a report")
-def get_insights(
+async def get_insights(
     body: InsightsRequest,
-    user_id: CurrentUser,
-    session: DBSession,
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     settings: SettingsDep,
 ):
     try:
@@ -1374,12 +1380,13 @@ def get_insights(
         pid = body.provider_id
         # When no provider_id specified, auto-detect: prefer is_default, fall back to any active
         if pid is None:
-            db_prov = session.execute(
+            _prov_result = await session.execute(
                 select(LlmProvider)
-                .where(LlmProvider.user_id == user_id, LlmProvider.is_active == True)  # noqa: E712
+                .where(LlmProvider.is_active == True)  # noqa: E712
                 .order_by(LlmProvider.is_default.desc())
                 .limit(1)
-            ).scalar_one_or_none()
+            )
+            db_prov = _prov_result.scalar_one_or_none()
             if db_prov:
                 pid = db_prov.provider_id
 

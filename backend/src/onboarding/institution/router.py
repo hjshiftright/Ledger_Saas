@@ -3,15 +3,14 @@ from typing import Optional
 from .schemas import InstitutionCreateDTO, InstitutionResponse
 from common.schemas import PaginatedResponse, ErrorResponse
 from .service import InstitutionService
-from sqlalchemy.orm import Session
-from api.deps import DBSession
+from api.deps import TenantDBSession
 from repositories.sqla_institution_repo import SqlAlchemyInstitutionRepository
 
 
 router = APIRouter(prefix="/api/v1/onboarding/institutions", tags=["institutions"])
 
 
-def get_institution_service(session: DBSession) -> InstitutionService:
+def get_institution_service(session: TenantDBSession) -> InstitutionService:
     return InstitutionService(SqlAlchemyInstitutionRepository(session))
 
 
@@ -28,11 +27,11 @@ def get_institution_service(session: DBSession) -> InstitutionService:
         422: {"description": "Validation error", "model": ErrorResponse},
     },
 )
-def add_institution(
+async def add_institution(
     request: InstitutionCreateDTO,
     service: InstitutionService = Depends(get_institution_service),
 ):
-    return service.add_institution(request)
+    return await service.add_institution(request)
 
 
 @router.get(
@@ -45,11 +44,11 @@ def add_institution(
         404: {"description": "Institution not found", "model": ErrorResponse},
     },
 )
-def get_institution(
+async def get_institution(
     institution_id: int,
     service: InstitutionService = Depends(get_institution_service),
 ):
-    return service.get_institution(institution_id)
+    return await service.get_institution(institution_id)
 
 
 @router.get(
@@ -59,7 +58,7 @@ def get_institution(
     description="Retrieve a paginated list of institutions with optional sorting and filtering.",
     operation_id="listInstitutions",
 )
-def list_institutions(
+async def list_institutions(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     size: int = Query(20, ge=1, le=100, description="Items per page"),
     offset: Optional[int] = Query(None, ge=0, description="Override page/size with absolute offset"),
@@ -70,8 +69,7 @@ def list_institutions(
     search: Optional[str] = Query(None, description="Partial match search term for name"),
     service: InstitutionService = Depends(get_institution_service),
 ):
-    # Pass offset and limit to service. Service will handle them over page/size if provided.
-    result = service.list_institutions(
+    result = await service.list_institutions(
         page=page,
         size=size,
         offset=offset,
@@ -97,12 +95,12 @@ def list_institutions(
         422: {"description": "Validation error", "model": ErrorResponse},
     },
 )
-def update_institution(
+async def update_institution(
     institution_id: int,
     request: InstitutionCreateDTO,
     service: InstitutionService = Depends(get_institution_service),
 ):
-    return service.update_institution(institution_id, request)
+    return await service.update_institution(institution_id, request)
 
 
 @router.delete(
@@ -116,8 +114,8 @@ def update_institution(
         404: {"description": "Institution not found", "model": ErrorResponse},
     },
 )
-def delete_institution(
+async def delete_institution(
     institution_id: int,
     service: InstitutionService = Depends(get_institution_service),
 ):
-    service.delete_institution(institution_id)
+    await service.delete_institution(institution_id)

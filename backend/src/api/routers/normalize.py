@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from api.deps import CurrentUser
+from api.deps import CurrentUserPayload
 from api.routers.imports import _batches
 from api.routers.parser import _parsed_rows
 from core.models.enums import BatchStatus
@@ -37,9 +37,9 @@ class NormalizedRowOut(BaseModel):
 
 
 @router.post("/{batch_id}", response_model=NormalizeResponse, summary="Normalize raw parsed rows (SM-E)", operation_id="normalizeBatch")
-def normalize_batch(batch_id: str, user_id: CurrentUser) -> NormalizeResponse:
+async def normalize_batch(batch_id: str, auth: CurrentUserPayload) -> NormalizeResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     raw = _parsed_rows.get(batch_id, [])
     if not raw:
@@ -53,9 +53,9 @@ def normalize_batch(batch_id: str, user_id: CurrentUser) -> NormalizeResponse:
 
 
 @router.get("/{batch_id}/rows", response_model=list[NormalizedRowOut], summary="Get normalized rows", operation_id="getNormalizedRows")
-def get_normalized_rows(batch_id: str, user_id: CurrentUser) -> list[NormalizedRowOut]:
+async def get_normalized_rows(batch_id: str, auth: CurrentUserPayload) -> list[NormalizedRowOut]:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     return [
         NormalizedRowOut(row_id=r.row_id, batch_id=r.batch_id, txn_date=str(r.txn_date) if r.txn_date else None,

@@ -3,11 +3,7 @@ from typing import Optional
 from .schemas import ProfileSetupRequest, ProfileResponse, ProfileStatusResponse, ProfileUpdatePartialRequest
 from common.schemas import ErrorResponse
 from common.exceptions import NotFoundError, ValidationError, DuplicateError
-from api.deps import DBSession, CurrentUser
-
-def _parse_user_id(user: str) -> int:
-    try: return int(user)
-    except: return 0
+from api.deps import DBSession, CurrentUserPayload
 from repositories.sqla_profile_repo import SqlAlchemyProfileRepository
 from .service import ProfileService
 
@@ -29,10 +25,9 @@ def get_profile_service(session: DBSession) -> ProfileService:
         422: {"description": "Validation error", "model": ErrorResponse},
     },
 )
-def create_profile(request: ProfileSetupRequest, user: CurrentUser, service: ProfileService = Depends(get_profile_service)):
-    uid = _parse_user_id(user)
+async def create_profile(request: ProfileSetupRequest, auth: CurrentUserPayload, service: ProfileService = Depends(get_profile_service)):
     try:
-        return service.setup_profile(request, uid)
+        return await service.setup_profile(request, int(auth.user_id))
     except DuplicateError as e:
         return Response(
             status_code=409,
@@ -48,7 +43,7 @@ def create_profile(request: ProfileSetupRequest, user: CurrentUser, service: Pro
 
 
 @router.get("", summary="List profiles")
-def list_profiles(
+async def list_profiles(
     fields: Optional[str] = Query(None),
     limit: int = Query(10, ge=1),
     offset: int = Query(0, ge=0),
@@ -69,8 +64,8 @@ def list_profiles(
     if base_currency:
         filters["base_currency"] = base_currency
 
-    items = service.list_profiles(limit, offset, sort_by, sort_desc, filters)
-    total = service.count_profiles(filters)
+    items = await service.list_profiles(limit, offset, sort_by, sort_desc, filters)
+    total = await service.count_profiles(filters)
 
     if fields:
         allowed = {f.strip() for f in fields.split(",")} | {"id"}
@@ -89,9 +84,9 @@ def list_profiles(
 
 
 @router.get("/{profile_id}", response_model=ProfileResponse)
-def get_profile(profile_id: int, service: ProfileService = Depends(get_profile_service)):
+async def get_profile(profile_id: int, service: ProfileService = Depends(get_profile_service)):
     try:
-        return service.get_profile(profile_id)
+        return await service.get_profile(profile_id)
     except NotFoundError:
         return Response(
             status_code=404,
@@ -101,10 +96,9 @@ def get_profile(profile_id: int, service: ProfileService = Depends(get_profile_s
 
 
 @router.put("/{profile_id}", response_model=ProfileResponse)
-def update_profile(profile_id: int, request: ProfileSetupRequest, user: CurrentUser, service: ProfileService = Depends(get_profile_service)):
-    uid = _parse_user_id(user)
+async def update_profile(profile_id: int, request: ProfileSetupRequest, auth: CurrentUserPayload, service: ProfileService = Depends(get_profile_service)):
     try:
-        return service.setup_profile(request, uid, profile_id)
+        return await service.setup_profile(request, int(auth.user_id), profile_id)
     except NotFoundError:
         return Response(
             status_code=404,
@@ -114,14 +108,13 @@ def update_profile(profile_id: int, request: ProfileSetupRequest, user: CurrentU
 
 
 @router.patch("/{profile_id}", response_model=ProfileResponse)
-def patch_profile(profile_id: int, request: ProfileUpdatePartialRequest, user: CurrentUser, service: ProfileService = Depends(get_profile_service)):
-    uid = _parse_user_id(user)
+async def patch_profile(profile_id: int, request: ProfileUpdatePartialRequest, auth: CurrentUserPayload, service: ProfileService = Depends(get_profile_service)):
     try:
-        existing = service.get_profile(profile_id)
+        existing = await service.get_profile(profile_id)
         update_data = request.model_dump(exclude_unset=True)
         dumped = existing.model_dump()
         dumped.update(update_data)
-        return service.setup_profile(ProfileSetupRequest(**dumped), uid, profile_id)
+        return await service.setup_profile(ProfileSetupRequest(**dumped), int(auth.user_id), profile_id)
     except NotFoundError:
         return Response(
             status_code=404,
@@ -131,9 +124,9 @@ def patch_profile(profile_id: int, request: ProfileUpdatePartialRequest, user: C
 
 
 @router.delete("/{profile_id}", status_code=204)
-def delete_profile(profile_id: int, service: ProfileService = Depends(get_profile_service)):
+async def delete_profile(profile_id: int, service: ProfileService = Depends(get_profile_service)):
     try:
-        service.delete_profile(profile_id)
+        await service.delete_profile(profile_id)
     except NotFoundError:
         return Response(
             status_code=404,
@@ -144,9 +137,9 @@ def delete_profile(profile_id: int, service: ProfileService = Depends(get_profil
 
 
 @router.get("/{profile_id}/status", response_model=ProfileStatusResponse)
-def get_status(profile_id: int, service: ProfileService = Depends(get_profile_service)):
+async def get_status(profile_id: int, service: ProfileService = Depends(get_profile_service)):
     try:
-        complete = service.is_profile_complete(profile_id)
+        complete = await service.is_profile_complete(profile_id)
         return ProfileStatusResponse(complete=complete)
     except NotFoundError:
         return Response(
@@ -154,7 +147,3 @@ def get_status(profile_id: int, service: ProfileService = Depends(get_profile_se
             content=ErrorResponse(error_code="NOT_FOUND", message="Profile not found").model_dump_json(),
             media_type="application/json",
         )
-
-
-    # If it's in DB, we consider it configured
-    return ProfileStatusResponse(complete=True)

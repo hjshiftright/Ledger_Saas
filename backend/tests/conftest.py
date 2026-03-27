@@ -263,11 +263,31 @@ async def postgres_engine() -> AsyncGenerator[AsyncEngine, None]:
                 $$;
             '''))
             
-            # Enable RLS on specific test tables
+            # Enable RLS on all tenant-scoped tables
             tenant_tables = [
+                # Core financials
                 "transactions", "transaction_lines", "transaction_charges", "attachments",
-                "accounts", "financial_institutions", "bank_accounts", "fixed_deposits", 
-                "credit_cards", "loans", "brokerage_accounts"
+                # Accounts
+                "accounts", "financial_institutions", "bank_accounts", "fixed_deposits",
+                "credit_cards", "loans", "brokerage_accounts",
+                # System / settings
+                "llm_providers", "app_settings", "audit_log", "notifications",
+                # Import pipeline
+                "import_batches",
+                # Reporting / snapshots
+                "monthly_snapshots", "net_worth_history", "saved_reports",
+                # Categories & rules
+                "payees", "tags", "transaction_tags", "user_category_rules",
+                # Budgets
+                "budgets", "budget_items",
+                # Goals
+                "goals", "goal_milestones", "goal_contributions", "goal_account_mappings",
+                # Securities
+                "fo_positions", "holdings_summary",
+                # Recurring
+                "recurring_transactions", "recurring_transaction_lines",
+                # Tax
+                "tax_lots", "tax_lot_disposals", "tax_section_mappings",
             ]
             for table in tenant_tables:
                 await conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))

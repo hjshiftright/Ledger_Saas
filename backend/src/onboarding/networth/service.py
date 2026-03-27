@@ -19,8 +19,8 @@ class NetWorthService:
         self._accounts = account_repo
         self._txs = tx_repo
 
-    def compute_initial_net_worth(self, as_of: str) -> NetWorthSnapshotDTO:
-        tree = self._accounts.get_tree()
+    async def compute_initial_net_worth(self, as_of: str) -> NetWorthSnapshotDTO:
+        tree = await self._accounts.get_tree()
 
         # Flat list from SQLAlchemy — filter non-placeholder leaves directly
         all_leaves = [n for n in tree if not _attr(n, "is_placeholder", False)]
@@ -37,7 +37,7 @@ class NetWorthService:
 
         for leaf in all_leaves:
             l_id = _attr(leaf, "id")
-            ob = self._txs.get_opening_balance_for_account(l_id)
+            ob = await self._txs.get_opening_balance_for_account(l_id)
             if not ob:
                 continue
 
@@ -85,7 +85,7 @@ class NetWorthService:
             breakdown=breakdown,
         )
 
-        self._snapshots.save_net_worth({
+        await self._snapshots.save_net_worth({
             "snapshot_date": as_of,
             "total_assets": total_assets,
             "total_liabilities": total_liabilities,
@@ -94,4 +94,3 @@ class NetWorthService:
         event_bus.publish("networth.computed", {"net_worth": net_worth})
 
         return dto
-

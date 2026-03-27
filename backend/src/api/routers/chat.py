@@ -24,7 +24,7 @@ from fastapi import HTTPException
 from fastapi.routing import APIRouter
 from pydantic import BaseModel
 
-from api.deps import CurrentUser, DBSession, SettingsDep
+from api.deps import CurrentUserPayload, TenantDBSession, SettingsDep
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def _classify(msg: str) -> set[str]:
 
 # ── Context fetch ─────────────────────────────────────────────────────────────
 
-def _fetch_context(user_id: str, session: Any, categories: set[str]) -> dict[str, Any]:
+async def _fetch_context(auth: CurrentUserPayload, session: Any, categories: set[str]) -> dict[str, Any]:
     """Pull the minimal set of financial data needed to answer the question."""
     from api.routers.reports import (  # noqa: PLC0415
         reports_summary,
@@ -86,8 +86,8 @@ def _fetch_context(user_id: str, session: Any, categories: set[str]) -> dict[str
 
     # Summary is always included — net worth, period I&E, top expenses
     try:
-        ctx["financial_summary"] = reports_summary(
-            user_id=user_id, session=session,
+        ctx["financial_summary"] = await reports_summary(
+            auth=auth, session=session,
             as_of=today, from_date=None, to_date=None,
         )
     except Exception as exc:
@@ -95,57 +95,57 @@ def _fetch_context(user_id: str, session: Any, categories: set[str]) -> dict[str
 
     if "goals" in categories:
         try:
-            raw = list_goals(user=user_id, session=session)
+            raw = await list_goals(auth=auth, session=session)
             ctx["goals"] = [g.model_dump() for g in raw]
         except Exception as exc:
             logger.warning("chat ctx: goals failed: %s", exc)
 
     if "budgets" in categories:
         try:
-            raw = list_budgets(user=user_id, session=session)
+            raw = await list_budgets(auth=auth, session=session)
             ctx["budgets"] = [b.model_dump() for b in raw]
         except Exception as exc:
             logger.warning("chat ctx: budgets failed: %s", exc)
 
     if {"expense", "income"} & categories:
         try:
-            ctx["income_expense"] = income_expense(
-                user_id=user_id, session=session, from_date=None, to_date=None,
+            ctx["income_expense"] = await income_expense(
+                auth=auth, session=session, from_date=None, to_date=None,
             )
-            ctx["expense_breakdown"] = expense_categories(
-                user_id=user_id, session=session, from_date=None, to_date=None,
+            ctx["expense_breakdown"] = await expense_categories(
+                auth=auth, session=session, from_date=None, to_date=None,
             )
         except Exception as exc:
             logger.warning("chat ctx: income/expense failed: %s", exc)
 
     if "assets" in categories:
         try:
-            ctx["balance_sheet"] = balance_sheet(
-                user_id=user_id, session=session, as_of=None,
+            ctx["balance_sheet"] = await balance_sheet(
+                auth=auth, session=session, as_of=None,
             )
         except Exception as exc:
             logger.warning("chat ctx: balance-sheet failed: %s", exc)
 
     if "trends" in categories:
         try:
-            ctx["monthly_trend"] = monthly_trend(
-                user_id=user_id, session=session, months=12,
+            ctx["monthly_trend"] = await monthly_trend(
+                auth=auth, session=session, months=12,
             )
         except Exception as exc:
             logger.warning("chat ctx: trend failed: %s", exc)
 
     if "fire" in categories:
         try:
-            ctx["life_insights"] = dashboard_life_insights(
-                user_id=user_id, session=session, months=12,
+            ctx["life_insights"] = await dashboard_life_insights(
+                auth=auth, session=session, months=12,
             )
         except Exception as exc:
             logger.warning("chat ctx: life-insights failed: %s", exc)
 
     if "tax" in categories:
         try:
-            ctx["tax_optimization"] = dashboard_tax(
-                user_id=user_id, session=session,
+            ctx["tax_optimization"] = await dashboard_tax(
+                auth=auth, session=session,
             )
         except Exception as exc:
             logger.warning("chat ctx: tax failed: %s", exc)
@@ -236,10 +236,10 @@ def _call_llm(provider_name: str, provider: Any, system: str,
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("", summary="Conversational AI — answers financial questions with live data")
-def chat(
+async def chat(
     body: ChatRequest,
-    user_id: CurrentUser,
-    session: DBSession,
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     settings: SettingsDep,
 ):
     # 1. Resolve LLM provider
@@ -250,19 +250,15 @@ def chat(
 
         pid = body.provider_id
         if pid is None:
-            db_prov = session.execute(
+            db_prov = await session.scalar(
                 select(LlmProvider)
-                .where(
-                    LlmProvider.user_id == user_id,
-                    LlmProvider.is_active == True,  # noqa: E712
-                )
                 .order_by(LlmProvider.is_default.desc())
                 .limit(1)
-            ).scalar_one_or_none()
+            )
             if db_prov:
                 pid = db_prov.provider_id
 
-        provider_name, provider = _resolve_provider(user_id, pid, settings, session)
+        provider_name, provider = await _resolve_provider(pid, settings, session)
 
     except HTTPException:
         return {
@@ -275,7 +271,7 @@ def chat(
 
     # 2. Classify question & fetch grounding data
     categories = _classify(body.message)
-    ctx_data   = _fetch_context(user_id, session, categories)
+    ctx_data   = await _fetch_context(auth, session, categories)
     ctx_json   = json.dumps(ctx_data, indent=2, default=str)
 
     system = _SYSTEM_PROMPT.format(

@@ -18,7 +18,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
-from api.deps import CurrentUser, SettingsDep
+from api.deps import CurrentUserPayload, SettingsDep
 from core.models.enums import BatchStatus, FileFormat, SourceType
 from core.models.import_batch import ImportBatch
 from modules.parser.detector import SourceDetector
@@ -122,7 +122,7 @@ def _batch_to_detail(b: ImportBatch) -> BatchDetailResponse:
     operation_id="uploadImport",
 )
 async def upload_import(
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     settings: SettingsDep,
     file: Annotated[UploadFile, File(description="Statement file (PDF/CSV/XLS/XLSX). Max 50 MB.")],
     account_id: Annotated[str, Form(description="Account UUID this statement belongs to")] = "",
@@ -145,9 +145,9 @@ async def upload_import(
     file_hash  = hashlib.sha256(file_bytes).hexdigest()
     warnings: list[str] = []
 
-    # Duplicate detection (same content already uploaded by this user)
+    # Duplicate detection (same content already uploaded by this tenant)
     for existing in _batches.values():
-        if getattr(existing, "user_id", None) == user_id and getattr(existing, "file_hash", None) == file_hash:
+        if getattr(existing, "tenant_id", None) == auth.tenant_id and getattr(existing, "file_hash", None) == file_hash:
             warnings.append(f"Duplicate file detected. Existing batch: {existing.batch_id}")
             break
 
@@ -165,7 +165,7 @@ async def upload_import(
 
     # Create ImportBatch
     batch = ImportBatch(
-        user_id=user_id,
+        user_id=auth.user_id,
         account_id=account_id or str(uuid.uuid4()),
         filename=filename,
         file_hash=file_hash,
@@ -178,6 +178,7 @@ async def upload_import(
     object.__setattr__(batch, "detection_confidence", detection.confidence)
     object.__setattr__(batch, "is_encrypted", False)
     object.__setattr__(batch, "file_bytes_cache", file_bytes)
+    object.__setattr__(batch, "tenant_id", auth.tenant_id)
 
     _batches[batch.batch_id] = batch
 
@@ -204,13 +205,13 @@ async def upload_import(
     summary="List all import batches for the current user",
     operation_id="listImports",
 )
-def list_imports(
-    user_id: CurrentUser,
+async def list_imports(
+    auth: CurrentUserPayload,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> BatchListResponse:
-    user_batches = [b for b in _batches.values() if getattr(b, "user_id", None) == user_id]
+    user_batches = [b for b in _batches.values() if getattr(b, "tenant_id", None) == auth.tenant_id]
     if status_filter:
         user_batches = [b for b in user_batches if b.status.value == status_filter.upper()]
 
@@ -248,9 +249,9 @@ def list_imports(
     summary="Get import batch status and metadata",
     operation_id="getImport",
 )
-def get_import(batch_id: str, user_id: CurrentUser) -> BatchDetailResponse:
+async def get_import(batch_id: str, auth: CurrentUserPayload) -> BatchDetailResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
     return _batch_to_detail(batch)
 
@@ -263,9 +264,9 @@ def get_import(batch_id: str, user_id: CurrentUser) -> BatchDetailResponse:
     summary="Cancel or rollback an import batch",
     operation_id="deleteImport",
 )
-def delete_import(batch_id: str, user_id: CurrentUser) -> None:
+async def delete_import(batch_id: str, auth: CurrentUserPayload) -> None:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Batch not found."})
     terminal_states = {BatchStatus.COMPLETED, BatchStatus.CANCELLED}
     if batch.status in terminal_states:

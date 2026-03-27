@@ -10,7 +10,7 @@ class SqlAlchemyAccountDetailRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def _get_model_for_type(self, detail_type: str) -> Type:
+    def _get_model_for_type(self, detail_type: str) -> Type:
         mapping = {
             "BANK_ACCOUNT": BankAccount,
             "FIXED_DEPOSIT": FixedDeposit,
@@ -31,7 +31,7 @@ class SqlAlchemyAccountDetailRepository:
         await self.session.flush()
         return detail
 
-    async def _map_data(self, detail_type: str, data: dict) -> dict:
+    def _map_data(self, detail_type: str, data: dict) -> dict:
         mapped = data.copy()
         for k in list(mapped.keys()):
             if k in ("start_date", "maturity_date", "deposit_date", "disbursement_date", "opening_date"):

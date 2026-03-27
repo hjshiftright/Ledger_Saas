@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Optional
 
 from common.schemas import PaginatedResponse, ErrorResponse
-from api.deps import DBSession
+from api.deps import TenantDBSession
 from repositories.sqla_account_repo import AccountRepository
 from repositories.sqla_institution_repo import SqlAlchemyInstitutionRepository
 from repositories.sqla_account_detail_repo import SqlAlchemyAccountDetailRepository
@@ -15,7 +15,7 @@ from .service import AccountSetupService
 
 router = APIRouter(prefix="/api/v1/onboarding/accounts", tags=["accounts"])
 
-def get_account_service(session: DBSession) -> AccountSetupService:
+def get_account_service(session: TenantDBSession) -> AccountSetupService:
     return AccountSetupService(
         AccountRepository(session),
         SqlAlchemyInstitutionRepository(session),
@@ -61,8 +61,8 @@ def _format_response(result: dict) -> dict:
     summary="Create bank account",
     operation_id="createBankAccount",
 )
-def add_bank_account(request: BankAccountSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_bank_account(request))
+async def add_bank_account(request: BankAccountSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_bank_account(request))
 
 @router.post(
     "/credit-card",
@@ -71,8 +71,8 @@ def add_bank_account(request: BankAccountSetupDTO, service: AccountSetupService 
     summary="Create credit card",
     operation_id="createCreditCard",
 )
-def add_credit_card(request: CreditCardSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_credit_card(request))
+async def add_credit_card(request: CreditCardSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_credit_card(request))
 
 @router.post(
     "/loan",
@@ -81,8 +81,8 @@ def add_credit_card(request: CreditCardSetupDTO, service: AccountSetupService = 
     summary="Create loan account",
     operation_id="createLoanAccount",
 )
-def add_loan(request: LoanSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_loan(request))
+async def add_loan(request: LoanSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_loan(request))
 
 @router.post(
     "/brokerage",
@@ -91,8 +91,8 @@ def add_loan(request: LoanSetupDTO, service: AccountSetupService = Depends(get_a
     summary="Create brokerage account",
     operation_id="createBrokerageAccount",
 )
-def add_brokerage_account(request: BrokerageSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_brokerage_account(request))
+async def add_brokerage_account(request: BrokerageSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_brokerage_account(request))
 
 @router.post(
     "/fixed-deposit",
@@ -101,8 +101,8 @@ def add_brokerage_account(request: BrokerageSetupDTO, service: AccountSetupServi
     summary="Create fixed deposit",
     operation_id="createFixedDeposit",
 )
-def add_fixed_deposit(request: FixedDepositSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_fixed_deposit(request))
+async def add_fixed_deposit(request: FixedDepositSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_fixed_deposit(request))
 
 @router.post(
     "/cash",
@@ -111,8 +111,8 @@ def add_fixed_deposit(request: FixedDepositSetupDTO, service: AccountSetupServic
     summary="Create cash wallet",
     operation_id="createCashWallet",
 )
-def add_cash_wallet(request: CashWalletSetupDTO, service: AccountSetupService = Depends(get_account_service)):
-    return _format_response(service.add_cash_wallet(request))
+async def add_cash_wallet(request: CashWalletSetupDTO, service: AccountSetupService = Depends(get_account_service)):
+    return _format_response(await service.add_cash_wallet(request))
 
 @router.get(
     "",
@@ -120,14 +120,13 @@ def add_cash_wallet(request: CashWalletSetupDTO, service: AccountSetupService = 
     summary="List accounts",
     operation_id="listAccounts",
 )
-def list_accounts(
+async def list_accounts(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1),
     account_type: Optional[str] = None,
     institution_id: Optional[int] = None,
     service: AccountSetupService = Depends(get_account_service),
 ):
-    # Stubbed awaiting service layer
     return {
         "items": [], "total": 0, "page": page, "size": size, "pages": 0,
         "offset": 0, "has_next": False, "has_previous": False
@@ -140,8 +139,7 @@ def list_accounts(
     operation_id="getAccount",
     responses={404: {"model": ErrorResponse}}
 )
-def get_account(account_id: int, service: AccountSetupService = Depends(get_account_service)):
-    # Stubbed awaiting service layer
+async def get_account(account_id: int, service: AccountSetupService = Depends(get_account_service)):
     raise HTTPException(status_code=404, detail="Awaiting service layer")
 
 @router.delete(
@@ -151,6 +149,5 @@ def get_account(account_id: int, service: AccountSetupService = Depends(get_acco
     operation_id="deleteAccount",
     responses={404: {"model": ErrorResponse}}
 )
-def delete_account(account_id: int, service: AccountSetupService = Depends(get_account_service)):
-    # Stubbed awaiting service layer
+async def delete_account(account_id: int, service: AccountSetupService = Depends(get_account_service)):
     pass

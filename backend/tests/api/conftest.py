@@ -1,18 +1,20 @@
 """
 Shared fixtures for all onboarding API-level tests.
 
-Provides a TestClient with fresh in-memory SQLite state per test, plus
-pre-seeded variants for modules that depend on profile/COA/institutions.
+Provides a TestClient with fresh in-memory aiosqlite state per test,
+plus pre-seeded variants for modules that depend on profile/COA/institutions.
+All fixtures are async (asyncio_mode = auto handles the bridge to sync tests).
 """
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event as sa_event
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from api.deps import get_db, get_tenant_db
 from db.models.base import Base
-from db.engine import get_session
-from api.deps import get_db
 from main import app
 
 # Import all models to ensure they are registered with Base.metadata
@@ -22,76 +24,95 @@ from db.models import (  # noqa: F401
     transactions, users,
 )
 
-# Use in-memory SQLite for tests
-TEST_DATABASE_URL = "sqlite:///:memory:"
-
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestSessionFactory = sessionmaker(bind=test_engine, autoflush=False, expire_on_commit=False)
-
-
-def override_get_session():
-    """FastAPI Dependency override: use in-memory SQLite per test."""
-    session = TestSessionFactory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-# Apply the dependency override for both possible entry points
-app.dependency_overrides[get_session] = override_get_session
-app.dependency_overrides[get_db] = override_get_session
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create all tables before each test and drop them after."""
-    Base.metadata.create_all(bind=test_engine)
-    yield
-    Base.metadata.drop_all(bind=test_engine)
+TEST_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture
-def client():
-    """FastAPI TestClient with fresh in-memory database per test."""
-    return TestClient(app)
+async def _engine():
+    """Shared in-memory SQLite engine for a single test."""
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest.fixture
-def raw_session():
-    """Direct DB session for inserting test fixture data into the same in-memory engine.
+async def client(_engine):
+    """FastAPI TestClient backed by fresh in-memory aiosqlite per test."""
+    SessionFactory = async_sessionmaker(
+        bind=_engine,
+        autoflush=True,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
 
-    Use this to pre-populate tables (transactions, accounts, etc.) without going
-    through the HTTP API.  The session shares the same StaticPool engine as the
-    TestClient, so data is immediately visible to API calls within the same test.
+    async def override_get_tenant_db():
+        async with SessionFactory() as sess:
+            @sa_event.listens_for(sess.sync_session, "before_flush")
+            def _auto_tenant(session, ctx, instances):
+                for obj in session.new:
+                    if hasattr(obj, "tenant_id") and obj.tenant_id is None:
+                        obj.tenant_id = TEST_TENANT_ID
+            try:
+                yield sess
+                await sess.commit()
+            except Exception:
+                await sess.rollback()
+                raise
+
+    async def override_get_db():
+        async with SessionFactory() as sess:
+            try:
+                yield sess
+                await sess.commit()
+            except Exception:
+                await sess.rollback()
+                raise
+
+    app.dependency_overrides[get_tenant_db] = override_get_tenant_db
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as c:
+        yield c
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def raw_session(_engine):
+    """Direct async DB session for inserting test fixture data.
+
+    Shares the same StaticPool engine as the TestClient, so data is
+    immediately visible to API calls within the same test.
     """
-    s = TestSessionFactory()
-    try:
-        yield s
-        s.commit()
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    SessionFactory = async_sessionmaker(
+        bind=_engine,
+        autoflush=True,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+    async with SessionFactory() as sess:
+        # Auto-set tenant_id for inserted objects
+        @sa_event.listens_for(sess.sync_session, "before_flush")
+        def _auto_tenant(session, ctx, instances):
+            for obj in session.new:
+                if hasattr(obj, "tenant_id") and obj.tenant_id is None:
+                    obj.tenant_id = TEST_TENANT_ID
+        yield sess
 
 
 @pytest.fixture
-def seeded_client(client):
-    """TestClient with profile + COA already initialised.
-
-    Many modules (accounts, opening balances, net worth) require these
-    to exist before they can function.
-    """
-    # 1) Create profile
+async def seeded_client(client):
+    """TestClient with profile + COA already initialised."""
     client.post("/api/v1/onboarding/profiles", json={
         "display_name": "Test User",
         "base_currency": "INR",
@@ -100,10 +121,7 @@ def seeded_client(client):
         "date_format": "DD/MM/YYYY",
         "number_format": "INDIAN",
     })
-
-    # 2) Initialise COA
     client.post("/api/v1/onboarding/coa/initialize")
-
     return client
 
 
@@ -129,4 +147,3 @@ def create_bank_account(client, institution_id, display_name="HDFC Savings"):
     resp = client.post("/api/v1/onboarding/accounts/bank", json=payload)
     assert resp.status_code == 201, resp.text
     return resp.json()
-

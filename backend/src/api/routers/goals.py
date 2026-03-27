@@ -1,7 +1,7 @@
-"""Goals CRUD API — all goals are scoped to the authenticated user.
+"""Goals CRUD API — all goals are scoped to the authenticated tenant via RLS.
 
 Endpoints:
-    GET    /api/v1/goals            — list this user's goals with progress %
+    GET    /api/v1/goals            — list tenant's goals with progress %
     POST   /api/v1/goals            — create a goal
     GET    /api/v1/goals/{id}       — get single goal
     PATCH  /api/v1/goals/{id}       — partial update (including current_amount)
@@ -9,13 +9,14 @@ Endpoints:
 """
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from api.deps import CurrentUser, DBSession
+from api.deps import CurrentUserPayload, TenantDBSession
 from repositories.sqla_goal_repo import SqlAlchemyGoalRepository
 
 router = APIRouter(prefix="/goals", tags=["Goals"])
@@ -29,10 +30,9 @@ class GoalCreate(BaseModel):
     target_amount: Decimal
     current_amount: Decimal = Decimal(0)
     target_date: date | None = None
-    start_date: date
-    priority: str = "MEDIUM"
-    icon: str | None = None
-    color: str | None = None
+    currency_code: str = "INR"
+    sip_amount: Decimal | None = None
+    expected_return_rate: Decimal | None = None
     notes: str | None = None
 
 
@@ -42,10 +42,8 @@ class GoalUpdate(BaseModel):
     target_amount: Decimal | None = None
     current_amount: Decimal | None = None
     target_date: date | None = None
-    priority: str | None = None
-    status: str | None = None
-    icon: str | None = None
-    color: str | None = None
+    is_active: bool | None = None
+    sip_amount: Decimal | None = None
     notes: str | None = None
 
 
@@ -56,11 +54,8 @@ class GoalOut(BaseModel):
     target_amount: str
     current_amount: str
     target_date: str | None
-    start_date: str
-    priority: str
-    status: str
-    icon: str | None
-    color: str | None
+    currency_code: str
+    is_active: bool
     notes: str | None
     progress_pct: float
 
@@ -78,68 +73,53 @@ def _to_out(g) -> GoalOut:
         target_amount=str(g.target_amount),
         current_amount=str(g.current_amount),
         target_date=str(g.target_date) if g.target_date else None,
-        start_date=str(g.start_date),
-        priority=g.priority,
-        status=g.status,
-        icon=g.icon,
-        color=g.color,
+        currency_code=g.currency_code,
+        is_active=g.is_active,
         notes=g.notes,
         progress_pct=pct,
     )
 
 
-def _parse_user_id(user: str) -> int:
-    try:
-        return int(user)
-    except (ValueError, TypeError):
-        return 0
-
-
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.get("", response_model=list[GoalOut], summary="List this user's goals")
-def list_goals(user: CurrentUser, session: DBSession):
-    uid = _parse_user_id(user)
+@router.get("", response_model=list[GoalOut], summary="List tenant's goals")
+async def list_goals(auth: CurrentUserPayload, session: TenantDBSession):
     repo = SqlAlchemyGoalRepository(session)
-    return [_to_out(g) for g in repo.list(user_id=uid)]
+    return [_to_out(g) for g in await repo.list()]
 
 
 @router.post("", response_model=GoalOut, status_code=201, summary="Create a goal")
-def create_goal(user: CurrentUser, session: DBSession, body: GoalCreate):
-    uid = _parse_user_id(user)
+async def create_goal(auth: CurrentUserPayload, session: TenantDBSession, body: GoalCreate):
     repo = SqlAlchemyGoalRepository(session)
     data = body.model_dump()
-    data["user_id"] = uid
-    g = repo.create(data)
+    data["tenant_id"] = uuid.UUID(auth.tenant_id)
+    g = await repo.create(data)
     return _to_out(g)
 
 
 @router.get("/{goal_id}", response_model=GoalOut, summary="Get a single goal")
-def get_goal(user: CurrentUser, session: DBSession, goal_id: int):
-    uid = _parse_user_id(user)
+async def get_goal(auth: CurrentUserPayload, session: TenantDBSession, goal_id: int):
     repo = SqlAlchemyGoalRepository(session)
-    g = repo.get(goal_id, user_id=uid)
+    g = await repo.get(goal_id)
     if not g:
         raise HTTPException(404, "Goal not found")
     return _to_out(g)
 
 
 @router.patch("/{goal_id}", response_model=GoalOut, summary="Partially update a goal")
-def update_goal(user: CurrentUser, session: DBSession, goal_id: int, body: GoalUpdate):
-    uid = _parse_user_id(user)
+async def update_goal(auth: CurrentUserPayload, session: TenantDBSession, goal_id: int, body: GoalUpdate):
     repo = SqlAlchemyGoalRepository(session)
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    g = repo.update(goal_id, updates, user_id=uid)
+    g = await repo.update(goal_id, updates)
     if not g:
         raise HTTPException(404, "Goal not found")
     return _to_out(g)
 
 
 @router.delete("/{goal_id}", status_code=204, summary="Delete a goal")
-def delete_goal(user: CurrentUser, session: DBSession, goal_id: int):
-    uid = _parse_user_id(user)
+async def delete_goal(auth: CurrentUserPayload, session: TenantDBSession, goal_id: int):
     repo = SqlAlchemyGoalRepository(session)
-    g = repo.get(goal_id, user_id=uid)
+    g = await repo.get(goal_id)
     if not g:
         raise HTTPException(404, "Goal not found")
-    session.delete(g)
+    await session.delete(g)

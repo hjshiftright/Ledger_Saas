@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
 from common.schemas import ErrorResponse
-from api.deps import DBSession
+from api.deps import TenantDBSession
 from repositories.sqla_account_repo import AccountRepository
 from .schemas import (
     AccountNodeResponse, COARenameRequest, COACategoryAddRequest,
@@ -12,7 +12,7 @@ from .service import COASetupService
 
 router = APIRouter(prefix="/api/v1/onboarding/coa", tags=["coa"])
 
-def get_coa_service(session: DBSession) -> COASetupService:
+def get_coa_service(session: TenantDBSession) -> COASetupService:
     return COASetupService(AccountRepository(session))
 
 @router.post(
@@ -27,11 +27,10 @@ def get_coa_service(session: DBSession) -> COASetupService:
         409: {"description": "COA already initialized", "model": ErrorResponse},
     }
 )
-def initialize_coa(service: COASetupService = Depends(get_coa_service)):
-    # Need to protect against double initialization
-    if service.is_coa_ready():
+async def initialize_coa(service: COASetupService = Depends(get_coa_service)):
+    if await service.is_coa_ready():
         raise HTTPException(status_code=409, detail="COA already initialized")
-    return service.create_default_coa()
+    return await service.create_default_coa()
 
 @router.get(
     "/tree",
@@ -40,9 +39,8 @@ def initialize_coa(service: COASetupService = Depends(get_coa_service)):
     description="Retrieve the entire Chart of Accounts in a hierarchical tree structure.",
     operation_id="getCOATree"
 )
-def get_coa_tree(service: COASetupService = Depends(get_coa_service)):
-    # The existing method returns {"items": [...]}. The test wants a List, so we extract items.
-    tree_response = service.get_coa_tree()
+async def get_coa_tree(service: COASetupService = Depends(get_coa_service)):
+    tree_response = await service.get_coa_tree()
     return tree_response.items
 
 @router.get(
@@ -56,8 +54,8 @@ def get_coa_tree(service: COASetupService = Depends(get_coa_service)):
         404: {"description": "Account not found", "model": ErrorResponse},
     }
 )
-def get_account(account_id: int, service: COASetupService = Depends(get_coa_service)):
-    node = service._accounts.get(account_id)
+async def get_account(account_id: int, service: COASetupService = Depends(get_coa_service)):
+    node = await service._accounts.get(account_id)
     if not node:
         raise HTTPException(status_code=404, detail="Account not found")
     return service._to_response(node)
@@ -75,8 +73,8 @@ def get_account(account_id: int, service: COASetupService = Depends(get_coa_serv
         422: {"description": "Validation error", "model": ErrorResponse},
     }
 )
-def add_custom_category(req: COACategoryAddRequest, service: COASetupService = Depends(get_coa_service)):
-    return service.add_custom_category(req.parent_id, req.name)
+async def add_custom_category(req: COACategoryAddRequest, service: COASetupService = Depends(get_coa_service)):
+    return await service.add_custom_category(req.parent_id, req.name)
 
 @router.put(
     "/accounts/{account_id}/rename",
@@ -90,9 +88,9 @@ def add_custom_category(req: COACategoryAddRequest, service: COASetupService = D
         404: {"description": "Account not found", "model": ErrorResponse},
     }
 )
-def rename_account(account_id: int, req: COARenameRequest, service: COASetupService = Depends(get_coa_service)):
+async def rename_account(account_id: int, req: COARenameRequest, service: COASetupService = Depends(get_coa_service)):
     try:
-        return service.rename_account(account_id, req.new_name)
+        return await service.rename_account(account_id, req.new_name)
     except Exception as e:
         if "System accounts cannot be renamed" in str(e):
             raise HTTPException(status_code=403, detail="SYSTEM_ACCOUNT")
@@ -110,9 +108,9 @@ def rename_account(account_id: int, req: COARenameRequest, service: COASetupServ
         404: {"description": "Account not found", "model": ErrorResponse},
     }
 )
-def deactivate_account(account_id: int, service: COASetupService = Depends(get_coa_service)):
+async def deactivate_account(account_id: int, service: COASetupService = Depends(get_coa_service)):
     try:
-        service.deactivate_category(account_id)
+        await service.deactivate_category(account_id)
     except Exception as e:
         if "System accounts cannot be deactivated" in str(e):
             raise HTTPException(status_code=403, detail="SYSTEM_ACCOUNT")
@@ -125,5 +123,5 @@ def deactivate_account(account_id: int, service: COASetupService = Depends(get_c
     description="Returns whether the Chart of Accounts has been initialized.",
     operation_id="getCOAStatus",
 )
-def get_coa_status(service: COASetupService = Depends(get_coa_service)):
-    return COAStatusResponse(ready=service.is_coa_ready())
+async def get_coa_status(service: COASetupService = Depends(get_coa_service)):
+    return COAStatusResponse(ready=await service.is_coa_ready())

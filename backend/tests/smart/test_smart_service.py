@@ -232,21 +232,21 @@ class TestSmartProcessorBatch:
             ))
         return rows
 
-    def test_process_batch_returns_result(self, processor, batch_id, user_id):
+    async def test_process_batch_returns_result(self, processor, batch_id, user_id):
         raw_rows = self._make_raw_rows(batch_id)
-        result = processor.process_batch(user_id, batch_id, raw_rows)
+        result = await processor.process_batch(user_id, batch_id, raw_rows)
         assert result.batch_id == batch_id
         assert result.raw_rows_count == 3
 
-    def test_process_batch_without_llm_no_enhancement(self, processor, batch_id, user_id):
+    async def test_process_batch_without_llm_no_enhancement(self, processor, batch_id, user_id):
         raw_rows = self._make_raw_rows(batch_id)
         opts = SmartProcessingOptions(use_llm=False)
-        result = processor.process_batch(user_id, batch_id, raw_rows, options=opts)
+        result = await processor.process_batch(user_id, batch_id, raw_rows, options=opts)
         assert result.llm_enhanced_count == 0
 
-    def test_process_batch_llm_skipped_when_provider_none(self, processor, batch_id, user_id):
+    async def test_process_batch_llm_skipped_when_provider_none(self, processor, batch_id, user_id):
         """use_llm=True but no provider → LLM enhancement must be skipped."""
         raw_rows = self._make_raw_rows(batch_id)
         opts = SmartProcessingOptions(use_llm=True, llm_provider=None)
-        result = processor.process_batch(user_id, batch_id, raw_rows, options=opts)
+        result = await processor.process_batch(user_id, batch_id, raw_rows, options=opts)
         assert result.llm_enhanced_count == 0

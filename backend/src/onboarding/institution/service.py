@@ -23,11 +23,11 @@ class InstitutionService:
             notes=_attr(inst, "notes"),
         )
 
-    def add_institution(self, dto: InstitutionCreateDTO) -> InstitutionResponse:
+    async def add_institution(self, dto: InstitutionCreateDTO) -> InstitutionResponse:
         if not dto.name.strip():
             raise ValidationError("Institution name cannot be empty")
 
-        existing = self._repo.list()
+        existing = await self._repo.list()
         for idx in existing:
             if _attr(idx, "name", "").lower() == dto.name.lower():
                 raise DuplicateError("Institution", dto.name)
@@ -39,16 +39,16 @@ class InstitutionService:
             "notes": dto.notes,
         }
 
-        created = self._repo.create(data)
+        created = await self._repo.create(data)
         return self._to_response(created)
 
-    def get_institution(self, id: int) -> InstitutionResponse:
-        inst = self._repo.get(id)
+    async def get_institution(self, id: int) -> InstitutionResponse:
+        inst = await self._repo.get(id)
         if not inst:
             raise NotFoundError("Institution", id)
         return self._to_response(inst)
 
-    def list_institutions(
+    async def list_institutions(
         self,
         page: int = 1,
         size: int = 20,
@@ -59,7 +59,7 @@ class InstitutionService:
         institution_type: str = None,
         search: str = None,
     ) -> dict:
-        results = list(self._repo.list())
+        results = list(await self._repo.list())
 
         if institution_type:
             results = [r for r in results if _attr(r, "institution_type") == institution_type]
@@ -101,18 +101,18 @@ class InstitutionService:
             "has_previous": start > 0,
         }
 
-    def delete_institution(self, institution_id: int) -> None:
+    async def delete_institution(self, institution_id: int) -> None:
         pass  # Deferred to Phase 2 (service layer implementation)
 
-    def update_institution(self, id: int, dto: InstitutionCreateDTO) -> InstitutionResponse:
+    async def update_institution(self, id: int, dto: InstitutionCreateDTO) -> InstitutionResponse:
         if not dto.name.strip():
             raise ValidationError("Institution name cannot be empty")
 
-        inst = self._repo.get(id)
+        inst = await self._repo.get(id)
         if not inst:
             raise NotFoundError("Institution", id)
 
-        existing = self._repo.list()
+        existing = await self._repo.list()
         for idx in existing:
             if _attr(idx, "name", "").lower() == dto.name.lower() and _attr(idx, "id") != id:
                 raise DuplicateError("Institution", dto.name)
@@ -124,6 +124,5 @@ class InstitutionService:
             "notes": dto.notes,
         }
 
-        updated = self._repo.update(id, updates)
+        updated = await self._repo.update(id, updates)
         return self._to_response(updated)
-

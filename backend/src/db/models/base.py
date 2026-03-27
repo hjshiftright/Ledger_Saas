@@ -13,12 +13,12 @@ class Base(DeclarativeBase):
     )
 
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 
 class TenantScopedMixin:
     """Add this mixin to every tenant-scoped model."""
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid(as_uuid=True, native_uuid=True),
         nullable=False,
         index=True,
     )

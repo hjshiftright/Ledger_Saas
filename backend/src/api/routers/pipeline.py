@@ -26,7 +26,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 
-from api.deps import CurrentUser, DBSession, SettingsDep
+from api.deps import CurrentUserPayload, TenantDBSession, SettingsDep
 from api.routers.imports import _batches
 from api.routers.parser import _parsed_rows
 from api.routers.proposals import _proposals
@@ -139,9 +139,9 @@ class DetectResponse(BaseModel):
     operation_id="pipelineDetect",
 )
 async def pipeline_detect(
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     settings: SettingsDep,
-    session: DBSession,
+    session: TenantDBSession,
     file: Annotated[UploadFile, File(description="Statement file (PDF/CSV/XLS/XLSX)")],
     source_type_hint: Annotated[str, Form()] = "",
     password: Annotated[str, Form(description="PDF password — only needed to read encrypted files")] = "",
@@ -299,11 +299,11 @@ async def pipeline_detect(
         from sqlalchemy import select
         from sqlalchemy.orm import joinedload
         
-        bank_accounts = session.scalars(
+        bank_accounts = (await session.scalars(
             select(BankAccount)
             .where(BankAccount.is_active == True)
             .options(joinedload(BankAccount.account))
-        ).all()
+        )).all()
         
         for ba in bank_accounts:
             if ba.account_number_masked:
@@ -348,9 +348,9 @@ async def pipeline_detect(
     operation_id="pipelineParse",
 )
 async def pipeline_parse(
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     settings: SettingsDep,
-    session: DBSession,
+    session: TenantDBSession,
     file: Annotated[UploadFile, File(description="Statement file (PDF/CSV/XLS/XLSX)")],
     account_id: Annotated[str, Form()] = "",
     source_type_hint: Annotated[str, Form()] = "",
@@ -436,7 +436,8 @@ async def pipeline_parse(
         warnings.append("Low source detection confidence. Consider setting source_type_hint.")
 
     batch = ImportBatch(
-        user_id=user_id,
+        user_id=auth.user_id,
+        tenant_id=auth.tenant_id,
         account_id=account_id or str(uuid.uuid4()),
         filename=filename,
         file_hash=file_hash,
@@ -453,7 +454,7 @@ async def pipeline_parse(
     if use_llm and llm_provider_id:
         try:
             from api.routers.llm import _resolve_provider  # noqa: PLC0415
-            _, _parse_llm_provider = _resolve_provider(user_id, llm_provider_id, settings, session)
+            _, _parse_llm_provider = await _resolve_provider(llm_provider_id, settings, session)
             logger.info("parse: LLM provider resolved for extraction fallback (provider_id=%s)", llm_provider_id)
         except Exception as _llm_exc:
             warnings.append(f"LLM provider unavailable for parse: {_llm_exc}")
@@ -505,9 +506,9 @@ async def pipeline_parse(
     summary="Poll pipeline parse status",
     operation_id="pipelineParseStatus",
 )
-def pipeline_parse_status(batch_id: str, user_id: CurrentUser) -> ParseStatusResponse:
+async def pipeline_parse_status(batch_id: str, auth: CurrentUserPayload) -> ParseStatusResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
 
     return ParseStatusResponse(
@@ -530,14 +531,14 @@ def pipeline_parse_status(batch_id: str, user_id: CurrentUser) -> ParseStatusRes
     summary="Retrieve paginated raw rows (pipeline alias)",
     operation_id="pipelineRows",
 )
-def pipeline_rows(
+async def pipeline_rows(
     batch_id: str,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> RawRowsResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
 
     rows = _parsed_rows.get(batch_id, [])
@@ -591,17 +592,17 @@ class ProcessRequest(BaseModel):
     ),
     operation_id="pipelineProcess",
 )
-def pipeline_process(
+async def pipeline_process(
     batch_id: str,
     body: ProcessRequest,
-    user_id: CurrentUser,
-    session: DBSession,
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     settings: SettingsDep,
 ) -> ProcessResponse:
     from core.models.enums import BatchStatus
 
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     if batch.status not in (BatchStatus.PARSE_COMPLETE, BatchStatus.COMPLETED):
         raise HTTPException(
@@ -616,7 +617,7 @@ def pipeline_process(
     if body.use_llm and body.provider_id:
         from api.routers.llm import _resolve_provider
         try:
-            _name, llm_provider = _resolve_provider(user_id, body.provider_id, settings, session)
+            _name, llm_provider = await _resolve_provider(body.provider_id, settings, session)
             logger.info("LLM provider resolved: %s (provider_id=%s)", _name, body.provider_id)
         except HTTPException:
             raise
@@ -631,15 +632,15 @@ def pipeline_process(
     effective_account_id = body.account_id or getattr(batch, "account_id", "")
     db_hashes: set[str] = set()
     acc_repo = AccountRepository(session)
-    acc = acc_repo.find_by_code(effective_account_id)
+    acc = await acc_repo.find_by_code(effective_account_id)
     if acc is None:
         try:
-            acc = acc_repo.get(int(effective_account_id))
+            acc = await acc_repo.get(int(effective_account_id))
         except (ValueError, TypeError):
             pass
     if acc:
         from repositories.sqla_transaction_repo import TransactionRepository
-        db_hashes = TransactionRepository(session).get_committed_hashes_for_account(acc.id)
+        db_hashes = await TransactionRepository(session).get_committed_hashes_for_account(acc.id)
 
     opts = SmartProcessingOptions(
         use_llm=body.use_llm,
@@ -650,7 +651,7 @@ def pipeline_process(
         session=session,
     )
 
-    result = SmartProcessor().process_batch(user_id, batch_id, raw, opts)
+    result = await SmartProcessor().process_batch(auth.user_id, batch_id, raw, opts)
 
     # Store proposals for the review step
     _proposals[batch_id] = result.proposals.proposals
@@ -745,7 +746,7 @@ _ACTIVE_SOURCE_LABELS = {
     summary="List all supported source types and their expected file formats",
     operation_id="pipelineListSourceTypes",
 )
-def pipeline_source_types() -> list[SourceTypeInfo]:
+async def pipeline_source_types() -> list[SourceTypeInfo]:
     from core.models.enums import SourceType, PDF_SOURCE_TYPES  # noqa: F401
     items: list[SourceTypeInfo] = []
     for s in SourceType:

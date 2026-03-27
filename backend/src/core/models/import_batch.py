@@ -18,6 +18,7 @@ class ImportBatch(BaseModel):
 
     batch_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
+    tenant_id: str = ""
     account_id: str
 
     # ── File info ─────────────────────────────────────────────────────────────

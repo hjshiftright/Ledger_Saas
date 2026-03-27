@@ -1,8 +1,8 @@
-﻿"""SM-F Deduplication Engine REST API."""
+"""SM-F Deduplication Engine REST API."""
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from api.deps import CurrentUser, DBSession
+from api.deps import CurrentUserPayload, TenantDBSession
 from api.routers.imports import _batches
 from api.routers.normalize import _normalized_rows
 from repositories.sqla_account_repo import AccountRepository
@@ -28,14 +28,14 @@ class DedupResponse(BaseModel):
     summary="Deduplicate normalized rows (SM-F)",
     operation_id="dedupBatch",
 )
-def dedup_batch(
+async def dedup_batch(
     batch_id: str,
-    user_id: CurrentUser,
-    session: DBSession,
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     account_id: str = "",
 ) -> DedupResponse:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     rows = _normalized_rows.get(batch_id, [])
     if not rows:
@@ -46,18 +46,18 @@ def dedup_batch(
     # Pull committed hashes from the DB for this account (safety-net for stale JSON store)
     db_hashes: set[str] = set()
     acc_repo = AccountRepository(session)
-    acc = acc_repo.find_by_code(effective_account_id)
+    acc = await acc_repo.find_by_code(effective_account_id)
     if acc is None:
         # account_id may be an integer string or UUID; try integer lookup
         try:
-            acc = acc_repo.get(int(effective_account_id))
+            acc = await acc_repo.get(int(effective_account_id))
         except (ValueError, TypeError):
             pass
     if acc:
-        db_hashes = TransactionRepository(session).get_committed_hashes_for_account(acc.id)
+        db_hashes = await TransactionRepository(session).get_committed_hashes_for_account(acc.id)
 
     result = _svc.dedup_batch(
-        user_id=user_id,
+        user_id=auth.user_id,
         batch_id=batch_id,
         account_id=effective_account_id,
         rows=rows,

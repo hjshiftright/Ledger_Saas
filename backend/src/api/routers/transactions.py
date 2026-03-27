@@ -12,7 +12,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 
-from api.deps import CurrentUser, DBSession
+from api.deps import CurrentUserPayload, TenantDBSession
 from db.models.accounts import Account
 from db.models.transactions import Transaction, TransactionLine
 
@@ -44,17 +44,17 @@ class TxnOut(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/count", summary="Count committed (non-void) transactions")
-def count_transactions(user: CurrentUser, session: DBSession) -> dict:
-    n = session.scalar(
-        select(func.count()).select_from(Transaction).where(Transaction.is_void == False)
+async def count_transactions(auth: CurrentUserPayload, session: TenantDBSession) -> dict:
+    n = await session.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.is_void == False)  # noqa: E712
     )
     return {"count": n or 0}
 
 
 @router.get("", response_model=list[TxnOut], summary="List committed transactions")
-def list_transactions(
-    user: CurrentUser,
-    session: DBSession,
+async def list_transactions(
+    auth: CurrentUserPayload,
+    session: TenantDBSession,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     from_date: date | None = Query(None),
@@ -62,7 +62,7 @@ def list_transactions(
 ):
     stmt = (
         select(Transaction)
-        .where(Transaction.is_void == False)
+        .where(Transaction.is_void == False)  # noqa: E712
         .order_by(desc(Transaction.transaction_date))
         .limit(limit)
         .offset(offset)
@@ -72,14 +72,14 @@ def list_transactions(
     if to_date:
         stmt = stmt.where(Transaction.transaction_date <= to_date)
 
-    txns = list(session.scalars(stmt).all())
+    txns = list((await session.scalars(stmt)).all())
 
     # Batch-load all referenced accounts to avoid N+1
     acc_ids = {ln.account_id for txn in txns for ln in txn.lines}
-    accs: dict[int, Account] = (
-        {a.id: a for a in session.scalars(select(Account).where(Account.id.in_(acc_ids))).all()}
-        if acc_ids else {}
-    )
+    accs: dict[int, Account] = {}
+    if acc_ids:
+        accs_result = await session.scalars(select(Account).where(Account.id.in_(acc_ids)))
+        accs = {a.id: a for a in accs_result.all()}
 
     results = []
     for txn in txns:

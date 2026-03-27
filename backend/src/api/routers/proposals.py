@@ -1,9 +1,9 @@
-﻿"""SM-I Transaction Proposal REST API."""
+"""SM-I Transaction Proposal REST API."""
 from __future__ import annotations
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from api.deps import CurrentUser, DBSession
+from api.deps import CurrentUserPayload, TenantDBSession
 from api.routers.imports import _batches
 from api.routers.normalize import _normalized_rows
 from services.proposal_service import ProposalService, ProposedJournalEntry
@@ -60,9 +60,9 @@ def _to_out(p: ProposedJournalEntry) -> ProposalOut:
 
 
 @router.post("/{batch_id}/generate", response_model=list[ProposalOut], summary="Generate journal entry proposals (SM-I)", operation_id="generateProposals")
-def generate_proposals(batch_id: str, user_id: CurrentUser, bank_account_id: str = Query(default="1102")) -> list[ProposalOut]:
+async def generate_proposals(batch_id: str, auth: CurrentUserPayload, bank_account_id: str = Query(default="1102")) -> list[ProposalOut]:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     rows = _normalized_rows.get(batch_id, [])
     if not rows:
@@ -73,9 +73,9 @@ def generate_proposals(batch_id: str, user_id: CurrentUser, bank_account_id: str
 
 
 @router.get("/{batch_id}", response_model=list[ProposalOut], summary="Get proposals for a batch", operation_id="getProposals")
-def get_proposals(batch_id: str, user_id: CurrentUser, status_filter: str | None = None) -> list[ProposalOut]:
+async def get_proposals(batch_id: str, auth: CurrentUserPayload, status_filter: str | None = None) -> list[ProposalOut]:
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     proposals = _proposals.get(batch_id, [])
     if status_filter:
@@ -89,14 +89,10 @@ def get_proposals(batch_id: str, user_id: CurrentUser, status_filter: str | None
     summary="Mark proposals as approved (in-memory; call /commit to persist to DB)",
     operation_id="bulkApproveProposals",
 )
-def bulk_approve(batch_id: str, body: BulkApproveRequest, user_id: CurrentUser) -> dict:
-    """Mark selected proposals CONFIRMED in the in-memory store.
-
-    This is a lightweight, reversible step. The proposals are NOT yet written
-    to the database.  Call POST /{batch_id}/commit to persist them to SQLite.
-    """
+async def bulk_approve(batch_id: str, body: BulkApproveRequest, auth: CurrentUserPayload) -> dict:
+    """Mark selected proposals CONFIRMED in the in-memory store."""
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     proposal_map = {p.proposal_id: p for p in _proposals.get(batch_id, [])}
     approved = 0
@@ -120,15 +116,15 @@ class UpdateLineRequest(BaseModel):
     summary="Update a journal line's account assignment in a proposal",
     operation_id="updateProposalLine",
 )
-def update_proposal_line(
+async def update_proposal_line(
     batch_id: str,
     proposal_id: str,
     body: UpdateLineRequest,
-    user_id: CurrentUser,
+    auth: CurrentUserPayload,
 ) -> ProposalOut:
     """Reassign one journal line's account (in-memory only; takes effect on /commit)."""
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
     proposals = _proposals.get(batch_id, [])
     p = next((x for x in proposals if x.proposal_id == proposal_id), None)
@@ -147,22 +143,22 @@ def update_proposal_line(
     "/{batch_id}/commit",
     response_model=CommitResponse,
     status_code=200,
-    summary="Persist CONFIRMED proposals to the SQLite database",
+    summary="Persist CONFIRMED proposals to the database",
     operation_id="commitProposals",
 )
-def commit_proposals(batch_id: str, user_id: CurrentUser, session: DBSession) -> CommitResponse:
+async def commit_proposals(batch_id: str, auth: CurrentUserPayload, session: TenantDBSession) -> CommitResponse:
     """Write all CONFIRMED proposals for this batch to the database.
 
     For each CONFIRMED proposal:
     - Resolves account codes to integer Account.id values.
-    - Creates Transaction + TransactionLine + ReconciliationRecord rows.
+    - Creates Transaction + TransactionLine rows.
     - Marks the ORM ImportBatch as COMPLETED.
 
     Re-entrant: proposals whose txn_hash is already in the DB are skipped
     (already_posted count), so calling this endpoint multiple times is safe.
     """
     batch = _batches.get(batch_id)
-    if not batch or getattr(batch, "user_id", None) != user_id:
+    if not batch or getattr(batch, "tenant_id", None) != auth.tenant_id:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND"})
 
     proposals = _proposals.get(batch_id, [])
@@ -173,6 +169,6 @@ def commit_proposals(batch_id: str, user_id: CurrentUser, session: DBSession) ->
             detail={"error": "NO_CONFIRMED_PROPOSALS", "message": "Approve at least one proposal before committing."},
         )
 
-    svc = ApprovalService(session)
-    result = svc.commit_proposals(confirmed, batch)
+    svc = ApprovalService(session, auth.tenant_id)
+    result = await svc.commit_proposals(confirmed, batch)
     return CommitResponse(**result)

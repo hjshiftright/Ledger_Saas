@@ -1,36 +1,40 @@
-from sqlalchemy import String, Boolean, Numeric, Date, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from db.models.base import Base
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
+from sqlalchemy import String, Numeric, Date, Boolean, ForeignKey, CheckConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from db.models.base import Base, TenantScopedMixin
 
 
-class Budget(Base):
+class Budget(TenantScopedMixin, Base):
     __tablename__ = "budgets"
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    name: Mapped[str] = mapped_column(String)
-    period_type: Mapped[str] = mapped_column(String)
-    start_date: Mapped[date] = mapped_column(Date)
-    end_date: Mapped[date] = mapped_column(Date)
-    total_budgeted: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
-    total_spent: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    period_type: Mapped[str] = mapped_column(String, nullable=False, default="MONTHLY")
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notes: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "period_type IN ('MONTHLY','QUARTERLY','ANNUAL','CUSTOM')",
+            name="ck_budget_period_type",
+        ),
+    )
 
     items: Mapped[list["BudgetItem"]] = relationship(
-        back_populates="budget", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="budget", cascade="all, delete-orphan"
     )
 
 
-class BudgetItem(Base):
+class BudgetItem(TenantScopedMixin, Base):
     __tablename__ = "budget_items"
-    budget_id: Mapped[int] = mapped_column(ForeignKey("budgets.id"))
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
-    budgeted_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
-    spent_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
-    rollover_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
-    rollover_unused: Mapped[bool] = mapped_column(Boolean, default=False)
-    alert_threshold_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), default=80)
+
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    planned_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
     budget: Mapped["Budget"] = relationship(back_populates="items")

@@ -36,7 +36,6 @@ from api.routers.llm              import router as llm_router
 from api.routers.pipeline         import router as pipeline_router
 from api.routers.accounts         import router as coa_accounts_router
 from api.routers.proposals        import router as proposals_router
-from api.routers.txn_transactions import router as txn_transactions_router
 from api.routers.transactions     import router as transactions_router
 from api.routers.goals            import router as goals_router
 from api.routers.budgets          import router as budgets_router
@@ -63,9 +62,6 @@ async def lifespan(app: FastAPI):
         level=logging.DEBUG if settings.app_debug else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s — %(message)s",
     )
-    # Initialise database tables
-    from db.engine import init_db
-    init_db()
     logger.info(
         "Ledger 3.0 starting — env=%s, host=%s, port=%s",
         settings.app_env, settings.app_host, settings.app_port,
@@ -214,9 +210,6 @@ def create_app() -> FastAPI:
     app.include_router(llm_router,              prefix=PREFIX)
     app.include_router(pipeline_router,         prefix=PREFIX)
     app.include_router(proposals_router,        prefix=PREFIX)
-
-    # DB-backed transaction CRUD
-    app.include_router(txn_transactions_router, prefix=PREFIX)
 
     # Committed transactions, goals, budgets, reports
     app.include_router(transactions_router, prefix=PREFIX)

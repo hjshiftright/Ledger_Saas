@@ -16,13 +16,13 @@ class SqlAlchemyProfileRepository(BaseRepository[Profile]):
         return profile
 
     async def get(self, profile_id: int) -> Optional[Profile]:
-        return self.session.get(Profile, profile_id)
+        return await self.session.get(Profile, profile_id)
 
     async def get_by_name(self, name: str) -> Optional[Profile]:
         stmt = select(Profile).where(Profile.display_name == name)
         return await self.session.scalar(stmt)
 
-    def list(
+    async def list(
         self,
         limit: int = 10,
         offset: int = 0,
@@ -38,10 +38,10 @@ class SqlAlchemyProfileRepository(BaseRepository[Profile]):
         attr = getattr(Profile, sort_by, Profile.id)
         stmt = stmt.order_by(attr.desc() if sort_desc else attr.asc())
         stmt = stmt.limit(limit).offset(offset)
-        return list(self.session.scalars(stmt).all())
+        return list((await self.session.scalars(stmt)).all())
 
     async def update(self, profile_id: int, updates: dict) -> Optional[Profile]:
-        profile = self.get(profile_id)
+        profile = await self.get(profile_id)
         if profile:
             for key, value in updates.items():
                 if hasattr(profile, key):
@@ -50,7 +50,7 @@ class SqlAlchemyProfileRepository(BaseRepository[Profile]):
         return profile
 
     async def delete(self, profile_id: int) -> bool:
-        profile = self.get(profile_id)
+        profile = await self.get(profile_id)
         if profile:
             await self.session.delete(profile)
             await self.session.flush()

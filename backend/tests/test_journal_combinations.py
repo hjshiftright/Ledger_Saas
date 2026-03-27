@@ -32,6 +32,7 @@ Account-type combination matrix covered:
 from __future__ import annotations
 
 import pathlib
+import asyncio
 import uuid
 from decimal import Decimal
 
@@ -87,9 +88,9 @@ def _run_smart(
         source_account_class=src_info.account_class,
         account_id="TEST-ACC",
     )
-    return SmartProcessor().process_batch(
+    return asyncio.run(SmartProcessor().process_batch(
         user_id="test-user", batch_id=batch_id, raw_rows=raw.rows, options=opts
-    )
+    ))
 
 
 def _proposals(filename: str, **kwargs) -> list[ProposedJournalEntry]:

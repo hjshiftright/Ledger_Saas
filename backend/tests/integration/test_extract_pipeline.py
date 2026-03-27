@@ -20,6 +20,7 @@ Fixture files:
 
 from __future__ import annotations
 
+import asyncio
 import pathlib
 import uuid
 from decimal import Decimal
@@ -114,12 +115,12 @@ def _hashes_from(result) -> set[str]:
 
 
 def _smart(raw_rows, uid: str, bid: str, acc: str = "ACC-TEST-001", db_hashes: set[str] | None = None):
-    return SmartProcessor().process_batch(
+    return asyncio.run(SmartProcessor().process_batch(
         user_id=uid,
         batch_id=bid,
         raw_rows=raw_rows,
         options=SmartProcessingOptions(use_llm=False, account_id=acc, db_hashes=db_hashes),
-    )
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -440,7 +441,7 @@ class TestCategoryAssignment:
         raw = _extract_csv(filename, bid).rows
         norm = _normalize(raw, bid)
         result = _dedup(norm, uid, bid, "ACC-CAT")
-        CategorizeService().categorize_batch(user_id=uid, batch_id=bid, rows=result.new)
+        asyncio.run(CategorizeService().categorize_batch(batch_id=bid, rows=result.new))
         return {r.raw_narration.upper(): r.extra_fields["category"] for r in result.new}
 
     def test_swiggy_is_food_expense(self, user_id: str, batch_id: str):

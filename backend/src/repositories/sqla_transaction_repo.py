@@ -43,7 +43,7 @@ class TransactionRepository(BaseRepository[Transaction]):
                 ld["line_type"] = ld.pop("action")
             line = TransactionLine(**ld)
             tx.lines.append(line)
-        return self.create_with_children(tx)
+        return await self.create_with_children(tx)
 
     async def get_opening_balance_for_account(self, account_id: int) -> Transaction | None:
         """Find the opening balance transaction for a specific account."""
@@ -58,7 +58,7 @@ class TransactionRepository(BaseRepository[Transaction]):
         return await self.session.scalar(stmt)
 
     async def void_transaction(self, tx_id: int) -> None:
-        tx = self.get_by_id(tx_id)
+        tx = await self.get_by_id(tx_id)
         if tx:
             tx.is_void = True
             await self.session.flush()
@@ -81,9 +81,7 @@ class TransactionRepository(BaseRepository[Transaction]):
             .where(Transaction.txn_hash.is_not(None))
             .where(Transaction.is_void.is_(False))
         )
-        if user_id is not None:
-            stmt = stmt.where(Transaction.user_id == user_id)
-        return set(self.session.scalars(stmt).all())
+        return set((await self.session.scalars(stmt)).all())
 
     async def get_with_lines(self, transaction_id: int) -> Transaction | None:
         """Eager-load lines to avoid N+1 queries."""
@@ -94,9 +92,8 @@ class TransactionRepository(BaseRepository[Transaction]):
         )
         return await self.session.scalar(stmt)
 
-    def get_by_date_range(
+    async def get_by_date_range(
         self, start_date: date, end_date: date, status: str | None = None,
-        user_id: int | None = None,
     ) -> list[Transaction]:
         stmt = (
             select(Transaction)
@@ -105,10 +102,8 @@ class TransactionRepository(BaseRepository[Transaction]):
         )
         if status:
             stmt = stmt.where(Transaction.status == status)
-        if user_id is not None:
-            stmt = stmt.where(Transaction.user_id == user_id)
         stmt = stmt.order_by(Transaction.transaction_date.desc())
-        return list(self.session.scalars(stmt).unique().all())
+        return list((await self.session.scalars(stmt)).unique().all())
 
     @staticmethod
     def _validate_balanced(transaction: Transaction) -> None:
