@@ -13,7 +13,9 @@ PG_PASS=ledger_secret
 PG_DB=ledger
 PG_HOST=127.0.0.1
 PG_PORT=5432
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}"
+export DATABASE_URL="postgresql+asyncpg://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}"
+export ADMIN_DATABASE_URL="postgresql+asyncpg://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}"
+export PG_CHECK_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Start PostgreSQL via Docker (only the db service from docker-compose.yml).
@@ -73,7 +75,7 @@ PG_TRIES=0
 until python -c "
 import psycopg2, os, sys
 try:
-    psycopg2.connect(os.environ['DATABASE_URL']).close()
+    psycopg2.connect(os.environ['PG_CHECK_URL']).close()
     sys.exit(0)
 except Exception as e:
     print(f'  not ready: {e}')
