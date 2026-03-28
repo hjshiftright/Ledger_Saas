@@ -43,7 +43,8 @@ class DashboardService:
         self._profiles = profile_repo
         self._goals = goal_repo
 
-    async def save_dashboard(self, data: DashboardSaveRequest, user_id: int) -> DashboardDataResponse:
+    async def save_dashboard(self, data: DashboardSaveRequest, user_id: int, tenant_id: str) -> DashboardDataResponse:
+        self._tenant_id = tenant_id
         # 1. Save Profile
         profile_data = {
             "user_id": user_id,
@@ -103,11 +104,11 @@ class DashboardService:
             years = max(1, int(goal.years or 1))
             target_year = today.year + years
             await self._goals.create({
+                "tenant_id": tenant_id,
                 "name": goal.name,
                 "goal_type": _goal_type_from_id(goal.id),
                 "target_amount": goal.target,
                 "current_amount": goal.current,
-                "start_date": today.isoformat(),
                 "target_date": f"{target_year}-{today.month:02d}-01",
             })
 
@@ -223,6 +224,7 @@ class DashboardService:
             new_code = prefix + "01"
 
         data = {
+            "tenant_id": self._tenant_id,
             "parent_id": p_id,
             "code": new_code,
             "name": display_name,
@@ -246,17 +248,20 @@ class DashboardService:
             return
 
         tx_data = {
+            "tenant_id": self._tenant_id,
             "date": date.today().isoformat(),
             "description": f"Opening balance for {_attr(acc, 'name')}",
             "transaction_type": "OPENING_BALANCE"
         }
         lines_data = [
             {
+                "tenant_id": self._tenant_id,
                 "account_id": account_id,
                 "action": normal,
                 "amount": balance
             },
             {
+                "tenant_id": self._tenant_id,
                 "account_id": _attr(ob_equity, "id"),
                 "action": "CREDIT" if normal == "DEBIT" else "DEBIT",
                 "amount": balance

@@ -66,6 +66,9 @@ async def lifespan(app: FastAPI):
         "Ledger 3.0 starting — env=%s, host=%s, port=%s",
         settings.app_env, settings.app_host, settings.app_port,
     )
+    from db.engine import init_db
+    await init_db()
+    logger.info("Database schema initialised.")
     yield
     logger.info("Ledger 3.0 shutting down.")
 

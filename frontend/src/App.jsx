@@ -93,7 +93,12 @@ function App() {
 
   // Onboarding overlay — shown after first import commit
   if (showOnboarding) {
-    return <OnboardingV2 onComplete={handleOnboardingComplete} />
+    return (
+      <OnboardingV2
+        onComplete={handleOnboardingComplete}
+        userEmail={sessionStorage.getItem('ledger_user_email') || ''}
+      />
+    )
   }
 
   return (

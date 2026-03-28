@@ -95,3 +95,17 @@ async def get_admin_session() -> AsyncSession:
         except Exception:
             await session.rollback()
             raise
+
+
+async def init_db() -> None:
+    """Create all tables that do not yet exist. Safe to call on every startup.
+
+    Uses the admin engine (superadmin role) so it has DDL privileges.
+    All model modules must be imported before calling this so that
+    Base.metadata is fully populated — db.models.__init__ handles that.
+    """
+    import db.models  # noqa: F401 — registers all ORM classes on Base.metadata
+    from db.models.base import Base
+
+    async with admin_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

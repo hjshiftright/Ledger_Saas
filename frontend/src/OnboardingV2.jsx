@@ -1465,7 +1465,10 @@ function S4({ data, setData, onNext, onBack, profile, owned, name }) {
     if (!isOn(idx)) {
       if (idx === 0) upP('retire',    { on: true });
       else if (idx === 1) upP('emergency', { on: true });
-      else if (idx === 2) up('education', [{ _id: Date.now(), childName:'', childAge:'', yearsNeeded:'', amountNeeded:'', alreadySaved:'' }]);
+      else if (idx === 2) {
+        const numKids = Math.max(1, parseInt(profile.numChildren) || 1);
+        up('education', Array.from({ length: numKids }, (_, i) => ({ _id: Date.now() + i, childName:'', childAge:'', yearsNeeded:'', amountNeeded:'', alreadySaved:'' })));
+      }
       else if (idx === 3) upP('home',      { on: true });
       else if (idx === 4) up('vacation',   [{ _id: Date.now(), destination:'', budget:'', inYears:'', alreadySaved:'' }]);
       else                up('custom',     [{ _id: Date.now(), description:'', amountNeeded:'', inYears:'', alreadySaved:'' }]);
@@ -1925,13 +1928,22 @@ function GoalViz({ savings, profile, onNext, onBack }) {
   const age = parseInt(profile.age) || 30;
   const goals = buildGoalList(savings, profile);
 
-  const initAlloc = {};
-  goals.forEach(g => { initAlloc[g.id] = computeSip(g.target, g.current, g.years); });
+  const [allocations, setAllocations] = useState(() => {
+    const init = {};
+    goals.forEach(g => { init[g.id] = computeSip(g.target, g.current, g.years); });
+    return init;
+  });
 
-  const [allocations, setAllocations] = useState(initAlloc);
+  // Ensure any new goals (e.g. 2nd education entry added after first mount) get an allocation
+  const allocationsPlusMissing = { ...allocations };
+  goals.forEach(g => {
+    if (!(g.id in allocationsPlusMissing)) {
+      allocationsPlusMissing[g.id] = computeSip(g.target, g.current, g.years);
+    }
+  });
 
-  const totalMonthly = Object.values(allocations).reduce((s, v) => s + (parseInt(v) || 0), 0);
-  const chartData = buildChartData(goals, age, allocations);
+  const totalMonthly = Object.values(allocationsPlusMissing).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  const chartData = buildChartData(goals, age, allocationsPlusMissing);
 
   if (goals.length === 0) {
     return (
@@ -1984,10 +1996,10 @@ function GoalViz({ savings, profile, onNext, onBack }) {
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={fmtINR(String(allocations[g.id] || ''))}
+                    value={fmtINR(String(allocationsPlusMissing[g.id] || ''))}
                     onChange={e => {
                       const raw = e.target.value.replace(/[^0-9]/g, '');
-                      setAllocations(prev => ({ ...prev, [g.id]: parseInt(raw) || 0 }));
+                      setAllocations({ ...allocationsPlusMissing, [g.id]: parseInt(raw) || 0 });
                     }}
                     className="w-28 text-center rounded-lg bg-white border border-slate-300 text-slate-800
                                px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
@@ -2017,7 +2029,7 @@ function GoalViz({ savings, profile, onNext, onBack }) {
           💰 Total: ₹{totalMonthly.toLocaleString('en-IN')}/mo
         </div>
         {goals.map(g => {
-          const sip = allocations[g.id] || 0;
+          const sip = allocationsPlusMissing[g.id] || 0;
           const projected = computeSip(g.target, g.current, g.years);
           const pct = projected > 0 ? Math.round((sip / projected) * 100) : 100;
           return (
@@ -2090,12 +2102,13 @@ function Done({ profile, owned, owed, savings, onComplete }) {
       const payload = buildDashboardPayload(profile, owned, owed, savings);
       console.log('[Onboarding] Persisting dashboard payload:', JSON.stringify(payload, null, 2));
       await API.dashboard.save(payload);
+      onComplete({ profile, owned, owed, savings });
     } catch (e) {
       console.error('Failed to save onboarding data to backend:', e);
-      setSaveErr('Could not reach the server — your data is saved locally.');
+      const msg = e?.response?.data?.message || e?.message || 'Unknown error';
+      setSaveErr(`Could not save your data — please try again. (${msg})`);
     } finally {
       setSaving(false);
-      onComplete({ profile, owned, owed, savings });
     }
   };
 
@@ -2217,15 +2230,23 @@ function Done({ profile, owned, owed, savings, onComplete }) {
       </div>
 
       <div className="space-y-4 pt-4">
+        {saveErr && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <X size={18} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-red-700">Failed to save your data</p>
+              <p className="text-xs text-red-600 mt-0.5">{saveErr}</p>
+            </div>
+          </div>
+        )}
         <button onClick={handleEnter} disabled={saving}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg shadow-indigo-200 text-lg flex items-center justify-center gap-3 group">
+          className={`w-full ${saveErr ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'} disabled:opacity-70 text-white font-black py-4 rounded-xl transition transform hover:-translate-y-0.5 shadow-lg text-lg flex items-center justify-center gap-3 group`}>
           {saving
             ? <span className="animate-pulse">Saving your ledger…</span>
-            : <><span>Enter Your Ledger</span> <ArrowRight className="group-hover:translate-x-1 transition-transform" /></>}
+            : saveErr
+              ? <><span>Retry</span> <ArrowRight className="group-hover:translate-x-1 transition-transform" /></>
+              : <><span>Enter Your Ledger</span> <ArrowRight className="group-hover:translate-x-1 transition-transform" /></>}
         </button>
-        {saveErr && (
-          <p className="text-center text-xs text-amber-600 font-medium">{saveErr}</p>
-        )}
         <p className="text-center text-xs text-slate-400 font-medium tracking-tight">
           You can refine these numbers or add advisors in your workspace at any time.
         </p>
@@ -2588,7 +2609,7 @@ function SummaryGoals({ savings, profile, owned, onNext, onBack, onEdit }) {
 
 // ─── ROOT EXPORT ──────────────────────────────────────────────────────────────
 
-export default function OnboardingV2({ onComplete }) {
+export default function OnboardingV2({ onComplete, userEmail = '' }) {
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState({ ...D1 });
   const [owned,   setOwned]   = useState({ ...D2 });
@@ -2622,9 +2643,19 @@ export default function OnboardingV2({ onComplete }) {
         <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <span className="text-base font-bold text-indigo-700 shrink-0">Ledger</span>
           <Stepper step={step} onGoTo={s => s < step && setStep(s)} />
-          <span className="text-xs text-slate-400 shrink-0 hidden sm:block">
-            {step <= 2 ? 'Phase 1 of 4' : step <= 5 ? 'Phase 2 of 4' : step <= 7 ? 'Phase 3 of 4' : step === 8 ? 'Phase 4 of 4' : 'Done!'}
-          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs text-slate-400 hidden sm:block">
+              {step <= 2 ? 'Phase 1 of 4' : step <= 5 ? 'Phase 2 of 4' : step <= 7 ? 'Phase 3 of 4' : step === 8 ? 'Phase 4 of 4' : 'Done!'}
+            </span>
+            {userEmail && (
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-full px-3 py-1">
+                <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-indigo-600">{userEmail[0].toUpperCase()}</span>
+                </div>
+                <span className="text-xs font-medium text-slate-600 max-w-[140px] truncate">{userEmail}</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

@@ -15,7 +15,13 @@ set PG_PASS=ledger123
 set PG_DB=ledgerdb
 set PG_HOST=127.0.0.1
 set PG_PORT=5432
-set DATABASE_URL=postgresql://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+
+:: Async URL used by SQLAlchemy asyncio engine (asyncpg driver)
+set DATABASE_URL=postgresql+asyncpg://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+set ADMIN_DATABASE_URL=postgresql+asyncpg://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+
+:: Sync URL used only by the psycopg2 connection health-check below
+set PG_SYNC_URL=postgresql://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
 
 
 :: ─────────────────────────────────────────────────────────────────────────────
@@ -78,7 +84,7 @@ if %errorlevel% neq 0 (
 echo [INFO] Waiting for PostgreSQL at %PG_HOST%:%PG_PORT%...
 set /a PG_TRIES=0
 :pg_wait
-".venv\Scripts\python.exe" -c "import psycopg2, os, sys; psycopg2.connect(os.environ['DATABASE_URL']).close(); sys.exit(0)" >nul 2>&1
+".venv\Scripts\python.exe" -c "import psycopg2, os, sys; psycopg2.connect(os.environ['PG_SYNC_URL']).close(); sys.exit(0)" >nul 2>&1
 if %errorlevel% equ 0 goto :pg_ready
 set /a PG_TRIES+=1
 if %PG_TRIES% geq 30 (

@@ -10,7 +10,8 @@ pydantic-settings>=2.2.0
 # ── Database ──────────────────────────────────────────────────────────────────
 sqlalchemy>=2.0.0
 alembic>=1.13.0
-psycopg2-binary>=2.9.0      # PostgreSQL adapter
+asyncpg>=0.29.0             # Async PostgreSQL driver (required by SQLAlchemy asyncio)
+psycopg2-binary>=2.9.0      # Sync PostgreSQL driver (used for connection health-check in run.bat)
 
 # ── PDF parsing ───────────────────────────────────────────────────────────────
 pdfplumber>=0.10.0

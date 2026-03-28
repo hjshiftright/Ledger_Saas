@@ -23,7 +23,7 @@ async def save_dashboard(
     auth: CurrentUserPayload,
     service: DashboardService = Depends(get_dashboard_service)
 ):
-    return await service.save_dashboard(request, int(auth.user_id))
+    return await service.save_dashboard(request, int(auth.user_id), str(auth.tenant_id))
 
 @router.get("", response_model=DashboardDataResponse)
 async def get_dashboard(
