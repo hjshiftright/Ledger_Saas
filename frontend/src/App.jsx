@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import ImportWizard from './ImportWizard'
-import OnboardingV2 from './OnboardingV2'
+import OnboardingV3 from './OnboardingV3'
 import PersonalDashboard from './PersonalDashboard'
 import SettingsPage from './SettingsPage'
 import BudgetsPage from './BudgetsPage'
@@ -94,7 +94,7 @@ function App() {
   // Onboarding overlay — shown after first import commit
   if (showOnboarding) {
     return (
-      <OnboardingV2
+      <OnboardingV3
         onComplete={handleOnboardingComplete}
         userEmail={sessionStorage.getItem('ledger_user_email') || ''}
       />
