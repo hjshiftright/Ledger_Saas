@@ -102,54 +102,64 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Top nav */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-6 flex items-center gap-1 h-14">
-          <span className="text-lg font-bold text-indigo-700 mr-6">Ledger</span>
+    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
+      {/* Left Sidebar Nav */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col z-30 flex-shrink-0">
+        <div className="h-16 flex items-center px-6 border-b border-slate-100">
+          <span className="text-xl font-bold text-indigo-700">Ledger</span>
+        </div>
+        
+        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors
                 ${tab === id
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-slate-500 hover:text-indigo-700 hover:bg-indigo-50'}`}
             >
-              <Icon size={15} />
+              <Icon size={18} />
               {label}
             </button>
           ))}
-          
+        </nav>
+
+        <div className="p-4 border-t border-slate-100 space-y-2">
           {/* Dev: Reset Onboarding button */}
           <button
             onClick={resetOnboarding}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             title="Reset Onboarding (Dev)"
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={16} />
             Reset Onboarding
           </button>
 
           {/* Logout button */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:text-red-700 hover:bg-red-50 transition-colors"
             title="Sign out"
           >
-            <LogOut size={12} />
+            <LogOut size={16} />
             Sign Out
           </button>
         </div>
-      </header>
+      </aside>
 
-      {tab === 'dashboard' && <PersonalDashboard onboardingData={onboardingData} onStartImport={handleStartImport} onNavigate={setTab} />}
-      {tab === 'import'    && <ImportWizard onImportComplete={handleImportComplete} onNavigate={setTab} />}
-      {tab === 'budgets'   && <BudgetsPage />}
-      {tab === 'goals'     && <GoalsPage />}
-      {tab === 'wealth'    && <WealthDashboard />}
-      {tab === 'reports'   && <ReportsPage />}
-      {tab === 'settings'  && <SettingsPage />}
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto relative bg-slate-50/50">
+        <div className="w-full max-w-[1600px] mx-auto">
+          {tab === 'dashboard' && <PersonalDashboard onboardingData={onboardingData} onStartImport={handleStartImport} onNavigate={setTab} />}
+          {tab === 'import'    && <ImportWizard onImportComplete={handleImportComplete} onNavigate={setTab} />}
+          {tab === 'budgets'   && <BudgetsPage />}
+          {tab === 'goals'     && <GoalsPage />}
+          {tab === 'wealth'    && <WealthDashboard />}
+          {tab === 'reports'   && <ReportsPage />}
+          {tab === 'settings'  && <SettingsPage />}
+        </div>
+      </main>
 
       {/* AI Chat — always visible regardless of active tab */}
       <ChatWidget onNavigate={setTab} />

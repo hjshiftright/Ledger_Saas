@@ -360,7 +360,7 @@ export default function GoalsPage() {
   const totalCurrent = goals.reduce((s, g) => s + (parseFloat(g.current_amount) || 0), 0)
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+    <div className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

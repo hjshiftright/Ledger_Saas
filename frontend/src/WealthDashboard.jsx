@@ -1421,7 +1421,7 @@ export default function WealthDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
 
         {/* Page header */}
         <div className="mb-8">

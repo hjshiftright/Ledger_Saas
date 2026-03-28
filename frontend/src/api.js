@@ -15,12 +15,16 @@ class ApiError extends Error {
 }
 
 export const apiCall = async (endpoint, method = "GET", body = null, params = null) => {
+  const token = sessionStorage.getItem('ledger_auth_token');
   const options = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    },
   };
   if (body) options.body = JSON.stringify(body);
-  
+
   let url = `${ONBOARDING_BASE}${endpoint}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
@@ -39,7 +43,14 @@ export const apiCall = async (endpoint, method = "GET", body = null, params = nu
 
 // Generic call to the v1 API (non-onboarding)
 const v1Call = async (path, method = "GET", body = null, params = null) => {
-  const options = { method, headers: { "Content-Type": "application/json" } };
+  const token = sessionStorage.getItem('ledger_auth_token');
+  const options = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    },
+  };
   if (body) options.body = JSON.stringify(body);
   let url = `${BASE}${path}`;
   if (params) {

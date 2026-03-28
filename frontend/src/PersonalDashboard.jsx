@@ -112,338 +112,334 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-6 space-y-5">
+    <div className="w-full px-4 md:px-8 py-6 max-w-[1600px] mx-auto space-y-6 lg:space-y-8">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Hey, {profile.name || 'there'} 👋</h1>
-          <p className="text-slate-500 text-xs mt-0.5">{profileInfo.emoji} {profileInfo.name}{profile.city ? ` · ${profile.city}` : ''}{profile.age ? ` · ${profile.age} yrs` : ''}</p>
+          <h1 className="text-2xl font-bold text-slate-800">Hey, {profile.name || 'there'} 👋</h1>
+          <p className="text-slate-500 text-sm mt-1">{profileInfo.emoji} {profileInfo.name}{profile.city ? ` · ${profile.city}` : ''}{profile.age ? ` · ${profile.age} yrs` : ''}</p>
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-400">Net Worth</div>
-          <div className={`text-2xl font-bold ${netWorth >= 0 ? 'text-indigo-700' : 'text-rose-600'}`}>
+          <div className="text-sm text-slate-400 font-medium">Net Worth</div>
+          <div className={`text-3xl font-bold ${netWorth >= 0 ? 'text-indigo-700' : 'text-rose-600'}`}>
             {netWorth >= 0 ? '+' : ''}{formatCurrency(netWorth)}
           </div>
         </div>
       </div>
 
-      {/* Quick Actions - Import Data Prominently */}
-      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-            <Upload className="w-4 h-4 text-amber-600" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-amber-900">Bring in a bank statement</div>
-            <div className="text-xs text-amber-700">Drop a PDF or CSV — AI reads, categorises, you approve</div>
-          </div>
-        </div>
-        <button
-          onClick={onStartImport}
-          className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 transition-colors whitespace-nowrap"
-        >
-          <FileText className="w-4 h-4" />
-          Import
-        </button>
-      </div>
+      <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start space-y-6 lg:space-y-0">
+        {/* Left Column: Stats & Goals */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {/* Stats Grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Assets Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl p-5 shadow-sm border border-slate-100"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assets</div>
+                  <div className="text-2xl font-bold text-green-700">{formatCurrency(totalAssets)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-4 pt-4 border-t border-slate-50">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Everything you own</span>
+              </div>
+            </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Assets Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-green-600" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">Everything you own</div>
-              <div className="text-xl font-bold text-green-700">{formatCurrency(totalAssets)}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>cash, investments, property &amp; more</span>
-          </div>
-        </motion.div>
+            {/* Liabilities Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-xl p-5 shadow-sm border border-slate-100"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Liabilities</div>
+                  <div className="text-2xl font-bold text-red-700">{formatCurrency(totalLiabilities)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-4 pt-4 border-t border-slate-50">
+                <ArrowDownRight className="w-3.5 h-3.5" />
+                <span>What you owe</span>
+              </div>
+            </motion.div>
 
-        {/* Liabilities Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-red-600" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">What you owe</div>
-              <div className="text-xl font-bold text-red-700">{formatCurrency(totalLiabilities)}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <ArrowDownRight className="w-3 h-3" />
-            <span>loans, credit cards &amp; borrowed money</span>
-          </div>
-        </motion.div>
-
-        {/* Monthly Savings Needed Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <PiggyBank className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">Set aside each month</div>
-              <div className="text-xl font-bold text-indigo-700">{formatCurrency(totalMonthlySavings)}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <Target className="w-3 h-3" />
-            <span>to reach every goal you've set on time</span>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Financial Goals */}
-      {goals.length > 0 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">🎯 Things you're working towards</h2>
-              <p className="text-slate-400 text-xs mt-0.5">Monthly SIP to stay on track</p>
-            </div>
-            {goals.length > 3 && (
-              <button
-                onClick={() => setShowAllGoals(!showAllGoals)}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
-              >
-                {showAllGoals ? 'Show fewer' : `See all ${goals.length}`}
-              </button>
-            )}
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(showAllGoals ? goals : goals.slice(0, 3)).map((goal, index) => {
-              const info = GOAL_TYPE_INFO[goal.goal_type] || GOAL_TYPE_INFO.OTHERS;
-              const pct = Math.min(100, Math.round(goal.progress_pct || 0));
-              return (
-                <motion.div
-                  key={goal.id || index}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`${info.bgColor} rounded-xl p-4 border border-slate-100 shadow-sm`}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">{info.emoji}</span>
-                    <div>
-                      <div className="font-semibold text-slate-900">{goal.name}</div>
-                      <div className="text-xs text-slate-500">{goal.yearsAway} yr{goal.yearsAway !== 1 ? 's' : ''} away</div>
-                    </div>
-                  </div>
-                  {/* Progress bar */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                      <span>{formatCurrency(goal.currentAmount || 0)} saved</span>
-                      <span>{pct}%</span>
-                    </div>
-                    <div className="w-full bg-white/60 rounded-full h-1.5">
-                      <div className={`h-1.5 rounded-full ${info.color.replace('text-','bg-')}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <div className="text-[10px] text-slate-500">Monthly SIP needed</div>
-                      <div className={`text-base font-bold ${info.color}`}>
-                        {formatCurrency(goal.monthlySavingNeeded || 0)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-500">Target</div>
-                      <div className="text-xs font-semibold text-slate-600">
-                        {formatCurrency(goal.requiredCorpus || 0)}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+            {/* Monthly Savings Needed Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-xl p-5 shadow-sm border border-slate-100"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <PiggyBank className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Target SIP</div>
+                  <div className="text-2xl font-bold text-indigo-700">{formatCurrency(totalMonthlySavings)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-4 pt-4 border-t border-slate-50">
+                <Target className="w-3.5 h-3.5" />
+                <span>To hit all goals on time</span>
+              </div>
+            </motion.div>
           </div>
 
+          {/* Financial Goals */}
           {goals.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-slate-500 text-sm">Across all goals, put away at least</span>
-              <span className="text-2xl font-bold text-indigo-700">{formatCurrency(totalMonthlySavings)}<span className="text-sm font-medium text-slate-400">/mo</span></span>
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">🎯 Things you're working towards</h2>
+                  <p className="text-slate-500 text-sm mt-1">Monthly SIP needed to stay on track</p>
+                </div>
+                {goals.length > 4 && (
+                  <button
+                    onClick={() => setShowAllGoals(!showAllGoals)}
+                    className="text-sm border border-indigo-200 bg-indigo-50 px-3 py-1.5 rounded-lg text-indigo-700 hover:bg-indigo-100 font-medium whitespace-nowrap transition-colors"
+                  >
+                    {showAllGoals ? 'Show fewer' : `See all ${goals.length}`}
+                  </button>
+                )}
+              </div>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                {(showAllGoals ? goals : goals.slice(0, 4)).map((goal, index) => {
+                  const info = GOAL_TYPE_INFO[goal.goal_type] || GOAL_TYPE_INFO.OTHERS;
+                  const pct = Math.min(100, Math.round(goal.progress_pct || 0));
+                  return (
+                    <motion.div
+                      key={goal.id || index}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`${info.bgColor} rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col`}
+                    >
+                      <div className="flex items-start gap-4 mb-4">
+                        <span className="text-3xl bg-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">{info.emoji}</span>
+                        <div className="flex-1">
+                          <div className="font-bold text-slate-900 leading-tight">{goal.name}</div>
+                          <div className="text-xs font-medium text-slate-500 mt-1">{goal.yearsAway} yr{goal.yearsAway !== 1 ? 's' : ''} away</div>
+                        </div>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="mb-4 flex-1">
+                        <div className="flex justify-between text-xs font-medium text-slate-500 mb-1.5">
+                          <span>{formatCurrency(goal.currentAmount || 0)} saved</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200/60 rounded-full h-2">
+                          <div className={`h-2 rounded-full transition-all duration-500 ${info.color.replace('text-','bg-')}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-end pt-3 border-t border-slate-200/50">
+                        <div>
+                          <div className="text-xs font-medium text-slate-500">Monthly SIP</div>
+                          <div className={`text-lg font-bold ${info.color}`}>
+                            {formatCurrency(goal.monthlySavingNeeded || 0)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-medium text-slate-500">Target</div>
+                          <div className="text-sm font-bold text-slate-700">
+                            {formatCurrency(goal.requiredCorpus || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {goals.length > 0 && (
+                <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-xl px-5 py-4">
+                  <span className="text-slate-600 font-medium">Across all goals, put away at least</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatCurrency(totalMonthlySavings)}<span className="text-sm font-medium text-slate-500">/mo</span></span>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
 
-      {/* Money Lent — Interest Forecast */}
-      {(() => {
-        const lentItems = (dbData?.assets?.moneyLent || []).filter(l => l.balance > 0 && l.interest_rate > 0);
-        if (!lentItems.length) return null;
-        const today = new Date();
-        const totalAnnualInterest = lentItems.reduce((s, l) => s + l.balance * (l.interest_rate / 100), 0);
-        return (
-          <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-700 mb-3">🤝 Money Lent — Interest Forecast</h2>
+        {/* Right Column: Actions, Next Steps, Money Lent, Profile */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+          {/* Quick Actions - Import Data Prominently */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 shadow-sm border border-amber-200/50">
+                <Upload className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-amber-900">Import Bank Statement</h3>
+                <p className="text-sm text-amber-700/80 mt-1 leading-snug">Drop a PDF or CSV — AI reads, categorises, you approve</p>
+              </div>
+            </div>
+            <button
+              onClick={onStartImport}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 text-white text-sm font-bold rounded-xl hover:bg-amber-700 transition-colors shadow-sm"
+            >
+              <FileText className="w-4 h-4" />
+              Start New Import
+            </button>
+          </div>
+
+          {/* Next Steps */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">🗺️ Your path forward</h2>
             <div className="space-y-3">
-              {lentItems.map((l, i) => {
-                const lentDate = l.lent_date ? new Date(l.lent_date) : null;
-                const daysElapsed = lentDate ? Math.max(0, Math.floor((today - lentDate) / 86400000)) : null;
-                const accruedInterest = lentDate ? parseFloat(((l.balance * (l.interest_rate / 100) * daysElapsed) / 365).toFixed(2)) : null;
-                const monthlyInterest = parseFloat((l.balance * (l.interest_rate / 100) / 12).toFixed(2));
-                const annualInterest = parseFloat((l.balance * (l.interest_rate / 100)).toFixed(2));
-                return (
-                  <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-slate-800">{l.name}</span>
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{l.interest_rate}% p.a.</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <p className="text-slate-500">Principal</p>
-                        <p className="font-semibold text-slate-700">{formatCurrency(l.balance)}</p>
-                      </div>
-                      {daysElapsed !== null && (
-                        <div>
-                          <p className="text-slate-500">Accrued ({daysElapsed}d)</p>
-                          <p className="font-semibold text-emerald-700">{formatCurrency(accruedInterest)}</p>
+              <div className="flex items-start gap-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 hover:bg-indigo-50 transition-colors group">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-indigo-600 font-bold text-xs">1</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">Categorise & Approve</div>
+                  <div className="text-xs text-slate-500 mt-0.5 leading-snug">AI categorises each row — you approve before saving</div>
+                  <button onClick={() => onNavigate?.('import')} className="mt-2 text-xs text-indigo-600 group-hover:text-indigo-800 font-bold flex items-center gap-1">
+                    Review drafts <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 hover:bg-emerald-50 transition-colors group">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-emerald-700 font-bold text-xs">2</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">Set budget limits</div>
+                  <div className="text-xs text-slate-500 mt-0.5 leading-snug">Monthly limits per category — Ledger flags when close</div>
+                  <button onClick={() => onNavigate?.('budgets')} className="mt-2 text-xs text-emerald-600 group-hover:text-emerald-800 font-bold flex items-center gap-1">
+                    Set up budgets <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3 p-3 bg-violet-50/50 rounded-xl border border-violet-100 hover:bg-violet-50 transition-colors group">
+                <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-violet-700 font-bold text-xs">3</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-800">Review Insights</div>
+                  <div className="text-xs text-slate-500 mt-0.5 leading-snug">Track net worth growth and deep analytics</div>
+                  <button onClick={() => onNavigate?.('wealth')} className="mt-2 text-xs text-violet-600 group-hover:text-violet-800 font-bold flex items-center gap-1">
+                    View wealth <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Money Lent — Interest Forecast */}
+          {(() => {
+            const lentItems = (dbData?.assets?.moneyLent || []).filter(l => l.balance > 0 && l.interest_rate > 0);
+            if (!lentItems.length) return null;
+            const today = new Date();
+            const totalAnnualInterest = lentItems.reduce((s, l) => s + l.balance * (l.interest_rate / 100), 0);
+            return (
+              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">🤝 Interest Forecast</h2>
+                <div className="space-y-4">
+                  {lentItems.map((l, i) => {
+                    const lentDate = l.lent_date ? new Date(l.lent_date) : null;
+                    const daysElapsed = lentDate ? Math.max(0, Math.floor((today - lentDate) / 86400000)) : null;
+                    const accruedInterest = lentDate ? parseFloat(((l.balance * (l.interest_rate / 100) * daysElapsed) / 365).toFixed(2)) : null;
+                    const monthlyInterest = parseFloat((l.balance * (l.interest_rate / 100) / 12).toFixed(2));
+                    const annualInterest = parseFloat((l.balance * (l.interest_rate / 100)).toFixed(2));
+                    return (
+                      <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-bold text-slate-800">{l.name}</span>
+                          <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200">{l.interest_rate}% p.a.</span>
                         </div>
-                      )}
-                      <div>
-                        <p className="text-slate-500">Monthly interest</p>
-                        <p className="font-semibold text-emerald-700">{formatCurrency(monthlyInterest)}</p>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <p className="text-slate-500 font-medium mb-0.5">Principal</p>
+                            <p className="text-sm font-bold text-slate-800">{formatCurrency(l.balance)}</p>
+                          </div>
+                          {daysElapsed !== null && (
+                            <div>
+                              <p className="text-slate-500 font-medium mb-0.5">Accrued ({daysElapsed}d)</p>
+                              <p className="text-sm font-bold text-emerald-600">{formatCurrency(accruedInterest)}</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-slate-500 font-medium mb-0.5">Monthly yield</p>
+                            <p className="text-sm font-bold text-emerald-600">{formatCurrency(monthlyInterest)}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500 font-medium mb-0.5">Annual yield</p>
+                            <p className="text-sm font-bold text-emerald-600">{formatCurrency(annualInterest)}</p>
+                          </div>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-600">Total projected annual interest</span>
+                  <span className="text-lg font-bold text-emerald-600">{formatCurrency(totalAnnualInterest)}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Profile Summary (Collapsible) */}
+          <details className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden group">
+            <summary className="px-5 py-4 cursor-pointer hover:bg-slate-50 flex items-center justify-between outline-none">
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">👤 Profile Summary</h2>
+              <ChevronRight className="w-5 h-5 text-slate-400 transform transition-transform group-open:rotate-90" />
+            </summary>
+            <div className="px-5 pb-5 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-medium text-slate-500 mb-1">Profile Type</div>
+                  <div className="font-bold text-slate-800">{profileInfo.emoji} {profileInfo.name}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-medium text-slate-500 mb-1">Location</div>
+                  <div className="font-bold text-slate-800">📍 {profile.city || 'Not set'}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-medium text-slate-500 mb-1">Age</div>
+                  <div className="font-bold text-slate-800">{profile.age || 'Not set'} years</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-medium text-slate-500 mb-1">Income</div>
+                  <div className="font-bold text-slate-800 capitalize">{profile.incomeRange?.replace(/_/g, ' ') || 'Not set'}</div>
+                </div>
+                {(profile.maritalStatus || profile.childrenCount > 0) && (
+                  <div className="col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-100 flex gap-6">
+                    {profile.maritalStatus && (
                       <div>
-                        <p className="text-slate-500">Annual interest</p>
-                        <p className="font-semibold text-emerald-700">{formatCurrency(annualInterest)}</p>
+                        <div className="text-xs font-medium text-slate-500 mb-1">Status</div>
+                        <div className="font-bold text-slate-800 capitalize">{profile.maritalStatus}</div>
                       </div>
-                    </div>
-                    {l.lent_date && (
-                      <p className="text-xs text-slate-400 mt-1.5">Lent on {new Date(l.lent_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    )}
+                    {profile.childrenCount > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 mb-1">Children</div>
+                        <div className="font-bold text-slate-800">{profile.childrenCount}</div>
+                      </div>
                     )}
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-xs text-slate-500">Total projected annual interest</span>
-              <span className="text-base font-bold text-emerald-700">{formatCurrency(totalAnnualInterest)}</span>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Next Steps */}
-      <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-700 mb-3">🗺️ Your path forward</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-lg border border-amber-100">
-            <div className="w-6 h-6 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-amber-700 font-bold text-xs">1</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700">Bring in a statement</div>
-              <div className="text-xs text-slate-500">Drop a PDF or CSV — we sort them automatically</div>
-              <button onClick={() => onNavigate?.('import')} className="mt-1.5 text-xs text-amber-600 hover:text-amber-800 font-medium flex items-center gap-0.5">
-                Start importing <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-            <div className="w-6 h-6 rounded-full bg-indigo-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-indigo-600 font-bold text-sm">2</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700">Let AI do the heavy lifting</div>
-              <div className="text-xs text-slate-500">Categorises each row — you approve before anything is saved</div>
-              <button onClick={() => onNavigate?.('import')} className="mt-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5">
-                Categorise &amp; approve <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-2.5 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-            <div className="w-6 h-6 rounded-full bg-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-emerald-700 font-bold text-xs">3</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700">Tell it what you can spend</div>
-              <div className="text-xs text-slate-500">Monthly limits per category — Ledger flags when you're close</div>
-              <button onClick={() => onNavigate?.('budgets')} className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-800 font-medium flex items-center gap-0.5">
-                Set up budgets <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-2.5 p-3 bg-violet-50 rounded-lg border border-violet-100">
-            <div className="w-6 h-6 rounded-full bg-violet-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-violet-700 font-bold text-xs">4</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700">Watch your goals get closer</div>
-              <div className="text-xs text-slate-500">Track net worth growth and distance to each goal</div>
-              <button onClick={() => onNavigate?.('goals')} className="mt-1.5 text-xs text-violet-600 hover:text-violet-800 font-medium flex items-center gap-0.5">
-                Check your goals <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
+          </details>
         </div>
       </div>
-
-      {/* Profile Summary (Collapsible) */}
-      <details className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <summary className="px-5 py-3 cursor-pointer hover:bg-slate-50 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-700">👤 Your profile at a glance</h2>
-          <ChevronRight className="w-5 h-5 text-slate-400 transform transition-transform details-open:rotate-90" />
-        </summary>
-        <div className="px-6 pb-6 border-t border-slate-200 pt-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-            <div>
-              <div className="text-slate-500">Profile Type</div>
-              <div className="font-medium text-slate-900">{profileInfo.emoji} {profileInfo.name}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Location</div>
-              <div className="font-medium text-slate-900">📍 {profile.city || 'Not set'}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Age</div>
-              <div className="font-medium text-slate-900">{profile.age || 'Not set'} years</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Income Range</div>
-              <div className="font-medium text-slate-900">{profile.incomeRange?.replace(/_/g, ' ') || 'Not set'}</div>
-            </div>
-            {profile.maritalStatus && (
-              <div>
-                <div className="text-slate-500">Marital Status</div>
-                <div className="font-medium text-slate-900 capitalize">{profile.maritalStatus}</div>
-              </div>
-            )}
-            {profile.childrenCount > 0 && (
-              <div>
-                <div className="text-slate-500">Children</div>
-                <div className="font-medium text-slate-900">{profile.childrenCount}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </details>
     </div>
   );
 }

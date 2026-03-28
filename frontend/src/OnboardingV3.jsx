@@ -85,6 +85,14 @@ const PERSONA_DEFAULTS = {
   other:     { bankAccounts: [{ _id: 1, nickname: 'Savings A/c', bank: 'HDFC Bank', balance: '' }] },
 };
 
+// Grouped screens for Phase 2 (previously Phase 3 one-per-category)
+const CATEGORY_GROUPS = [
+  { id: 'banking',      label: 'Banks & Cash',    emoji: '🏦', cats: ['banks'] },
+  { id: 'investments',  label: 'Investments',     emoji: '📊', cats: ['sips', 'stocks', 'epfNps'] },
+  { id: 'other-assets', label: 'Other Assets',    emoji: '💼', cats: ['fixedDeposits', 'gold', 'realEstate', 'foreign', 'moneyLent', 'otherAssets'] },
+  { id: 'liabilities',  label: 'Loans & Debts',   emoji: '📋', cats: ['creditCards', 'homeLoans', 'vehicleLoans', 'educationLoans', 'personalLoans', 'otherLoans'] },
+];
+
 // ─── DEFAULT STATE ────────────────────────────────────────────────────────────
 
 const D_PROFILE = { name: '', age: '', profileType: null, city: 'Bengaluru', maritalStatus: null, numChildren: 0 };
@@ -254,18 +262,16 @@ function ListBuilder({ items, onChange, blank, addLabel, renderRow }) {
 
 const AI_SUGGESTED = {
   1: ["I'm Priya, 28, software engineer in Bangalore, married with 2 kids", "I run a small business in Pune, 45 years old", "I'm 62, retired, living in Chennai"],
-  2: ["I have a savings account, SIPs, EPF and a credit card", "Just a bank account and some gold", "Stocks on Zerodha, MFs on Groww, home loan outstanding"],
-  3: ["HDFC savings ₹2 lakhs, SBI ₹50k, EPF ₹8 lakhs", "Zerodha stocks worth ₹3 lakhs, Groww MF ₹5 lakhs", "Home loan ₹35 lakhs outstanding, EMI ₹32,000"],
-  4: ["Retire at 58 with ₹70k/month expenses", "Emergency fund 6 months, spend ₹55k/month", "Save ₹20 lakhs for daughter's college in 12 years"],
-  5: [],
+  2: ["HDFC savings ₹2 lakhs, SBI ₹50k, EPF ₹8 lakhs", "Zerodha stocks worth ₹3 lakhs, Groww MF ₹5 lakhs", "Home loan ₹35 lakhs outstanding, EMI ₹32,000"],
+  3: ["Retire at 58 with ₹70k/month expenses", "Emergency fund 6 months, spend ₹55k/month", "Save ₹20 lakhs for daughter's college in 12 years"],
+  4: [],
 };
 
 const AI_WELCOME = {
   1: "👋 Hi! Tell me about yourself and I'll fill in the form for you.",
-  2: "Tell me what you have and what you owe — I'll tick the right boxes.",
-  3: "Tell me the values for each account or loan — I'll fill them in.",
-  4: "What are you saving for? Tell me your plans and I'll set them up.",
-  5: "Your picture is ready! Click the button below to enter your Ledger.",
+  2: "Tell me the values for each account or loan — I'll fill them in.",
+  3: "What are you saving for? Tell me your plans and I'll set them up.",
+  4: "Your picture is ready! Click the button below to enter your Ledger.",
 };
 
 function parseAIForPhase(text, phase, currentCatId) {
@@ -291,7 +297,7 @@ function parseAIForPhase(text, phase, currentCatId) {
     else if (/no kids|no children/i.test(lo)) fills.numChildren = 0;
   }
 
-  if (phase === 3) {
+  if (phase === 2) {
     const parseAmt = (numStr, ctx = '') => {
       const n = parseInt((numStr || '').replace(/,/g, '')) || 0;
       const c = ctx.toLowerCase();
@@ -317,7 +323,7 @@ function parseAIForPhase(text, phase, currentCatId) {
     if (emi) fills.emi = String(parseAmt(emi[1], emi[0]));
   }
 
-  if (phase === 4) {
+  if (phase === 3) {
     const parseAmt = (n, ctx) => { const v = parseInt((n||'').replace(/,/g,''))||0; return /lakh|lac/i.test(ctx) ? v*100000 : /k\b/i.test(ctx) ? v*1000 : v; };
     const ra = t.match(/retire[^at]*?at\s*(\d{2})/i);
     if (ra) fills.retireAge = ra[1];
@@ -343,14 +349,14 @@ function aiReplyText(fills, phase, currentCatId) {
     if (fills.maritalStatus) lines.push(`✅ Married: **${fills.maritalStatus === 'yes' ? 'Yes' : 'No'}**`);
     if (fills.numChildren !== undefined) lines.push(`✅ Children: **${fills.numChildren}**`);
   }
-  if (phase === 3) {
+  if (phase === 2) {
     if (fills.bankBalance) lines.push(`✅ Bank balance: **₹${parseInt(fills.bankBalance).toLocaleString('en-IN')}**`);
     if (fills.amount) lines.push(`✅ Amount: **₹${parseInt(fills.amount).toLocaleString('en-IN')}**`);
     if (fills.epfBalance) lines.push(`✅ EPF balance: **₹${parseInt(fills.epfBalance).toLocaleString('en-IN')}**`);
     if (fills.outstanding) lines.push(`✅ Outstanding: **₹${parseInt(fills.outstanding).toLocaleString('en-IN')}**`);
     if (fills.emi) lines.push(`✅ EMI: **₹${parseInt(fills.emi).toLocaleString('en-IN')}/mo**`);
   }
-  if (phase === 4) {
+  if (phase === 3) {
     if (fills.retireAge) lines.push(`✅ Retire at: **${fills.retireAge} yrs**`);
     if (fills.retireMonthly) lines.push(`✅ Monthly expense: **₹${parseInt(fills.retireMonthly).toLocaleString('en-IN')}**`);
     if (fills.emergencyMonths) lines.push(`✅ Emergency fund: **${fills.emergencyMonths} months**`);
@@ -569,24 +575,35 @@ function BalanceScale({ assets, liabilities, compact = false }) {
   );
 }
 
-// ─── PHASE 1: WHO ARE YOU ─────────────────────────────────────────────────────
+// ─── PHASE 1: PROFILE + CATEGORY PICKER (merged) ─────────────────────────────
 
-function Phase1_WhoAreYou({ data, setData, onNext }) {
+function Phase1_ProfileAndPick({ data, setData, selAssets, setSelAssets, selLiabilities, setSelLiabilities, onNext }) {
   const [errs, setErrs] = useState({});
   const up = (k, v) => setData(p => ({ ...p, [k]: v }));
   const name = firstName(data.name);
+
+  const handleProfileType = (profileType) => {
+    up('profileType', profileType);
+    const preset = PROFILE_PRESETS[profileType] || PROFILE_PRESETS.other;
+    setSelAssets(new Set(preset.assets));
+    setSelLiabilities(new Set(preset.liabilities));
+  };
+
+  const toggleA = id => setSelAssets(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleL = id => setSelLiabilities(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const go = () => {
     const e = {};
     if (!data.name?.trim() || data.name.length < 2) e.name = 'Please enter your name';
     if (!data.age || parseInt(data.age) < 18 || parseInt(data.age) > 90) e.age = 'Enter a valid age (18–90)';
     if (!data.profileType) e.profileType = 'Please pick one that fits you';
+    if (selAssets.size + selLiabilities.size === 0) e.cats = 'Select at least one category to continue';
     setErrs(e);
     if (!Object.keys(e).length) onNext();
   };
 
   return (
-    <div className="max-w-2xl mx-auto w-full py-8 px-4 space-y-6">
+    <div className="max-w-3xl mx-auto w-full py-8 px-4 space-y-5">
       {/* Header */}
       <div>
         <AnimatePresence mode="wait">
@@ -606,8 +623,8 @@ function Phase1_WhoAreYou({ data, setData, onNext }) {
       {/* Personal details card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">About you</p>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-1">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="col-span-2">
             <label className={LABEL_CLS}>Your name</label>
             <TI value={data.name} onChange={v => up('name', v)} placeholder="e.g. Priya" autoFocus />
             {errs.name && <p className="text-xs text-red-500 mt-0.5">{errs.name}</p>}
@@ -636,160 +653,102 @@ function Phase1_WhoAreYou({ data, setData, onNext }) {
         </div>
       </div>
 
-      {/* Profile type picker */}
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Which of these fits you best?</p>
-        {errs.profileType && <p className="text-xs text-red-500 mb-2">{errs.profileType}</p>}
-        <div className="grid grid-cols-3 gap-3">
-          {PROFILE_TYPES.map(p => (
-            <button key={p.id} onClick={() => up('profileType', p.id)}
-              className={`flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all text-left group ${
-                data.profileType === p.id
-                  ? 'border-indigo-500 bg-indigo-50/70 shadow-md ring-2 ring-indigo-100'
-                  : 'border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50 hover:shadow-sm'
-              }`}>
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${data.profileType === p.id ? 'bg-indigo-100' : 'bg-slate-50'}`}>
-                {p.emoji}
-              </div>
-              <div className="min-w-0">
-                <p className={`text-sm font-bold leading-tight mb-0.5 ${data.profileType === p.id ? 'text-indigo-700' : 'text-slate-800'}`}>{p.label}</p>
-                <p className="text-[11px] text-slate-400 leading-relaxed">{p.desc}</p>
-              </div>
-            </button>
-          ))}
+      {/* Profile type + reactive category picker */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Which of these fits you best?</p>
+          {errs.profileType && <p className="text-xs text-red-500 mb-2">{errs.profileType}</p>}
+          <div className="grid grid-cols-3 gap-2.5">
+            {PROFILE_TYPES.map(p => (
+              <button key={p.id} onClick={() => handleProfileType(p.id)}
+                className={`flex items-start gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${
+                  data.profileType === p.id
+                    ? 'border-indigo-500 bg-indigo-50/70 shadow-md ring-2 ring-indigo-100'
+                    : 'border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50 hover:shadow-sm'
+                }`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 ${data.profileType === p.id ? 'bg-indigo-100' : 'bg-slate-50'}`}>
+                  {p.emoji}
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-bold leading-tight mb-0.5 ${data.profileType === p.id ? 'text-indigo-700' : 'text-slate-800'}`}>{p.label}</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">{p.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Category checkboxes — appear once profile type is selected */}
+        <AnimatePresence>
+          {data.profileType && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+              className="border-t border-slate-100 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tick what you have</p>
+                <p className="text-[10px] text-slate-400">Pre-selected based on your profile — adjust freely</p>
+              </div>
+              {errs.cats && <p className="text-xs text-red-500">{errs.cats}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">Assets — what you own</p>
+                  <div className="space-y-1.5">
+                    {ASSET_CATS.map(cat => {
+                      const on = selAssets.has(cat.id);
+                      return (
+                        <button key={cat.id} onClick={() => toggleA(cat.id)}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-left ${
+                            on ? 'border-emerald-300 bg-emerald-50' : 'border-slate-100 bg-white hover:border-emerald-200 hover:bg-slate-50'
+                          }`}>
+                          <span className="text-sm shrink-0">{cat.emoji}</span>
+                          <span className={`text-xs font-medium flex-1 ${on ? 'text-emerald-800' : 'text-slate-600'}`}>{cat.label}</span>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                            on ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'
+                          }`}>
+                            {on && <Check size={9} className="text-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">Liabilities — what you owe</p>
+                  <div className="space-y-1.5">
+                    {LIABILITY_CATS.map(cat => {
+                      const on = selLiabilities.has(cat.id);
+                      return (
+                        <button key={cat.id} onClick={() => toggleL(cat.id)}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-left ${
+                            on ? 'border-red-200 bg-red-50' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'
+                          }`}>
+                          <span className="text-sm shrink-0">{cat.emoji}</span>
+                          <span className={`text-xs font-medium flex-1 ${on ? 'text-red-800' : 'text-slate-600'}`}>{cat.label}</span>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                            on ? 'bg-red-400 border-red-400' : 'border-slate-300 bg-white'
+                          }`}>
+                            {on && <Check size={9} className="text-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selLiabilities.size === 0 && (
+                    <p className="text-[10px] text-slate-400 italic mt-2 px-1">No loans or debts? That's great!</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <button onClick={go}
         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition flex items-center justify-center gap-2 group">
-        {name ? `Looks good, ${name} — next` : "That's me — continue"}
+        {data.profileType ? 'Add my numbers' : (name ? `Looks good, ${name} — next` : "That's me — continue")}
         <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
       </button>
 
       <p className="text-center text-xs text-slate-400">🔒 Your data is encrypted and private</p>
-    </div>
-  );
-}
-
-// ─── PHASE 2: CATEGORY PICKER ─────────────────────────────────────────────────
-
-function Phase2_CategoryPicker({ profile, selAssets, setSelAssets, selLiabilities, setSelLiabilities, onNext, onBack }) {
-  const name = firstName(profile.name);
-
-  const toggleA = id => setSelAssets(prev => {
-    const s = new Set(prev);
-    s.has(id) ? s.delete(id) : s.add(id);
-    return s;
-  });
-  const toggleL = id => setSelLiabilities(prev => {
-    const s = new Set(prev);
-    s.has(id) ? s.delete(id) : s.add(id);
-    return s;
-  });
-
-  const totalSelected = selAssets.size + selLiabilities.size;
-
-  return (
-    <div className="max-w-3xl mx-auto w-full py-8 px-4 space-y-6">
-      <div>
-        <p className="text-2xl font-extrabold text-slate-900">
-          {name ? `${name}, tick what you have.` : 'Tick what you have.'}
-        </p>
-        <p className="text-slate-500 text-sm mt-1">
-          We'll only ask about what you select — skip the rest. You can always add more later.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-5">
-        {/* Assets column */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Assets — what you own</p>
-          </div>
-          <div className="space-y-2">
-            {ASSET_CATS.map(cat => {
-              const on = selAssets.has(cat.id);
-              return (
-                <button key={cat.id} onClick={() => toggleA(cat.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
-                    on ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-100 bg-white hover:border-emerald-200 hover:bg-slate-50'
-                  }`}>
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-base shrink-0 transition-colors ${on ? 'bg-emerald-100' : 'bg-slate-50'}`}>
-                    {cat.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold leading-tight ${on ? 'text-emerald-800' : 'text-slate-700'}`}>{cat.label}</p>
-                    <p className="text-[11px] text-slate-400 leading-snug">{cat.sub}</p>
-                  </div>
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                    on ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'
-                  }`}>
-                    {on && <Check size={11} className="text-white" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Liabilities column */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-red-400" />
-            <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Liabilities — what you owe</p>
-          </div>
-          <div className="space-y-2">
-            {LIABILITY_CATS.map(cat => {
-              const on = selLiabilities.has(cat.id);
-              return (
-                <button key={cat.id} onClick={() => toggleL(cat.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
-                    on ? 'border-red-300 bg-red-50 shadow-sm' : 'border-slate-100 bg-white hover:border-red-200 hover:bg-slate-50'
-                  }`}>
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-base shrink-0 transition-colors ${on ? 'bg-red-100' : 'bg-slate-50'}`}>
-                    {cat.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold leading-tight ${on ? 'text-red-800' : 'text-slate-700'}`}>{cat.label}</p>
-                    <p className="text-[11px] text-slate-400 leading-snug">{cat.sub}</p>
-                  </div>
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                    on ? 'bg-red-400 border-red-400' : 'border-slate-300 bg-white'
-                  }`}>
-                    {on && <Check size={11} className="text-white" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Nothing selected hint */}
-          {selLiabilities.size === 0 && (
-            <p className="text-xs text-slate-400 italic mt-3 px-1">No loans or debts? That's great — just leave these unchecked.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Selection summary + CTA */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
-        <p className="text-sm text-slate-600">
-          {totalSelected === 0
-            ? 'Select at least one category above to continue.'
-            : <><span className="font-bold text-slate-800">{selAssets.size} asset{selAssets.size !== 1 ? 's' : ''}</span> and <span className="font-bold text-slate-800">{selLiabilities.size} liabilit{selLiabilities.size !== 1 ? 'ies' : 'y'}</span> selected</>
-          }
-        </p>
-        <div className="flex gap-2 shrink-0">
-          <button onClick={onBack}
-            className="flex items-center gap-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-white transition text-sm">
-            <ArrowLeft size={14} /> Back
-          </button>
-          <button onClick={onNext} disabled={totalSelected === 0}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold px-5 py-2.5 rounded-xl transition shadow-sm text-sm">
-            Add numbers <ArrowRight size={14} />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1199,11 +1158,26 @@ function CategoryFormContent({ catId, owned, setOwned, owed, setOwed }) {
   }
 }
 
-// Phase 3 wrapper — manages sequential form navigation with persistent scale header
-function Phase3_BalanceForms({ catQueue, catIndex, setCatIndex, owned, setOwned, owed, setOwed, assetTotal, liabilityTotal, onBack, onNext }) {
-  const cat = catQueue[catIndex];
-  const allCats = [...ASSET_CATS, ...LIABILITY_CATS];
-  const catMeta = allCats.find(c => c.id === cat?.id) || {};
+// Renders all selected categories within a group on one scrollable screen
+function GroupFormContent({ groupId, selAssets, selLiabilities, owned, setOwned, owed, setOwed }) {
+  const group = CATEGORY_GROUPS.find(g => g.id === groupId);
+  if (!group) return null;
+  const activeCats = group.cats.filter(catId => selAssets.has(catId) || selLiabilities.has(catId));
+  return (
+    <div className="space-y-5">
+      {activeCats.map(catId => (
+        <CategoryFormContent key={catId} catId={catId}
+          owned={owned} setOwned={setOwned}
+          owed={owed} setOwed={setOwed}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Phase 2 wrapper (was Phase 3) — manages grouped form navigation with persistent scale header
+function Phase3_BalanceForms({ catQueue, catIndex, setCatIndex, selAssets, selLiabilities, owned, setOwned, owed, setOwed, assetTotal, liabilityTotal, onBack, onNext }) {
+  const cat = catQueue[catIndex]; // now a group object {id, label, emoji, cats}
 
   const goNext = () => {
     if (catIndex < catQueue.length - 1) setCatIndex(i => i + 1);
@@ -1221,7 +1195,7 @@ function Phase3_BalanceForms({ catQueue, catIndex, setCatIndex, owned, setOwned,
       <ScaleHeader
         assets={assetTotal} liabilities={liabilityTotal}
         stepIdx={catIndex} totalSteps={catQueue.length}
-        catLabel={catMeta.label} catEmoji={catMeta.emoji}
+        catLabel={cat.label} catEmoji={cat.emoji}
       />
 
       <div className="flex-1 overflow-y-auto">
@@ -1230,8 +1204,9 @@ function Phase3_BalanceForms({ catQueue, catIndex, setCatIndex, owned, setOwned,
             <motion.div key={cat.id}
               initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.18 }}>
-              <CategoryFormContent
-                catId={cat.id}
+              <GroupFormContent
+                groupId={cat.id}
+                selAssets={selAssets} selLiabilities={selLiabilities}
                 owned={owned} setOwned={setOwned}
                 owed={owed} setOwed={setOwed}
               />
@@ -1249,7 +1224,7 @@ function Phase3_BalanceForms({ catQueue, catIndex, setCatIndex, owned, setOwned,
           <button onClick={goNext}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm transition text-sm">
             {catIndex < catQueue.length - 1
-              ? `Next: ${allCats.find(c => c.id === catQueue[catIndex + 1]?.id)?.label || 'Continue'}`
+              ? `Next: ${catQueue[catIndex + 1]?.label || 'Continue'}`
               : 'Set my goals'
             }
             <ArrowRight size={15} />
@@ -1777,7 +1752,7 @@ function Phase5_Summary({ profile, owned, owed, savings, onComplete }) {
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 
-const PHASES_LABEL = ['Who Are You', 'What You Have', 'Add Numbers', 'Goals', 'Your Ledger'];
+const PHASES_LABEL = ['You & Your Money', 'Add Numbers', 'Goals', 'Your Ledger'];
 
 export default function OnboardingV3({ onComplete, userEmail = '' }) {
   const [phase, setPhase] = useState(1);
@@ -1790,21 +1765,17 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
   const [owed, setOwed] = useState({ ...D_OWED });
   const [savings, setSavings] = useState({ ...D_GOALS });
 
-  // Ordered category queue for Phase 3
-  const catQueue = [
-    ...ASSET_CATS.filter(c => selAssets.has(c.id)),
-    ...LIABILITY_CATS.filter(c => selLiabilities.has(c.id)),
-  ];
+  // Group-based queue for Phase 2 (balance forms) — max 4 grouped screens
+  const catQueue = CATEGORY_GROUPS.filter(g =>
+    g.cats.some(catId => selAssets.has(catId) || selLiabilities.has(catId))
+  );
 
   const assetTotal      = computeAssetTotal(owned);
   const liabilityTotal  = computeLiabilityTotal(owed);
 
-  // Phase 1 → 2: apply profile preset selections
+  // Phase 1 → 2: seed persona defaults + goal presets, then go to balance forms
   const afterPhase1 = () => {
-    const preset = PROFILE_PRESETS[profile.profileType] || PROFILE_PRESETS.other;
-    setSelAssets(new Set(preset.assets));
-    setSelLiabilities(new Set(preset.liabilities));
-    // Also pre-select education goal if they have kids
+    // Pre-select education goal if they have kids
     if (profile.numChildren > 0) {
       setSavings(prev => ({
         ...prev,
@@ -1813,17 +1784,11 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
         })),
       }));
     }
-    setPhase(2);
-  };
-
-  // Phase 2 → 3: seed persona defaults
-  const afterPhase2 = () => {
     setOwned(prev => {
       if (prev.bankAccounts.length > 0) return prev;
       const defs = PERSONA_DEFAULTS[profile.profileType] || PERSONA_DEFAULTS.other;
       return { ...prev, ...defs };
     });
-    // Pre-seed goal selections based on profile
     const goalPreset = GOAL_PRESETS[profile.profileType] || [];
     setSavings(prev => ({
       ...prev,
@@ -1831,41 +1796,47 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
       emergency: goalPreset.includes('emergency') ? { ...prev.emergency, on: true } : prev.emergency,
     }));
     setCatIndex(0);
-    setPhase(3);
+    setPhase(2);
   };
 
   const sv = { initial: { opacity: 0, x: 28 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -28 } };
 
   // AI apply handler — dispatches fills to the right state based on current phase
+  // phase 1 = profile+pick, phase 2 = balance forms, phase 3 = goals, phase 4 = summary
   const handleAiApply = useCallback((fills) => {
     if (phase === 1) {
       setProfile(p => {
         const n = { ...p };
         if (fills.name) n.name = fills.name;
         if (fills.age) n.age = fills.age;
-        if (fills.profileType) n.profileType = fills.profileType;
+        if (fills.profileType) {
+          n.profileType = fills.profileType;
+          const preset = PROFILE_PRESETS[fills.profileType] || PROFILE_PRESETS.other;
+          setSelAssets(new Set(preset.assets));
+          setSelLiabilities(new Set(preset.liabilities));
+        }
         if (fills.city) n.city = fills.city;
         if (fills.maritalStatus) n.maritalStatus = fills.maritalStatus;
         if (fills.numChildren !== undefined) n.numChildren = fills.numChildren;
         return n;
       });
     }
-    if (phase === 3) {
-      const cat = catQueue[catIndex]?.id;
+    if (phase === 2) {
+      const cat = catQueue[catIndex]?.id; // group id e.g. 'banking', 'investments', 'liabilities'
       setOwned(p => {
         const n = { ...p };
-        if (fills.bankBalance && cat === 'banks') {
+        if (fills.bankBalance && cat === 'banking') {
           const arr = [...(p.bankAccounts || [])];
           if (arr.length > 0) arr[arr.length - 1] = { ...arr[arr.length - 1], balance: fills.bankBalance };
           n.bankAccounts = arr;
         }
-        if (fills.epfBalance && cat === 'epfNps') n.epf = { ...p.epf, hasEpf: true, balance: fills.epfBalance };
+        if (fills.epfBalance && cat === 'investments') n.epf = { ...p.epf, hasEpf: true, balance: fills.epfBalance };
         if (fills.amount) {
-          if (cat === 'sips' && p.mutualFunds?.length > 0) {
+          if (cat === 'investments' && p.mutualFunds?.length > 0) {
             const arr = [...p.mutualFunds]; arr[arr.length - 1] = { ...arr[arr.length - 1], value: fills.amount }; n.mutualFunds = arr;
-          } else if (cat === 'stocks' && p.stocks?.length > 0) {
+          } else if (cat === 'investments' && p.stocks?.length > 0) {
             const arr = [...p.stocks]; arr[arr.length - 1] = { ...arr[arr.length - 1], value: fills.amount }; n.stocks = arr;
-          } else if (cat === 'fixedDeposits' && p.fixedDeposits?.length > 0) {
+          } else if (cat === 'other-assets' && p.fixedDeposits?.length > 0) {
             const arr = [...p.fixedDeposits]; arr[arr.length - 1] = { ...arr[arr.length - 1], amount: fills.amount }; n.fixedDeposits = arr;
           }
         }
@@ -1873,21 +1844,19 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
       });
       setOwed(p => {
         const n = { ...p };
-        if (fills.outstanding) {
-          if (cat === 'homeLoans' && p.homeLoans?.length > 0) {
+        if (fills.outstanding && cat === 'liabilities') {
+          if (p.homeLoans?.length > 0) {
             const arr = [...p.homeLoans]; arr[arr.length - 1] = { ...arr[arr.length - 1], outstanding: fills.outstanding, ...(fills.emi ? { emi: fills.emi } : {}) }; n.homeLoans = arr;
-          } else if (cat === 'vehicleLoans' && p.vehicleLoans?.length > 0) {
-            const arr = [...p.vehicleLoans]; arr[arr.length - 1] = { ...arr[arr.length - 1], outstanding: fills.outstanding }; n.vehicleLoans = arr;
-          } else if (cat === 'creditCards' && p.creditCards?.length > 0) {
+          } else if (p.creditCards?.length > 0) {
             const arr = [...p.creditCards]; arr[arr.length - 1] = { ...arr[arr.length - 1], outstanding: fills.outstanding }; n.creditCards = arr;
-          } else if (cat === 'personalLoans' && p.personalLoans?.length > 0) {
+          } else if (p.personalLoans?.length > 0) {
             const arr = [...p.personalLoans]; arr[arr.length - 1] = { ...arr[arr.length - 1], outstanding: fills.outstanding }; n.personalLoans = arr;
           }
         }
         return n;
       });
     }
-    if (phase === 4) {
+    if (phase === 3) {
       setSavings(p => {
         const n = { ...p };
         if (fills.retireAge || fills.retireMonthly) n.retire = { ...p.retire, on: true, ...(fills.retireAge ? { retireAge: fills.retireAge } : {}), ...(fills.retireMonthly ? { monthly: fills.retireMonthly } : {}) };
@@ -1895,7 +1864,7 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
         return n;
       });
     }
-  }, [phase, catQueue, catIndex]);
+  }, [phase, catQueue, catIndex, setSelAssets, setSelLiabilities]);
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
@@ -1913,7 +1882,7 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
               return (
                 <React.Fragment key={p}>
                   <button
-                    onClick={() => done && phase > 2 && setPhase(p)}
+                    onClick={() => done && setPhase(p)}
                     disabled={!done}
                     className="flex flex-col items-center gap-0.5 px-1 min-w-0">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition ${done ? 'bg-emerald-500 border-emerald-500 text-white cursor-pointer' : active ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white border-slate-300 text-slate-400'}`}>
@@ -1949,52 +1918,47 @@ export default function OnboardingV3({ onComplete, userEmail = '' }) {
           <AnimatePresence mode="wait">
             {phase === 1 && (
               <motion.div key="p1" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto">
-                <Phase1_WhoAreYou data={profile} setData={setProfile} onNext={afterPhase1} />
-              </motion.div>
-            )}
-            {phase === 2 && (
-              <motion.div key="p2" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto">
-                <Phase2_CategoryPicker
-                  profile={profile}
+                <Phase1_ProfileAndPick
+                  data={profile} setData={setProfile}
                   selAssets={selAssets} setSelAssets={setSelAssets}
                   selLiabilities={selLiabilities} setSelLiabilities={setSelLiabilities}
-                  onNext={afterPhase2}
-                  onBack={() => setPhase(1)}
+                  onNext={afterPhase1}
                 />
               </motion.div>
             )}
-            {phase === 3 && catQueue.length > 0 && (
-              <motion.div key="p3" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full flex flex-col">
+            {phase === 2 && catQueue.length > 0 && (
+              <motion.div key="p2" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full flex flex-col">
                 <Phase3_BalanceForms
                   catQueue={catQueue} catIndex={catIndex} setCatIndex={setCatIndex}
+                  selAssets={selAssets} selLiabilities={selLiabilities}
                   owned={owned} setOwned={setOwned}
                   owed={owed} setOwed={setOwed}
                   assetTotal={assetTotal} liabilityTotal={liabilityTotal}
-                  onBack={() => setPhase(2)}
-                  onNext={() => setPhase(4)}
+                  onBack={() => setPhase(1)}
+                  onNext={() => setPhase(3)}
                 />
               </motion.div>
             )}
-            {phase === 3 && catQueue.length === 0 && (
-              <motion.div key="p3-empty" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto flex items-center justify-center">
+            {phase === 2 && catQueue.length === 0 && (
+              <motion.div key="p2-empty" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto flex items-center justify-center">
                 <div className="text-center space-y-4 p-8">
                   <p className="text-slate-500">No categories selected. Go back and choose what you have.</p>
-                  <button onClick={() => setPhase(2)} className="flex items-center gap-2 mx-auto text-indigo-600 font-bold hover:text-indigo-800"><ArrowLeft size={15} /> Back to selection</button>
+                  <button onClick={() => setPhase(1)} className="flex items-center gap-2 mx-auto text-indigo-600 font-bold hover:text-indigo-800"><ArrowLeft size={15} /> Back to selection</button>
                 </div>
+              </motion.div>
+            )}
+            {phase === 3 && (
+              <motion.div key="p3" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto">
+                <Phase4_Goals
+                  data={savings} setData={setSavings}
+                  profile={profile} owned={owned}
+                  onNext={() => setPhase(4)}
+                  onBack={() => { setCatIndex(catQueue.length - 1); setPhase(2); }}
+                />
               </motion.div>
             )}
             {phase === 4 && (
               <motion.div key="p4" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto">
-                <Phase4_Goals
-                  data={savings} setData={setSavings}
-                  profile={profile} owned={owned}
-                  onNext={() => setPhase(5)}
-                  onBack={() => { setCatIndex(catQueue.length - 1); setPhase(3); }}
-                />
-              </motion.div>
-            )}
-            {phase === 5 && (
-              <motion.div key="p5" variants={sv} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }} className="h-full overflow-y-auto">
                 <Phase5_Summary
                   profile={profile} owned={owned} owed={owed} savings={savings}
                   onComplete={onComplete}

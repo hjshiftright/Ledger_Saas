@@ -599,7 +599,7 @@ function LlmProvidersSection() {
 export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 space-y-6">
         <div className="mb-2">
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Cpu size={22} className="text-indigo-600" />

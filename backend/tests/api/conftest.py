@@ -9,7 +9,7 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import event as sa_event
+from sqlalchemy import event as sa_event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -23,9 +23,12 @@ from db.models import (  # noqa: F401
     recurring, reporting, securities, system, tax,
     transactions, users,
 )
+from db.models.users import User
 
 TEST_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Matches the hardcoded _DEV_USER_ID in api/deps.py
+_DEV_USER_ID = 1
 
 
 @pytest.fixture
@@ -38,6 +41,9 @@ async def _engine():
         echo=False,
     )
     async with engine.begin() as conn:
+        # Enable FK enforcement so tests catch constraint violations the same
+        # way PostgreSQL would.
+        await conn.execute(text("PRAGMA foreign_keys = ON"))
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     async with engine.begin() as conn:
@@ -46,7 +52,33 @@ async def _engine():
 
 
 @pytest.fixture
-async def client(_engine):
+async def _dev_user(_engine):
+    """Insert the dev user (id=1) required by the dev-mode auth fallback.
+
+    The dev fallback in api/deps.py always resolves to user_id=1.  Without a
+    matching row in the ``users`` table any insert that references users.id via
+    a FK (profiles, etc.) would fail under strict FK enforcement.
+    """
+    SessionFactory = async_sessionmaker(
+        bind=_engine,
+        autoflush=True,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+    async with SessionFactory() as sess:
+        user = User(
+            email="dev@ledger.local",
+            hashed_password="dev-hash",
+            is_active=True,
+        )
+        sess.add(user)
+        await sess.commit()
+        await sess.refresh(user)
+        return user
+
+
+@pytest.fixture
+async def client(_engine, _dev_user):
     """FastAPI TestClient backed by fresh in-memory aiosqlite per test."""
     SessionFactory = async_sessionmaker(
         bind=_engine,
