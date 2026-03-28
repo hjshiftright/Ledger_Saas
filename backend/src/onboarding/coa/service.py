@@ -17,7 +17,7 @@ class COASetupService:
     def __init__(self, account_repo: AccountRepository):
         self._accounts = account_repo
 
-    async def create_default_coa(self) -> List[AccountNodeResponse]:
+    async def create_default_coa(self, tenant_id: str | None = None) -> List[AccountNodeResponse]:
         created_accounts = []
 
         async def _walk_and_create(node, parent_id=None):
@@ -32,6 +32,8 @@ class COASetupService:
                 "is_system": node.get("is_system", False),
                 "is_active": True,
             }
+            if tenant_id is not None:
+                data["tenant_id"] = tenant_id
             created = await self._accounts.create(data)
             created_accounts.append(created)
 

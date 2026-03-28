@@ -5,6 +5,7 @@ from repositories.protocols import (
 )
 from common.events import event_bus
 from .schemas import DashboardSaveRequest, DashboardDataResponse, AssetItem, GoalItem
+from onboarding.coa.service import COASetupService
 
 # Map the wizard goal id (sent as GoalItem.id) to the DB goal_type enum value
 _GOAL_TYPE_MAP: dict[str, str] = {
@@ -45,6 +46,14 @@ class DashboardService:
 
     async def save_dashboard(self, data: DashboardSaveRequest, user_id: int, tenant_id: str) -> DashboardDataResponse:
         self._tenant_id = tenant_id
+
+        # 0. Ensure the Chart of Accounts is seeded for this tenant
+        coa_svc = COASetupService(self._accounts)
+        if not await coa_svc.is_coa_ready():
+            import logging
+            logging.getLogger(__name__).info("COA not found for tenant %s — seeding defaults.", tenant_id)
+            await coa_svc.create_default_coa(tenant_id=tenant_id)
+
         # 1. Save Profile
         profile_data = {
             "user_id": user_id,
@@ -243,7 +252,7 @@ class DashboardService:
 
         normal = _attr(acc, "normal_balance")
 
-        ob_equity = await self._accounts.find_by_code("5100")
+        ob_equity = await self._accounts.find_by_code("3100")
         if not ob_equity:
             return
 

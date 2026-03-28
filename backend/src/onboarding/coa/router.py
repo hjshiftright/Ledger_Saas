@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
 from common.schemas import ErrorResponse
-from api.deps import TenantDBSession
+from api.deps import TenantDBSession, CurrentUserPayload
 from repositories.sqla_account_repo import AccountRepository
 from .schemas import (
     AccountNodeResponse, COARenameRequest, COACategoryAddRequest,
@@ -27,10 +27,10 @@ def get_coa_service(session: TenantDBSession) -> COASetupService:
         409: {"description": "COA already initialized", "model": ErrorResponse},
     }
 )
-async def initialize_coa(service: COASetupService = Depends(get_coa_service)):
+async def initialize_coa(auth: CurrentUserPayload, service: COASetupService = Depends(get_coa_service)):
     if await service.is_coa_ready():
         raise HTTPException(status_code=409, detail="COA already initialized")
-    return await service.create_default_coa()
+    return await service.create_default_coa(tenant_id=str(auth.tenant_id))
 
 @router.get(
     "/tree",
