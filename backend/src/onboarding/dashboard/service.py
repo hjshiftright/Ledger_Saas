@@ -67,6 +67,7 @@ class DashboardService:
             await self._profiles.create(profile_data)
 
         # 2. Save Assets & Liabilities
+        import json as _json
         category_map = {
             "banks": "1100",
             "realEstate": "1400",
@@ -76,6 +77,7 @@ class DashboardService:
             "fixedDeposits": "1203",
             "bullion": "1300",
             "others": "1200",
+            "moneyLent": "1500",
             "creditCards": "2100",
             "homeLoans": "2200",
             "vehicleLoans": "2300",
@@ -103,6 +105,16 @@ class DashboardService:
                         parent_code, item.name
                     )
                     continue
+
+                # For money lent, persist date and interest rate in the account description
+                if cat == "moneyLent":
+                    meta = {}
+                    if item.lent_date:
+                        meta["lent_date"] = item.lent_date
+                    if item.interest_rate is not None:
+                        meta["interest_rate"] = float(item.interest_rate)
+                    if meta:
+                        await self._accounts.update(_attr(existing_acc, "id"), {"description": _json.dumps(meta)})
 
                 await self._set_opening_balance(_attr(existing_acc, "id"), item.balance)
 
@@ -138,13 +150,14 @@ class DashboardService:
             "1204": "providentFund",
             "1300": "bullion",
             "1400": "realEstate",
+            "1500": "moneyLent",
             "2100": "creditCards",
             "2200": "homeLoans",
             "2300": "vehicleLoans",
             "2400": "personalLoans",
         }
 
-        assets = {k: [] for k in ["banks", "realEstate", "equity", "providentFund", "fixedDeposits", "bullion", "others"]}
+        assets = {k: [] for k in ["banks", "realEstate", "equity", "providentFund", "fixedDeposits", "bullion", "others", "moneyLent"]}
         liabilities = {k: [] for k in ["creditCards", "homeLoans", "vehicleLoans", "personalLoans"]}
 
         await self._walk_and_collect(tree, category_map_inv, assets, liabilities)
@@ -186,6 +199,7 @@ class DashboardService:
             if pid is not None:
                 children_of.setdefault(pid, []).append(n)
 
+        import json as _json
         for n in flat_tree:
             p_code = _attr(n, "code")
             if p_code in category_map_inv:
@@ -193,7 +207,20 @@ class DashboardService:
                 n_id = _attr(n, "id")
                 for child in children_of.get(n_id, []):
                     bal = await self._get_balance(_attr(child, "id"), _attr(child, "normal_balance"))
-                    item = AssetItem(id=_attr(child, "id"), name=_attr(child, "name"), balance=bal)
+                    lent_date = None
+                    interest_rate = None
+                    desc = _attr(child, "description")
+                    if desc:
+                        try:
+                            meta = _json.loads(desc)
+                            lent_date = meta.get("lent_date")
+                            interest_rate = meta.get("interest_rate")
+                        except Exception:
+                            pass
+                    item = AssetItem(
+                        id=_attr(child, "id"), name=_attr(child, "name"), balance=bal,
+                        lent_date=lent_date, interest_rate=interest_rate,
+                    )
                     if cat in assets:
                         assets[cat].append(item)
                     else:

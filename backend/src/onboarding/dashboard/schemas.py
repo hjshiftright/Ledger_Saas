@@ -6,6 +6,8 @@ class AssetItem(BaseModel):
     id: Any
     name: str
     balance: float
+    lent_date: str | None = None
+    interest_rate: float | None = None
 
 class GoalItem(BaseModel):
     id: Any

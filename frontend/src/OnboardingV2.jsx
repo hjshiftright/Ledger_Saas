@@ -812,7 +812,7 @@ const D2 = {
   bankAccounts:[], cashInHand:'10000', stocks:[], mutualFunds:[],
   epf:{ hasEpf:null, balance:'' }, nps:{ hasNps:null, balance:'' },
   gold:{ jewellery:'', coins:'', digital:'' },
-  fixedDeposits:[], foreignInvestments:[], otherAssets:[],
+  fixedDeposits:[], foreignInvestments:[], otherAssets:[], moneyLent:[],
 };
 
 function S2({ data, setData, onNext, onBack, name }) {
@@ -838,7 +838,7 @@ function S2({ data, setData, onNext, onBack, name }) {
     parseInt(data.epf?.balance) || 0, parseInt(data.nps?.balance) || 0,
     (parseInt(data.gold?.jewellery)||0)+(parseInt(data.gold?.coins)||0)+(parseInt(data.gold?.digital)||0),
     sum(data.fixedDeposits, 'amount'), sum(data.foreignInvestments, 'amountInr'),
-    sum(data.otherAssets, 'value'),
+    sum(data.otherAssets, 'value'), sum(data.moneyLent, 'amount'),
   ].reduce((a,b) => a+b, 0);
 
   const steps = [
@@ -1148,6 +1148,56 @@ function S2({ data, setData, onNext, onBack, name }) {
                     )} />
                 </div>
               </div>
+
+              {/* Money Lent — full width card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🤝</span>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">Money Lent to Friends / Family</p>
+                    <p className="text-xs text-slate-500">Track amounts you've lent out — principal, date & interest rate.</p>
+                  </div>
+                </div>
+                <ListBuilder
+                  items={data.moneyLent||[]}
+                  onChange={v=>up('moneyLent',v)}
+                  blank={{person:'', amount:'', lentDate:'', interestRate:''}}
+                  addLabel="Add another loan"
+                  renderRow={(item,i,u)=>(
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Borrower name</p>
+                          <TI value={item.person} onChange={v=>u('person',v)} placeholder="e.g. Rahul" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Amount lent</p>
+                          <NI prefix="₹" value={item.amount} onChange={v=>u('amount',v)} placeholder="50,000" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Date lent</p>
+                          <input
+                            type="date"
+                            value={item.lentDate||''}
+                            onChange={e=>u('lentDate', e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Interest rate (% p.a.)</p>
+                          <div className="flex items-center gap-1.5">
+                            <NI value={item.interestRate} onChange={v=>u('interestRate',v)} placeholder="12" />
+                            <span className="text-xs text-slate-400 font-medium shrink-0">% p.a.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                />
+              </div>
+
               <div className="flex justify-between">
                 <button onClick={() => setSubStep(4)} className="text-slate-400 hover:text-slate-600 font-medium text-sm">← Previous</button>
                 <button onClick={onNext} className="bg-indigo-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-indigo-700 transition">See what you own total →</button>
@@ -1760,6 +1810,10 @@ const buildDashboardPayload = (profile, owned, owed, savings) => {
         ...(owned.foreignInvestments || []).map(f => ({ id: f._id, name: f.type || 'Foreign / Crypto', balance: flt(f.amountInr) })),
         ...(owned.otherAssets || []).map(o => ({ id: o._id, name: o.description || 'Other Asset', balance: flt(o.value) })),
       ],
+      moneyLent: (owned.moneyLent || []).map(l => ({
+        id: l._id, name: l.person || 'Unknown', balance: flt(l.amount),
+        lent_date: l.lentDate || null, interest_rate: flt(l.interestRate) || null,
+      })),
     },
     liabilities: {
       creditCards:      (owed.creditCards    || []).map(c => ({ id: c._id, name: c.name || c.bank || 'Credit Card',    balance: flt(c.outstanding) })),
@@ -2348,6 +2402,7 @@ function SummaryFinancial({ owned, owed, onNext, onBack, onEdit }) {
     sum(owned.fixedDeposits, 'amount'),
     sum(owned.foreignInvestments, 'amountInr'),
     sum(owned.otherAssets, 'value'),
+    sum(owned.moneyLent, 'amount'),
   ].reduce((a, b) => a + b, 0);
 
   const totalLiabilities = [
@@ -2370,6 +2425,7 @@ function SummaryFinancial({ owned, owed, onNext, onBack, onEdit }) {
     { label: 'Fixed Deposits',  emoji: '🔒', amount: sum(owned.fixedDeposits, 'amount') },
     { label: 'Foreign / Crypto',emoji: '🌍', amount: sum(owned.foreignInvestments, 'amountInr') },
     { label: 'Other Assets',    emoji: '➕', amount: sum(owned.otherAssets, 'value') },
+    { label: 'Money Lent',      emoji: '🤝', amount: sum(owned.moneyLent, 'amount') },
   ].filter(r => r.amount > 0);
 
   const liabilityRows = [

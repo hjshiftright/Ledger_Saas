@@ -290,6 +290,63 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
         </div>
       )}
 
+      {/* Money Lent — Interest Forecast */}
+      {(() => {
+        const lentItems = (dbData?.assets?.moneyLent || []).filter(l => l.balance > 0 && l.interest_rate > 0);
+        if (!lentItems.length) return null;
+        const today = new Date();
+        const totalAnnualInterest = lentItems.reduce((s, l) => s + l.balance * (l.interest_rate / 100), 0);
+        return (
+          <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-700 mb-3">🤝 Money Lent — Interest Forecast</h2>
+            <div className="space-y-3">
+              {lentItems.map((l, i) => {
+                const lentDate = l.lent_date ? new Date(l.lent_date) : null;
+                const daysElapsed = lentDate ? Math.max(0, Math.floor((today - lentDate) / 86400000)) : null;
+                const accruedInterest = lentDate ? parseFloat(((l.balance * (l.interest_rate / 100) * daysElapsed) / 365).toFixed(2)) : null;
+                const monthlyInterest = parseFloat((l.balance * (l.interest_rate / 100) / 12).toFixed(2));
+                const annualInterest = parseFloat((l.balance * (l.interest_rate / 100)).toFixed(2));
+                return (
+                  <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-800">{l.name}</span>
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{l.interest_rate}% p.a.</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      <div>
+                        <p className="text-slate-500">Principal</p>
+                        <p className="font-semibold text-slate-700">{formatCurrency(l.balance)}</p>
+                      </div>
+                      {daysElapsed !== null && (
+                        <div>
+                          <p className="text-slate-500">Accrued ({daysElapsed}d)</p>
+                          <p className="font-semibold text-emerald-700">{formatCurrency(accruedInterest)}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-slate-500">Monthly interest</p>
+                        <p className="font-semibold text-emerald-700">{formatCurrency(monthlyInterest)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Annual interest</p>
+                        <p className="font-semibold text-emerald-700">{formatCurrency(annualInterest)}</p>
+                      </div>
+                    </div>
+                    {l.lent_date && (
+                      <p className="text-xs text-slate-400 mt-1.5">Lent on {new Date(l.lent_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
+              <span className="text-xs text-slate-500">Total projected annual interest</span>
+              <span className="text-base font-bold text-emerald-700">{formatCurrency(totalAnnualInterest)}</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Next Steps */}
       <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
         <h2 className="text-sm font-bold text-slate-700 mb-3">🗺️ Your path forward</h2>

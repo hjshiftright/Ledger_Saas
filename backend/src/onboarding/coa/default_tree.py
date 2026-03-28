@@ -74,6 +74,11 @@ DEFAULT_COA = [
                 "type": "ASSET", "subtype": "REAL_ESTATE", "normal_balance": "DEBIT",
                 "is_placeholder": False, "is_system": False, "children": []
             },
+            {
+                "code": "1500", "name": "Money Lent / Receivables",
+                "type": "ASSET", "subtype": "OTHER_ASSET", "normal_balance": "DEBIT",
+                "is_placeholder": True, "is_system": True, "children": []
+            },
         ]
     },
     {
