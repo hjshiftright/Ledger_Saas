@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="page_padding">16dp</dimen>
+    <dimen name="card_padding">16dp</dimen>
+    <dimen name="card_padding_small">12dp</dimen>
+    <dimen name="section_gap">20dp</dimen>
+    <dimen name="item_gap">12dp</dimen>
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_radius_small">12dp</dimen>
+    <dimen name="button_radius">12dp</dimen>
+    <dimen name="badge_radius">100dp</dimen>
+    <dimen name="card_elevation">2dp</dimen>
+    <dimen name="icon_size_small">16dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+    <dimen name="icon_size_large">36dp</dimen>
+    <dimen name="progress_bar_height">8dp</dimen>
+    <dimen name="progress_bar_height_small">6dp</dimen>
+</resources>

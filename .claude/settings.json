@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /home/testdevice/myledger/Ledger_Saas/android/app/src/androidTest -name *.kt)"
+    ]
+  }
+}

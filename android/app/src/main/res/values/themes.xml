@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Ledger" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/indigo_600</item>
+        <item name="colorPrimaryVariant">@color/indigo_700</item>
+        <item name="colorOnPrimary">@color/surface_card</item>
+        <item name="colorSecondary">@color/purple_600</item>
+        <item name="colorOnSecondary">@color/surface_card</item>
+        <item name="colorError">@color/rose_600</item>
+        <item name="colorOnError">@color/surface_card</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/slate_900</item>
+        <item name="android:colorBackground">@color/background_primary</item>
+        <item name="colorOnBackground">@color/slate_900</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Ledger.MediumComponent</item>
+    </style>
+
+    <style name="ShapeAppearance.Ledger.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <!-- Card Style -->
+    <style name="LedgerCard">
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:padding">@dimen/card_padding</item>
+        <item name="android:elevation">@dimen/card_elevation</item>
+    </style>
+
+    <!-- Button Styles -->
+    <style name="LedgerButton.Primary" parent="Widget.Material3.Button">
+        <item name="android:backgroundTint">@color/indigo_600</item>
+        <item name="android:textColor">@color/surface_card</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+    </style>
+
+    <style name="LedgerButton.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/slate_200</item>
+        <item name="android:textColor">@color/slate_700</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+    </style>
+
+    <style name="LedgerButton.Danger" parent="Widget.Material3.Button">
+        <item name="android:backgroundTint">@color/rose_500</item>
+        <item name="android:textColor">@color/surface_card</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+    </style>
+</resources>

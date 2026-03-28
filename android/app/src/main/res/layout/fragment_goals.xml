@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_primary">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/page_padding"
+        android:background="@color/surface_card"
+        android:layout_marginBottom="4dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/goals_title"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/slate_900" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNewGoal"
+            style="@style/LedgerButton.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_new_goal" />
+    </LinearLayout>
+
+    <!-- Summary strip -->
+    <LinearLayout
+        android:id="@+id/layoutSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/page_padding"
+        android:background="@color/surface_card"
+        android:layout_marginBottom="4dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvGoalCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/slate_900" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Goals" android:textSize="11sp" android:textColor="@color/slate_500" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvTotalTarget" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/slate_900" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Target" android:textSize="11sp" android:textColor="@color/slate_500" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvAvgProgress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/indigo_600" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Avg Progress" android:textSize="11sp" android:textColor="@color/slate_500" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Goals list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvGoals"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="@dimen/page_padding"
+        android:clipToPadding="false"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <!-- Empty state -->
+    <LinearLayout
+        android:id="@+id/layoutEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no_goals"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/slate_700"
+            android:layout_marginBottom="8dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no_goals_subtitle"
+            android:textSize="14sp"
+            android:textColor="@color/slate_500"
+            android:layout_marginBottom="20dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCreateFirstGoal"
+            style="@style/LedgerButton.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_new_goal" />
+    </LinearLayout>
+
+    <!-- Loading/Error -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>
