@@ -9,6 +9,7 @@ import com.ledger.app.data.api.RetrofitClient
 import com.ledger.app.data.models.AuthListResponse
 import com.ledger.app.databinding.ActivityLoginBinding
 import com.ledger.app.ui.main.MainActivity
+import com.ledger.app.util.TokenManager
 import com.ledger.app.util.UiState
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -75,6 +76,8 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun handleLoginSuccess(authResponse: AuthListResponse) {
+        // Store pre_token so AuthInterceptor sends it with the select-tenant request
+        TokenManager.savePreToken(authResponse.pre_token)
         if (viewModel.shouldAutoSelectTenant) {
             viewModel.selectTenant(authResponse.tenants[0].tenant_id)
         } else {

@@ -21,7 +21,8 @@ data class AuthListResponse(
     val user_id: Int,
     val email: String,
     val tenants: List<TenantInfo>,
-    val message: String
+    val message: String,
+    val pre_token: String
 )
 
 @JsonClass(generateAdapter = true)

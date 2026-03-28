@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_primary">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/more_title"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/slate_900"
+        android:padding="@dimen/page_padding"
+        android:background="@color/surface_card"
+        android:layout_marginBottom="4dp" />
+
+    <LinearLayout
+        android:id="@+id/itemBudgets"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="@dimen/page_padding"
+        android:background="@color/surface_card"
+        android:layout_marginBottom="1dp"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/budgets_title"
+            android:textSize="16sp"
+            android:textColor="@color/slate_800" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="20sp" android:textColor="@color/slate_400" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/itemSettings"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="@dimen/page_padding"
+        android:background="@color/surface_card"
+        android:layout_marginBottom="1dp"
+        android:clickable="true"
+        android:focusable="true">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/settings_title"
+            android:textSize="16sp"
+            android:textColor="@color/slate_800" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="20sp" android:textColor="@color/slate_400" />
+    </LinearLayout>
+
+</LinearLayout>

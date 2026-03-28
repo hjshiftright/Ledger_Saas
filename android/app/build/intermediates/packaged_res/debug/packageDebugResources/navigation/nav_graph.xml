@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.ledger.app.ui.dashboard.DashboardFragment"
+        android:label="Dashboard"
+        tools:layout="@layout/fragment_dashboard" />
+
+    <fragment
+        android:id="@+id/transactionsFragment"
+        android:name="com.ledger.app.ui.transactions.TransactionsFragment"
+        android:label="Transactions"
+        tools:layout="@layout/fragment_transactions" />
+
+    <fragment
+        android:id="@+id/reportsFragment"
+        android:name="com.ledger.app.ui.reports.ReportsFragment"
+        android:label="Reports"
+        tools:layout="@layout/fragment_reports" />
+
+    <fragment
+        android:id="@+id/goalsFragment"
+        android:name="com.ledger.app.ui.goals.GoalsFragment"
+        android:label="Goals"
+        tools:layout="@layout/fragment_goals" />
+
+    <fragment
+        android:id="@+id/moreFragment"
+        android:name="com.ledger.app.ui.main.MoreFragment"
+        android:label="More"
+        tools:layout="@layout/fragment_more">
+        <action
+            android:id="@+id/action_more_to_budgets"
+            app:destination="@id/budgetsFragment" />
+        <action
+            android:id="@+id/action_more_to_settings"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/budgetsFragment"
+        android:name="com.ledger.app.ui.budgets.BudgetsFragment"
+        android:label="Budgets"
+        tools:layout="@layout/fragment_budgets" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.ledger.app.ui.settings.SettingsFragment"
+        android:label="Settings"
+        tools:layout="@layout/fragment_settings" />
+
+</navigation>

@@ -7,6 +7,10 @@ class FakeTokenStorage : TokenStorage {
 
     override fun getToken(): String? = token
 
+    override fun savePreToken(token: String) {
+        this.token = token
+    }
+
     override fun saveToken(token: String, userId: Int, tenantId: String) {
         this.token = token
         this.userId = userId

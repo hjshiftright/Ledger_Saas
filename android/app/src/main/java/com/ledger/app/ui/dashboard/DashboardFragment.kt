@@ -124,10 +124,10 @@ class DashboardFragment : Fragment() {
         )
 
         binding.tvTotalIncome.text = CurrencyFormatter.format(
-            summary.total_income.toDoubleOrNull() ?: 0.0
+            summary.period_income.toDoubleOrNull() ?: 0.0
         )
         binding.tvTotalExpense.text = CurrencyFormatter.format(
-            summary.total_expense.toDoubleOrNull() ?: 0.0
+            summary.period_expenses.toDoubleOrNull() ?: 0.0
         )
     }
 

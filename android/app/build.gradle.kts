@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.ledger.app"
-    compileSdk = 37
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.ledger.app"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 

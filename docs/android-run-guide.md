@@ -15,10 +15,12 @@ Install the following before starting:
 | Tool | Version | Download |
 |------|---------|----------|
 | Android Studio | Latest stable (Hedgehog 2023.1+) | developer.android.com/studio |
-| JDK | 17 | Bundled with Android Studio |
-| Android SDK | API 37 (Android 16) | Via Android Studio SDK Manager |
+| JDK | 17+ (21 recommended) | Bundled with Android Studio |
+| Android SDK | API 35 (Android 15) | Via Android Studio SDK Manager |
 | Android Emulator | Pixel 6 / API 37 image | Via Android Studio AVD Manager |
 | Python | 3.10+ | Already installed (backend) |
+
+> **Note:** The project compiles against **SDK 35** (`compileSdk = 35`). You can run the app on any emulator including API 37 — `compileSdk` and emulator API level are independent.
 
 > Android Studio bundles its own JDK 17. You do not need to install Java separately.
 
@@ -43,20 +45,21 @@ You must generate it once using Android Studio.
    Alternatively, open the terminal inside Android Studio and run:
    ```bash
    cd /home/testdevice/myledger/Ledger_Saas/android
-   gradle wrapper --gradle-version 8.4
+   gradle wrapper --gradle-version 8.9
    ```
 
    This creates `android/gradle/wrapper/gradle-wrapper.jar`.
 
 ---
 
-### Step 2: Install the Android SDK (API 34)
+### Step 2: Install the Android SDK (API 35)
 
 1. In Android Studio, go to **Tools → SDK Manager**
 2. Under **SDK Platforms** tab, check:
-   - **Android 16.0 (API 37)**
+   - **Android 15.0 (API 35)** — required for building
+   - **Android 16.0 (API 37)** — optional, only needed if you want the API 37 emulator image
 3. Under **SDK Tools** tab, check:
-   - **Android SDK Build-Tools 37**
+   - **Android SDK Build-Tools 35**
    - **Android Emulator**
    - **Android SDK Platform-Tools**
 4. Click **Apply** and wait for download to finish.
@@ -69,7 +72,7 @@ You must generate it once using Android Studio.
 2. Click **Create Device**
 3. Select: **Phone → Pixel 6**
 4. Click **Next**
-5. Select system image: **API 37 (Android 16)** — download it if not present
+5. Select system image: **API 35 (Android 15)** or **API 37 (Android 16)** — download if not present
 6. Click **Next → Finish**
 7. The new device appears in the Device Manager list.
 
@@ -126,7 +129,7 @@ Expected response:
 ### Step 6: Start the Emulator
 
 1. In Android Studio, click the **Device Manager** icon (right toolbar)
-2. Click the **Play ▶** button next to your Pixel 6 / API 34 device
+2. Click the **Play ▶** button next to your Pixel 6 device
 3. Wait for the emulator to boot fully (home screen visible — takes 1–2 min first time)
 
 ---
@@ -149,6 +152,10 @@ chmod +x gradlew
 
 # Build and install debug APK
 ./gradlew installDebug
+
+
+# if app already is open force-stop it first.
+adb shell am force-stop com.ledger.app
 
 # Then launch the app on the running emulator
 adb shell am start -n com.ledger.app/.ui.auth.LoginActivity
@@ -282,8 +289,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 | Problem | Solution |
 |---------|----------|
 | **Gradle sync fails** | File → Invalidate Caches → Restart. Then sync again. |
-| **`gradle-wrapper.jar` missing** | Run `gradle wrapper --gradle-version 8.4` in the `android/` folder |
-| **App can't connect to backend** | Confirm backend is running with `--host 0.0.0.0`. Check `http://10.0.2.2:8000/api/v1/health` inside the emulator browser |
+| **`gradle-wrapper.jar` missing** | Run `gradle wrapper --gradle-version 8.9` in the `android/` folder |
+| **AGP version error** | Root `build.gradle.kts` must use AGP `8.7.3`; Gradle wrapper must be `8.9` (AGP 8.7.3 requires Gradle ≥ 8.9) |
+| **`Failed to find Platform SDK: platforms;android-35`** | Install **Android 15.0 (API 35)** via Android Studio SDK Manager |
+| **App can't connect to backend** | Confirm backend is running with `--host 0.0.0.0`. Check `http://10.0.2.2:8000/health` inside the emulator browser |
 | **"Cleartext traffic not permitted"** | `network_security_config.xml` allows `10.0.2.2` — verify `AndroidManifest.xml` references it |
 | **Emulator too slow** | Enable **Hardware Acceleration** (HAXM on Intel / WHPX on AMD) in AVD settings |
 | **`adb: command not found`** | Add Android SDK `platform-tools` to PATH: `export PATH=$PATH:~/Android/Sdk/platform-tools` |

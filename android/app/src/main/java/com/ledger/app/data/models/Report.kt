@@ -5,10 +5,15 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class DashboardSummary(
     val net_worth: String,
-    val total_income: String,
-    val total_expense: String,
+    val total_assets: String? = null,
+    val total_liabilities: String? = null,
+    val period_income: String,
+    val period_expenses: String,
+    val net_income: String,
     val savings_rate: Double?,
-    val cash_flow: String? = null
+    val as_of: String? = null,
+    val from_date: String? = null,
+    val to_date: String? = null
 )
 
 @JsonClass(generateAdapter = true)

@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from jose import jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -83,6 +83,7 @@ class AuthListResponse(BaseModel):
     email: str
     tenants: list[TenantInfo]
     message: str
+    pre_token: str = Field(..., description="Short-lived pre-scoped JWT; send as Bearer token when calling /auth/select-tenant")
 
 
 class SelectTenantRequest(BaseModel):
@@ -103,6 +104,18 @@ class LogoutResponse(BaseModel):
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
+
+def _create_pre_token(user_id: int, email: str, settings: Settings) -> str:
+    """Create a short-lived (15 min) pre-scoped JWT used only to call /auth/select-tenant."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload: dict[str, Any] = {
+        "sub": str(user_id),
+        "email": email,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
+
 
 def _create_scoped_jwt(
     user_id: int,
@@ -223,6 +236,7 @@ async def signup(
             role="OWNER",
         )],
         message="Account created successfully. Call /auth/select-tenant to receive your access token.",
+        pre_token=_create_pre_token(user.id, user.email, settings),
     )
 
 
@@ -230,6 +244,7 @@ async def signup(
 async def login(
     request: LoginRequest,
     session: AsyncSession = Depends(_admin_session),
+    settings: Settings = Depends(get_settings),
 ):
     """Authenticate with email and password.
 
@@ -278,13 +293,14 @@ async def login(
         email=user.email,
         tenants=tenants,
         message="Login successful. Call /auth/select-tenant to receive your access token.",
+        pre_token=_create_pre_token(user.id, user.email, settings),
     )
 
 
 @router.post("/select-tenant", response_model=TokenResponse, summary="Select active tenant and receive scoped JWT")
 async def select_tenant(
     body: SelectTenantRequest,
-    authorization: str | None = None,
+    authorization: str | None = Header(default=None),
     session: AsyncSession = Depends(_admin_session),
     settings: Settings = Depends(get_settings),
 ):
@@ -385,7 +401,7 @@ def _seed_tenant_coa(session: AsyncSession, user_id: int, tenant_id) -> None:
     try:
         from repositories.sqla_account_repo import AccountRepository
         from onboarding.coa.service import COASetupService
-        COASetupService(AccountRepository(session)).create_default_coa(user_id=user_id)
+        COASetupService(AccountRepository(session)).create_default_coa(tenant_id=str(tenant_id))
         logger.info("Seeded default CoA for tenant_id=%s", tenant_id)
     except Exception as exc:
         # Non-fatal: user can set up CoA manually via onboarding flow

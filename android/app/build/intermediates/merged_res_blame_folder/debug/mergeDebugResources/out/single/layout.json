@@ -1,0 +1,70 @@
+[
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_dashboard.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_dashboard.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/activity_signup.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/activity_signup.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/activity_tenant_picker.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/activity_tenant_picker.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/activity_main.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_more.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_more.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/item_tenant.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_tenant.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_transactions.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_transactions.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/item_goal_card.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_goal_card.xml"
+    },
+    {
+        "merged": "com.ledger.app-mergeDebugResources-51:/layout/activity_signup.xml",
+        "source": "com.ledger.app-main-54:/layout/activity_signup.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_settings.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_settings.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_budgets.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_budgets.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/activity_login.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/activity_login.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/item_category_row.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_category_row.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/item_budget_card.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_budget_card.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/item_transaction_row.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_transaction_row.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_reports.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_reports.xml"
+    },
+    {
+        "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_goals.xml",
+        "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_goals.xml"
+    }
+]

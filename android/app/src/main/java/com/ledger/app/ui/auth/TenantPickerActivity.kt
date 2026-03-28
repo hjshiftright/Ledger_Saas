@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.ledger.app.data.api.RetrofitClient
 import com.ledger.app.data.models.AuthListResponse
 import com.ledger.app.data.models.TenantInfo
+import com.ledger.app.util.TokenManager
 import com.ledger.app.databinding.ActivityTenantPickerBinding
 import com.ledger.app.ui.main.MainActivity
 import com.ledger.app.util.UiState
@@ -42,6 +43,9 @@ class TenantPickerActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        // Store the pre_token so AuthInterceptor sends it with the select-tenant request
+        TokenManager.savePreToken(authResponse.pre_token)
 
         // Auto-select if single tenant
         if (authResponse.tenants.size == 1) {

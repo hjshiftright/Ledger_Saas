@@ -73,10 +73,10 @@ class ReportsFragment : Fragment() {
                     summary.net_worth.toDoubleOrNull() ?: 0.0
                 )
                 binding.tvKpiIncome.text = CurrencyFormatter.format(
-                    summary.total_income.toDoubleOrNull() ?: 0.0
+                    summary.period_income.toDoubleOrNull() ?: 0.0
                 )
                 binding.tvKpiExpense.text = CurrencyFormatter.format(
-                    summary.total_expense.toDoubleOrNull() ?: 0.0
+                    summary.period_expenses.toDoubleOrNull() ?: 0.0
                 )
                 binding.tvKpiSavingsRate.text = summary.savings_rate?.let {
                     "${String.format("%.1f", it)}%"

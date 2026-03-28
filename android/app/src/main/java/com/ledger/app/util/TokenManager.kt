@@ -6,6 +6,7 @@ import androidx.security.crypto.MasterKey
 
 interface TokenStorage {
     fun getToken(): String?
+    fun savePreToken(token: String)
     fun saveToken(token: String, userId: Int, tenantId: String)
     fun clearToken()
 }
@@ -24,6 +25,10 @@ class EncryptedPrefsStorage(context: Context) : TokenStorage {
 
     override fun getToken(): String? = prefs.getString("access_token", null)
 
+    override fun savePreToken(token: String) {
+        prefs.edit().putString("access_token", token).apply()
+    }
+
     override fun saveToken(token: String, userId: Int, tenantId: String) {
         prefs.edit()
             .putString("access_token", token)
@@ -41,6 +46,10 @@ object TokenManager {
     var storage: TokenStorage? = null
 
     fun getToken(): String? = storage?.getToken()
+
+    fun savePreToken(token: String) {
+        storage?.savePreToken(token)
+    }
 
     fun saveToken(context: Context? = null, token: String, userId: Int, tenantId: String) {
         storage?.saveToken(token, userId, tenantId)
