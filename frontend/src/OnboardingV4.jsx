@@ -27,7 +27,11 @@ const loadJson = (key, fb) => { try { return JSON.parse(localStorage.getItem(key
 const saveJson = (key, val) => localStorage.setItem(key, JSON.stringify(val));
 
 function num(s) { return parseInt(String(s).replace(/\D/g, '')) || 0; }
-function inr(v) { return '₹' + num(v).toLocaleString('en-IN'); }
+function inr(v) {
+  const n = typeof v === 'number' ? v : num(v);
+  const abs = Math.abs(n).toLocaleString('en-IN');
+  return n < 0 ? `-₹${abs}` : `₹${abs}`;
+}
 
 // ─── Shared primitives ────────────────────────────────────────────────────
 const FadeIn = ({ children, className = '', delay = 0 }) => (
@@ -202,10 +206,194 @@ function ProfileScreen({ initial, onDone }) {
   );
 }
 
+// ─── Add Item Dialog ──────────────────────────────────────────────────────
+const ASSET_TYPES  = [
+  { type: 'bank',     label: 'Bank / FD',       icon: Landmark,   placeholder: 'e.g. HDFC Savings Account' },
+  { type: 'property', label: 'Property',         icon: Home,       placeholder: 'e.g. Apartment in Pune' },
+  { type: 'stocks',   label: 'Stocks / Funds',   icon: TrendingUp, placeholder: 'e.g. Zerodha Portfolio' },
+  { type: 'other',    label: 'Gold / Other',     icon: Gem,        placeholder: 'e.g. Gold Jewellery' },
+];
+const LIAB_TYPES   = [
+  { type: 'loan',   label: 'Home Loan',      icon: Home,       placeholder: 'e.g. SBI Home Loan' },
+  { type: 'loan',   label: 'Personal Loan',  icon: User,       placeholder: 'e.g. HDFC Personal Loan' },
+  { type: 'loan',   label: 'Car Loan',       icon: Car,        placeholder: 'e.g. Axis Car Loan' },
+  { type: 'credit', label: 'Credit Card',    icon: CreditCard, placeholder: 'e.g. HDFC Credit Card' },
+  { type: 'other',  label: 'Other Debt',     icon: AlertCircle,placeholder: 'e.g. Family loan' },
+];
+
+function AddItemDialog({ kind: initialKind = 'asset', onAdd, onClose }) {
+  const [kind, setKind] = useState(initialKind);
+  const types = kind === 'asset' ? ASSET_TYPES : LIAB_TYPES;
+  const [selectedType, setSelectedType] = useState(types[0]);
+  const [name, setName]   = useState('');
+  const [value, setValue] = useState('');
+  const [detail, setDetail] = useState('');
+
+  // reset type when kind changes
+  const switchKind = (k) => { setKind(k); setSelectedType(k === 'asset' ? ASSET_TYPES[0] : LIAB_TYPES[0]); setName(''); };
+
+  const Icon = selectedType.icon;
+  const canAdd = name.trim() && num(value) > 0;
+
+  const handleAdd = () => {
+    onAdd({ name: name.trim(), value: num(value), type: selectedType.type, detail: detail.trim() }, kind);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Card */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2 }}
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10"
+      >
+        {/* Header strip — updates when kind toggle changes */}
+        <div className={`h-1.5 transition-all ${kind === 'asset' ? 'bg-gradient-to-r from-[#2C4A70] to-emerald-400' : 'bg-gradient-to-r from-rose-400 to-orange-300'}`} />
+
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-xl font-serif font-black text-[#2C4A70]">Add Item</h3>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors text-lg leading-none">×</button>
+          </div>
+
+          {/* Asset / Liability toggle */}
+          <div className="flex gap-2 mb-5 bg-slate-100 rounded-xl p-1">
+            {['asset', 'liability'].map(k => (
+              <button key={k} onClick={() => switchKind(k)}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize
+                  ${kind === k ? (k === 'asset' ? 'bg-[#2C4A70] text-white shadow-sm' : 'bg-rose-500 text-white shadow-sm') : 'text-slate-500 hover:text-slate-700'}`}>
+                {k === 'asset' ? 'Asset' : 'Liability'}
+              </button>
+            ))}
+          </div>
+
+          {/* Type selector */}
+          <div className="mb-5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Category</label>
+            <div className="grid grid-cols-2 gap-2">
+              {types.map(t => {
+                const TIcon = t.icon;
+                const active = selectedType.label === t.label;
+                return (
+                  <button key={t.label} onClick={() => { setSelectedType(t); setName(''); }}
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-left
+                      ${active ? 'border-[#2C4A70] bg-indigo-50 text-[#2C4A70]' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                    <TIcon size={15} className={active ? 'text-[#2C4A70]' : 'text-slate-400'} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Name */}
+          <div className="mb-4">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={selectedType.placeholder}
+              className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+          </div>
+
+          {/* Value */}
+          <div className="mb-4">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+              {kind === 'asset' ? 'Current Value' : 'Outstanding Amount'}
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
+              <input value={value} onChange={e => setValue(e.target.value)} placeholder="0" type="text" inputMode="numeric"
+                className="w-full border-2 border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+            </div>
+            {value && <p className="text-xs text-slate-400 mt-1 pl-1">{inr(value)}</p>}
+          </div>
+
+          {/* Note */}
+          <div className="mb-7">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+              Note <span className="text-slate-300 font-normal normal-case">(optional)</span>
+            </label>
+            <input value={detail} onChange={e => setDetail(e.target.value)} placeholder="e.g. interest rate, tenure, institution…"
+              className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-full border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleAdd} disabled={!canAdd}
+              className={`flex-1 py-3 rounded-full font-semibold text-sm transition-all shadow-md
+                ${kind === 'asset'
+                  ? 'bg-[#2C4A70] text-white hover:bg-[#1F344F] disabled:opacity-40'
+                  : 'bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-40'}
+                disabled:cursor-not-allowed`}>
+              Add {kind === 'asset' ? 'Asset' : 'Liability'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── Mapping Section ──────────────────────────────────────────────────────
 
 const ASSET_ICONS = { bank: Landmark, property: Home, stocks: TrendingUp, other: Wallet };
 const LIABILITY_ICONS = { loan: Building2, credit: CreditCard, other: TrendingDown };
+
+// Dummy data seeded by perspective — all IDs are negative to distinguish from user-added
+const DUMMY_DATA = {
+  salaried: {
+    assets: [
+      { id: -1, name: 'HDFC Savings Account',    value: 850000,   type: 'bank',     detail: 'Primary salary account' },
+      { id: -2, name: 'EPF / PF Corpus',          value: 450000,   type: 'other',    detail: 'Employer provident fund' },
+      { id: -3, name: 'Nifty 50 Index Fund',      value: 320000,   type: 'stocks',   detail: 'SIP — monthly ₹5,000' },
+    ],
+    liabilities: [
+      { id: -4, name: 'Credit Card (HDFC)',        value: 28000,    type: 'credit',   detail: 'Current billing cycle' },
+    ],
+  },
+  business: {
+    assets: [
+      { id: -1, name: 'Current Account (ICICI)',   value: 1200000,  type: 'bank',     detail: 'Business operating account' },
+      { id: -2, name: 'Commercial Property',       value: 8500000,  type: 'property', detail: 'Office / warehouse' },
+      { id: -3, name: 'Equity Portfolio',          value: 600000,   type: 'stocks',   detail: 'Personal investments' },
+      { id: -4, name: 'Fixed Deposits',            value: 500000,   type: 'bank',     detail: 'Short-term FDs' },
+    ],
+    liabilities: [
+      { id: -5, name: 'Business Loan (SBI)',       value: 2500000,  type: 'loan',     detail: 'Working capital loan, 11%' },
+      { id: -6, name: 'Credit Card (Amex)',        value: 75000,    type: 'credit',   detail: 'Business expenses' },
+    ],
+  },
+  homemaker: {
+    assets: [
+      { id: -1, name: 'Joint Savings (SBI)',       value: 350000,   type: 'bank',     detail: 'Household savings account' },
+      { id: -2, name: 'Gold & Jewellery',          value: 800000,   type: 'other',    detail: 'Approx. current market value' },
+      { id: -3, name: 'Residential Apartment',     value: 6500000,  type: 'property', detail: 'Self-occupied home' },
+      { id: -4, name: 'RD / SIP',                  value: 120000,   type: 'other',    detail: 'Recurring deposit' },
+    ],
+    liabilities: [
+      { id: -5, name: 'Home Loan (LIC Housing)',   value: 3200000,  type: 'loan',     detail: '8.6% fixed, 18 yrs remaining' },
+    ],
+  },
+  investor: {
+    assets: [
+      { id: -1, name: 'Zerodha Demat Portfolio',  value: 4500000,  type: 'stocks',   detail: 'Equity + ETFs' },
+      { id: -2, name: 'Mutual Funds (HDFC)',       value: 2200000,  type: 'stocks',   detail: 'Large-cap & flexi-cap' },
+      { id: -3, name: 'Residential Property',     value: 12000000, type: 'property', detail: 'Rental income asset' },
+      { id: -4, name: 'Savings Account',          value: 600000,   type: 'bank',     detail: 'HDFC / ICICI liquid funds' },
+      { id: -5, name: 'NPS Corpus',               value: 900000,   type: 'other',    detail: 'National Pension Scheme' },
+    ],
+    liabilities: [
+      { id: -6, name: 'Home Loan (Axis)',         value: 5500000,  type: 'loan',     detail: '9.1% floating, 15 yrs remaining' },
+      { id: -7, name: 'Margin Loan (Zerodha)',    value: 300000,   type: 'loan',     detail: 'Pledged securities' },
+    ],
+  },
+};
 
 const SUGGESTED_PROMPTS = [
   "I have a savings account with ₹3L in HDFC",
@@ -278,32 +466,49 @@ function parseMessage(text) {
   }
 }
 
-function MappingSection({ data, setData, onComplete }) {
-  const [messages, setMessages] = useState(() => {
-    const hasData = (data.assets?.length || data.liabilities?.length);
-    return hasData ? [] : [
-      { role: 'ai', text: "I'll help you map your financial picture. Tell me about any account, investment, property, or debt — in plain language. You can add as many as you like." }
-    ];
+function MappingSection({ data, setData, perspective = 'salaried', onComplete }) {
+  // Seed dummy data once on first mount if empty
+  const [isDummy, setIsDummy] = useState(() => {
+    const hasUserData = (data.assets?.length || data.liabilities?.length);
+    if (!hasUserData) {
+      const seed = DUMMY_DATA[perspective] || DUMMY_DATA.salaried;
+      setData(d => ({ ...d, assets: seed.assets, liabilities: seed.liabilities }));
+      return true;
+    }
+    // All negative IDs = still dummy
+    const allNeg = [...(data.assets || []), ...(data.liabilities || [])].every(i => i.id < 0);
+    return allNeg && (data.assets?.length > 0 || data.liabilities?.length > 0);
   });
+
+  const [messages, setMessages] = useState([
+    { role: 'ai', text: "I've pre-filled a starting map based on your profile. You can edit any entry, remove what doesn't apply, or just tell me what you own and owe in plain language." }
+  ]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  const clearDummy = () => {
+    setData(d => ({ ...d, assets: [], liabilities: [] }));
+    setIsDummy(false);
+    setMessages(m => [...m, { role: 'ai', text: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." }]);
+  };
+
+  const [dialog, setDialog] = useState(null); // 'asset' | 'liability' | null
+
   const assets      = data.assets      || [];
   const liabilities = data.liabilities || [];
-  const addAsset = (item) => setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] }));
-  const addLib = (item) => setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] }));
+  const addAsset = (item) => { setIsDummy(false); setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] })); };
+  const addLib   = (item) => { setIsDummy(false); setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] })); };
 
-  const handleQuickAdd = (kind, label = 'New Item', type = 'other') => {
-    const item = { name: label, value: 0, type };
-    if (kind === 'asset') addAsset(item);
-    else addLib(item);
-
-    setMessages(prev => [...prev, { 
-      role: 'assistant', 
-      text: `Got it! I've added a **${label}** placeholder to your list. Could you tell me its current balance or value?`
-    }]);
+  const handleDialogAdd = (kind, item) => {
+    if (kind === 'asset') {
+      addAsset(item);
+      setMessages(m => [...m, { role: 'ai', text: `Added **${item.name}** (${inr(item.value)}) to your assets. Anything else?` }]);
+    } else {
+      addLib(item);
+      setMessages(m => [...m, { role: 'ai', text: `Recorded **${item.name}** (${inr(item.value)}) as a liability. Anything else to add?` }]);
+    }
   };
 
   const simulateAIResponse = (text) => {
@@ -396,8 +601,8 @@ function MappingSection({ data, setData, onComplete }) {
     }, 800);
   };
 
-  const removeAsset = (id) => setData(d => ({ ...d, assets: d.assets.filter(a => a.id !== id) }));
-  const removeLib   = (id) => setData(d => ({ ...d, liabilities: d.liabilities.filter(a => a.id !== id) }));
+  const removeAsset = (id) => { setIsDummy(false); setData(d => ({ ...d, assets: d.assets.filter(a => a.id !== id) })); };
+  const removeLib   = (id) => { setIsDummy(false); setData(d => ({ ...d, liabilities: d.liabilities.filter(a => a.id !== id) })); };
   const handleComplete = () => { saveJson(SK.mapping, data); onComplete(); };
   const hasAny = assets.length > 0 || liabilities.length > 0;
 
@@ -424,6 +629,22 @@ function MappingSection({ data, setData, onComplete }) {
         </div>
       </div>
 
+      {/* ── Dummy data disclaimer ───────────────────────────────────── */}
+      {isDummy && (
+        <div className="bg-amber-50 border-b border-amber-200 px-8 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 text-amber-700">
+            <span className="text-base">⚠️</span>
+            <p className="text-sm font-medium">
+              These are <strong>sample figures</strong> based on your profile — not your real data. Edit each entry or clear all and start fresh.
+            </p>
+          </div>
+          <button onClick={clearDummy}
+            className="text-xs font-bold text-amber-700 border border-amber-300 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ml-4">
+            Clear & Start Fresh
+          </button>
+        </div>
+      )}
+
       {/* ── Summary cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-6 px-8 py-6 bg-white border-b border-slate-100 shrink-0">
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative overflow-hidden">
@@ -442,9 +663,10 @@ function MappingSection({ data, setData, onComplete }) {
             </span>
           </div>
         </div>
-        <div className="bg-[#2C4A70] rounded-2xl p-6 shadow-xl shadow-[#2C4A70]/20">
-          <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-[2px] mb-2">My Net Worth</p>
+        <div className={`rounded-2xl p-6 shadow-xl ${netWorth >= 0 ? 'bg-[#2C4A70] shadow-[#2C4A70]/20' : 'bg-rose-600 shadow-rose-600/20'}`}>
+          <p className={`text-[10px] font-bold uppercase tracking-[2px] mb-2 ${netWorth >= 0 ? 'text-indigo-200' : 'text-rose-200'}`}>My Net Worth</p>
           <p className="text-4xl font-black text-white">{inr(netWorth)}</p>
+          {netWorth < 0 && <p className="text-[10px] text-rose-200 mt-1">Liabilities exceed assets</p>}
         </div>
       </div>
 
@@ -461,18 +683,12 @@ function MappingSection({ data, setData, onComplete }) {
               <p className="text-slate-400 font-medium font-serif italic text-lg text-slate-400">Your financial map will appear here.</p>
               <p className="text-slate-300 text-sm mt-2">Start chatting on the right to build your ledger →</p>
               
-              <div className="mt-8 flex gap-4">
-                <button 
-                  onClick={() => handleQuickAdd('asset')}
+              <div className="mt-8">
+                <button
+                  onClick={() => setDialog('add')}
                   className="px-6 py-2.5 bg-indigo-50 text-[#2C4A70] font-bold text-sm rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors"
                 >
-                  + What I own
-                </button>
-                <button 
-                  onClick={() => handleQuickAdd('liability')}
-                  className="px-6 py-2.5 bg-rose-50 text-rose-600 font-bold text-sm rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
-                >
-                  + What I owe
+                  <Plus size={14} className="inline mr-1" /> Add
                 </button>
               </div>
             </div>
@@ -488,28 +704,10 @@ function MappingSection({ data, setData, onComplete }) {
                     <h3 className="text-xl font-serif font-black text-[#2C4A70]">What I own</h3>
                   </div>
                   
-                  <div className="relative group">
-                    <button className="text-xs font-bold text-[#2C4A70] flex items-center gap-1 px-3 py-1.5 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
-                      <Plus size={14} /> Add
-                    </button>
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                      {[
-                        { label: 'Bank Account', type: 'bank', icon: Landmark },
-                        { label: 'Property / Home', type: 'property', icon: Home },
-                        { label: 'Stocks / Funds', type: 'stocks', icon: TrendingUp },
-                        { label: 'Gold / Jewelry', type: 'other', icon: Gem },
-                        { label: 'Other Asset', type: 'other', icon: Wallet },
-                      ].map((opt) => (
-                        <button 
-                          key={opt.label}
-                          onClick={() => handleQuickAdd('asset', opt.label, opt.type)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors"
-                        >
-                          <opt.icon size={14} className="text-slate-400" /> {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <button onClick={() => setDialog('add')}
+                    className="text-xs font-bold text-[#2C4A70] flex items-center gap-1 px-3 py-1.5 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+                    <Plus size={14} /> Add
+                  </button>
                 </div>
                 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
@@ -553,28 +751,10 @@ function MappingSection({ data, setData, onComplete }) {
                     <h3 className="text-xl font-serif font-black text-[#2C4A70]">What I owe</h3>
                   </div>
 
-                  <div className="relative group">
-                    <button className="text-xs font-bold text-rose-500 flex items-center gap-1 px-3 py-1.5 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors">
-                      <Plus size={14} /> Add
-                    </button>
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                      {[
-                        { label: 'Home Loan', type: 'loan', icon: Home },
-                        { label: 'Personal Loan', type: 'loan', icon: User },
-                        { label: 'Car Loan', type: 'loan', icon: Car },
-                        { label: 'Credit Card', type: 'card', icon: CreditCard },
-                        { label: 'Other Debt', type: 'other', icon: AlertCircle },
-                      ].map((opt) => (
-                        <button 
-                          key={opt.label}
-                          onClick={() => handleQuickAdd('liability', opt.label, opt.type)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors"
-                        >
-                          <opt.icon size={14} className="text-slate-400" /> {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <button onClick={() => setDialog('add')}
+                    className="text-xs font-bold text-slate-500 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+                    <Plus size={14} /> Add
+                  </button>
                 </div>
 
                 <div className="space-y-4">
@@ -721,6 +901,151 @@ function MappingSection({ data, setData, onComplete }) {
           Looks good, continue <ArrowRight size={20} />
         </Btn>
       </div>
+
+      {/* Add Item Dialog */}
+      <AnimatePresence>
+        {dialog && (
+          <AddItemDialog
+            kind="asset"
+            onAdd={(item, kind) => handleDialogAdd(kind, item)}
+            onClose={() => setDialog(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Goal Dialog ─────────────────────────────────────────────────────────
+const TIMELINE_OPTS = [
+  { label: '6 months',  months: 6   },
+  { label: '1 year',    months: 12  },
+  { label: '2 years',   months: 24  },
+  { label: '3 years',   months: 36  },
+  { label: '5 years',   months: 60  },
+  { label: '10 years',  months: 120 },
+  { label: '15 years',  months: 180 },
+  { label: '20+ years', months: 240 },
+];
+
+function GoalDialog({ goal, existing, onSave, onRemove, onClose }) {
+  const Icon = goal.icon;
+  const seed = existing || {};
+  const [targetAmount, setTargetAmount] = useState(seed.targetAmount ? String(seed.targetAmount) : '');
+  const [timelineMonths, setTimelineMonths] = useState(seed.timelineMonths || 12);
+  const [priority, setPriority]   = useState(seed.priority   || 'medium');
+  const [note, setNote]           = useState(seed.note       || '');
+
+  const canSave = num(targetAmount) > 0;
+  const monthlySaving = timelineMonths > 0 ? Math.ceil(num(targetAmount) / timelineMonths) : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2 }}
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10"
+      >
+        <div className="h-1.5 bg-gradient-to-r from-[#2C4A70] to-[#526B5C]" />
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#2C4A70]/10 flex items-center justify-center">
+                <Icon size={22} className="text-[#2C4A70]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif font-black text-[#2C4A70]">{goal.label}</h3>
+                <p className="text-xs text-slate-400">{goal.desc}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors text-lg leading-none">×</button>
+          </div>
+
+          <div className="space-y-5">
+            {/* Target amount */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Target Amount</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
+                <input value={targetAmount} onChange={e => setTargetAmount(e.target.value)} placeholder="0" inputMode="numeric"
+                  className="w-full border-2 border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+              </div>
+              {num(targetAmount) > 0 && <p className="text-xs text-slate-400 mt-1 pl-1">{inr(num(targetAmount))}</p>}
+            </div>
+
+            {/* Timeline */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Timeline</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIMELINE_OPTS.map(t => (
+                  <button key={t.months} onClick={() => setTimelineMonths(t.months)}
+                    className={`py-2 px-1 rounded-xl text-xs font-bold border-2 transition-all text-center
+                      ${timelineMonths === t.months ? 'border-[#2C4A70] bg-indigo-50 text-[#2C4A70]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Monthly savings preview */}
+            {canSave && (
+              <div className="bg-slate-50 rounded-2xl px-5 py-4 border border-slate-100 flex items-center justify-between">
+                <p className="text-sm text-slate-500 font-medium">Monthly saving needed</p>
+                <p className="text-lg font-black text-[#2C4A70]">{inr(monthlySaving)}</p>
+              </div>
+            )}
+
+            {/* Priority */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Priority</label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'high',   label: 'High',   color: 'border-rose-400 bg-rose-50 text-rose-600' },
+                  { id: 'medium', label: 'Medium', color: 'border-amber-400 bg-amber-50 text-amber-600' },
+                  { id: 'low',    label: 'Low',    color: 'border-slate-300 bg-slate-50 text-slate-500' },
+                ].map(p => (
+                  <button key={p.id} onClick={() => setPriority(p.id)}
+                    className={`flex-1 py-2 rounded-xl border-2 text-xs font-bold transition-all
+                      ${priority === p.id ? p.color : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Note */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                Note <span className="text-slate-300 font-normal normal-case">(optional)</span>
+              </label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="E.g. down payment for a 2BHK in Pune…"
+                className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-7">
+            {existing && (
+              <button onClick={() => { onRemove(goal.id); onClose(); }}
+                className="px-4 py-3 rounded-full border-2 border-rose-200 text-rose-500 hover:bg-rose-50 text-sm font-semibold transition-colors">
+                Remove
+              </button>
+            )}
+            <button onClick={onClose} className="flex-1 py-3 rounded-full border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button onClick={() => { onSave({ id: goal.id, targetAmount: num(targetAmount), timelineMonths, priority, note }); onClose(); }}
+              disabled={!canSave}
+              className="flex-1 py-3 rounded-full bg-[#2C4A70] text-white font-semibold text-sm hover:bg-[#1F344F] disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all">
+              {existing ? 'Update Goal' : 'Add Goal'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -735,130 +1060,310 @@ const GOAL_OPTS = [
   { id: 'custom',    icon: Plus,          label: 'Custom Goal',    desc: 'Anything else' },
 ];
 
-function GoalsSection({ data, setData, onComplete }) {
-  const [step, setStep] = useState(data.completed ? 2 : 0);
+// Dummy goals seeded per perspective — ids are strings starting with 'dummy_'
+const DUMMY_GOALS = {
+  salaried: [
+    { id: 'emergency', targetAmount: 300000,  timelineMonths: 12, note: '3× monthly salary as safety net' },
+    { id: 'retire',    targetAmount: 10000000, timelineMonths: 240, note: 'FIRE target at 50' },
+    { id: 'home',      targetAmount: 2000000,  timelineMonths: 48, note: 'Down payment for home purchase' },
+  ],
+  business: [
+    { id: 'emergency', targetAmount: 1000000,  timelineMonths: 6,   note: 'Business continuity reserve — 6 months ops cost' },
+    { id: 'debt',      targetAmount: 2500000,  timelineMonths: 36,  note: 'Clear working capital loan' },
+    { id: 'retire',    targetAmount: 20000000, timelineMonths: 180, note: 'Exit corpus target' },
+  ],
+  homemaker: [
+    { id: 'emergency', targetAmount: 200000,  timelineMonths: 12, note: 'Household emergency buffer' },
+    { id: 'education', targetAmount: 1500000, timelineMonths: 96, note: "Children's higher education fund" },
+    { id: 'home',      targetAmount: 500000,  timelineMonths: 24, note: 'Home renovation fund' },
+  ],
+  investor: [
+    { id: 'retire',    targetAmount: 50000000, timelineMonths: 120, note: 'FIRE corpus — 25× annual expenses' },
+    { id: 'custom',    targetAmount: 5000000,  timelineMonths: 60,  note: 'Passive income portfolio target' },
+    { id: 'debt',      targetAmount: 5500000,  timelineMonths: 48,  note: 'Prepay home loan early' },
+  ],
+};
 
-  const toggleGoal = id => setData(d => ({
-    ...d, goals: d.goals.includes(id) ? d.goals.filter(g => g !== id) : [...d.goals, id],
-  }));
+const GOALS_AI_PROMPTS = [
+  'How much should I save monthly for retirement?',
+  'Which goal should I prioritise first?',
+  'Am I on track with my emergency fund?',
+  'How can I reach my home goal faster?',
+];
 
-  const totExp = Object.values(data.expenses || {}).reduce((a, b) => a + num(b), 0);
-  const inc = num(data.incomeString);
-  const surplus = inc - totExp;
-  const needs   = Math.min(inc * 0.5, totExp);
-  const wants   = Math.min(inc * 0.3, Math.max(0, totExp - needs));
-  const savings = Math.max(0, inc - needs - wants);
-  const budgetData = [
-    { name: 'Needs',          value: needs,   color: '#2C4A70' },
-    { name: 'Wants',          value: wants,   color: '#526B5C' },
-    { name: 'Savings / Goals',value: savings, color: '#38A169' },
-  ];
+function GoalsSection({ data, setData, perspective = 'salaried', onComplete }) {
+  // Seed dummy goals on first load
+  const [isDummyGoals, setIsDummyGoals] = useState(() => {
+    if (!data.goals?.length) {
+      const seed = DUMMY_GOALS[perspective] || DUMMY_GOALS.salaried;
+      setData(d => ({ ...d, goals: seed.map(g => g.id), dummyGoalDetails: seed }));
+      return true;
+    }
+    return Boolean(data.dummyGoalDetails?.length);
+  });
+
+  const [goalDialog, setGoalDialog] = useState(null);
+  const [goalMessages, setGoalMessages] = useState([
+    { role: 'ai', text: "I'm your Goal Advisor. Ask me anything about saving strategies, timelines, or how to prioritise your financial milestones." }
+  ]);
+  const [goalInput, setGoalInput] = useState('');
+  const [goalThinking, setGoalThinking] = useState(false);
+  const goalChatEndRef = useRef(null);
+  const goalInputRef = useRef(null);
+
+  useEffect(() => { goalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [goalMessages]);
+
+  const clearDummyGoals = () => {
+    setData(d => ({ ...d, goals: [], goalDetails: {}, dummyGoalDetails: [] }));
+    setIsDummyGoals(false);
+    setGoalMessages(m => [...m, { role: 'ai', text: "Cleared! Now configure the goals that actually matter to you — click any goal card to set your target and timeline." }]);
+  };
+
+  const saveGoalDetail = (detail) => {
+    setIsDummyGoals(false);
+    setData(d => ({
+      ...d,
+      goals: d.goals.includes(detail.id) ? d.goals : [...(d.goals || []), detail.id],
+      goalDetails: { ...(d.goalDetails || {}), [detail.id]: detail },
+      dummyGoalDetails: [],
+    }));
+    const opt = GOAL_OPTS.find(o => o.id === detail.id);
+    setGoalMessages(m => [...m, { role: 'ai', text: `Great — **${opt?.label || 'Goal'}** configured: ${inr(detail.targetAmount)} in ${detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12} years` : `${detail.timelineMonths} months`}. Monthly savings needed: ${inr(Math.ceil(detail.targetAmount / detail.timelineMonths))}.` }]);
+  };
+
+  const removeGoal = (id) => {
+    setData(d => {
+      const details = { ...(d.goalDetails || {}) };
+      delete details[id];
+      return { ...d, goals: (d.goals || []).filter(g => g !== id), goalDetails: details };
+    });
+  };
+
+  const sendGoalMessage = (text) => {
+    if (!text.trim()) return;
+    setGoalMessages(m => [...m, { role: 'user', text }]);
+    setGoalInput('');
+    setGoalThinking(true);
+    setTimeout(() => {
+      const lower = text.toLowerCase();
+      let reply = "That's a thoughtful question. Based on your goals, I'd suggest reviewing your emergency fund first — it's the foundation everything else rests on. Once that's set, allocate surplus income toward your highest-priority goal using a SIP or recurring deposit.";
+      if (lower.includes('retire')) reply = "For retirement, the rule of thumb is to save 15–20% of monthly income. With a 20-year horizon, even ₹10,000/month compounding at 12% grows to ~₹1 crore. Start early, stay consistent.";
+      if (lower.includes('home') || lower.includes('house')) reply = "For a home purchase, target a 20% down payment to avoid PMI and keep EMIs manageable. If your goal is ₹20L down payment in 5 years, you need to save ~₹27,000/month at 8% returns.";
+      if (lower.includes('emergency')) reply = "Emergency fund goal: 6 months of expenses in a liquid account. For most households, ₹3–6L is a good target. Prioritise this before any investment-linked goal.";
+      if (lower.includes('priorit')) reply = "Priority order: 1) Emergency fund 2) High-interest debt clearance 3) Retirement (start early for compounding) 4) Medium-term goals like education or home down payment.";
+      setGoalMessages(m => [...m, { role: 'ai', text: reply }]);
+      setGoalThinking(false);
+      goalInputRef.current?.focus();
+    }, 900);
+  };
 
   const handleComplete = () => { const u = { ...data, completed: true }; setData(u); saveJson(SK.goals, u); onComplete(); };
 
-  const STEPS = ['Goals', 'Cash Flow', 'Budget'];
+  const configuredGoals = Object.keys(data.goalDetails || {});
+  const dummyGoalDetails = data.dummyGoalDetails || [];
+  const totalTarget = [...configuredGoals.map(id => (data.goalDetails[id]?.targetAmount || 0)),
+    ...dummyGoalDetails.map(g => g.targetAmount || 0)].reduce((a, b) => a + b, 0);
 
   return (
-    <div className="max-w-2xl mx-auto py-10 px-6 space-y-8">
-      <FadeIn>
-        <h2 className="text-3xl font-serif font-black text-[#2C4A70]">{STEPS[step]}</h2>
-        <p className="text-slate-500 mt-1">
-          {step === 0 ? 'Select the milestones that matter most.' : step === 1 ? 'Your monthly income and commitments.' : 'A 50/30/20 starting point.'}
-        </p>
-      </FadeIn>
+    <div className="flex flex-col h-full bg-[#F7F8F9]">
 
-      <div className="flex gap-2">
-        {STEPS.map((_, i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i <= step ? 'bg-[#2C4A70]' : 'bg-slate-200'}`} />
-        ))}
+      {/* ── Top bar ──────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-start justify-between shrink-0">
+        <div>
+          <h2 className="text-3xl font-serif font-black text-[#2C4A70] leading-tight">Your Financial Milestones</h2>
+          <p className="text-slate-400 text-sm mt-1">Configure the goals that matter most — set targets, timelines, and priorities.</p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0 ml-6 text-sm text-slate-500 font-medium">
+          <span className="bg-[#2C4A70]/10 text-[#2C4A70] font-bold px-3 py-1.5 rounded-full text-xs">
+            {configuredGoals.length + (isDummyGoals ? dummyGoalDetails.length : 0)} goals
+          </span>
+          {totalTarget > 0 && (
+            <span className="bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-full text-xs">
+              Total: {inr(totalTarget)}
+            </span>
+          )}
+        </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {step === 0 && (
-          <motion.div key="g0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-              {GOAL_OPTS.map(g => {
-                const active = (data.goals || []).includes(g.id);
-                return (
-                  <button key={g.id} onClick={() => toggleGoal(g.id)}
-                    className={`relative flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all
-                      ${active ? 'border-[#2C4A70] bg-blue-50/30 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                    {active && <span className="absolute top-2.5 right-2.5 bg-[#526B5C] text-white rounded-full p-0.5"><Check size={11} strokeWidth={3} /></span>}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-[#2C4A70] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                      <g.icon size={18} />
+      {/* ── Disclaimer ───────────────────────────────────────────── */}
+      {isDummyGoals && (
+        <div className="bg-amber-50 border-b border-amber-200 px-8 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 text-amber-700">
+            <span className="text-base">⚠️</span>
+            <p className="text-sm font-medium">
+              These are <strong>suggested goals</strong> based on your profile — not saved. Click any card to configure and save.
+            </p>
+          </div>
+          <button onClick={clearDummyGoals}
+            className="text-xs font-bold text-amber-700 border border-amber-300 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ml-4">
+            Clear & Start Fresh
+          </button>
+        </div>
+      )}
+
+      {/* ── Main split pane ──────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* LEFT — Goal cards */}
+        <div className="flex flex-col w-[55%] border-r border-slate-200 overflow-y-auto">
+          <div className="p-6 grid grid-cols-2 gap-4 content-start">
+
+            {/* Dummy goal cards */}
+            {isDummyGoals && dummyGoalDetails.map(gd => {
+              const opt = GOAL_OPTS.find(o => o.id === gd.id);
+              if (!opt) return null;
+              const Icon = opt.icon;
+              return (
+                <button key={gd.id} onClick={() => setGoalDialog(opt)}
+                  className="flex flex-col gap-3 p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/60 text-left hover:border-amber-300 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                      <Icon size={17} className="text-amber-700" />
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-slate-800">{opt.label}</p>
+                      <p className="text-xs text-slate-400 truncate">{gd.note}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-amber-100">
+                    <p className="text-xs font-black text-[#2C4A70]">{inr(gd.targetAmount)}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">
+                      {gd.timelineMonths >= 12 ? `${gd.timelineMonths / 12}yr` : `${gd.timelineMonths}mo`}
+                    </p>
+                    <p className="text-[10px] text-slate-400">~{inr(Math.ceil(gd.targetAmount / gd.timelineMonths))}/mo</p>
+                  </div>
+                  <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1"><Pencil size={9} /> Click to configure</p>
+                </button>
+              );
+            })}
+
+            {/* Configured goal cards */}
+            {!isDummyGoals && GOAL_OPTS.map(g => {
+              const active = (data.goals || []).includes(g.id);
+              const detail = (data.goalDetails || {})[g.id];
+              const Icon = g.icon;
+              return (
+                <button key={g.id} onClick={() => setGoalDialog(g)}
+                  className={`flex flex-col gap-3 p-5 rounded-2xl border-2 text-left transition-all
+                    ${active ? 'border-[#526B5C] bg-[#526B5C]/5 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-[#526B5C] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <Icon size={17} />
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <p className={`font-bold text-sm ${active ? 'text-[#2C4A70]' : 'text-slate-700'}`}>{g.label}</p>
-                      <p className="text-xs text-slate-400">{g.desc}</p>
+                      <p className="text-xs text-slate-400 truncate">{g.desc}</p>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex justify-end">
-              <Btn onClick={() => setStep(1)} disabled={!data.goals?.length}>Next: Cash Flow <ArrowRight size={18} /></Btn>
-            </div>
-          </motion.div>
-        )}
+                    {active && (
+                      <span className="bg-[#526B5C] text-white rounded-full p-0.5 shrink-0">
+                        <Check size={11} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  {detail ? (
+                    <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-[#526B5C]/15">
+                      <p className="text-xs font-black text-[#2C4A70]">{inr(detail.targetAmount)}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        {detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12}yr` : `${detail.timelineMonths}mo`}
+                      </p>
+                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full
+                        ${detail.priority === 'high' ? 'bg-rose-50 text-rose-500' : detail.priority === 'low' ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-500'}`}>
+                        {detail.priority}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-300 flex items-center gap-1"><Plus size={10} /> Click to configure</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-        {step === 1 && (
-          <motion.div key="g1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <Field label="Monthly Income" value={data.incomeString || ''} onChange={v => setData(d => ({ ...d, incomeString: v }))} placeholder="150000" prefix="₹" />
-              <div className="grid grid-cols-2 gap-4">
-                {Object.keys(data.expenses || {}).map(k => (
-                  <Field key={k} label={k} value={data.expenses[k]} prefix="₹"
-                    onChange={v => setData(d => ({ ...d, expenses: { ...d.expenses, [k]: v } }))} placeholder="0" />
-                ))}
-              </div>
-            </div>
-            {inc > 0 && (
-              <div className={`rounded-2xl p-4 flex justify-between items-center border ${surplus >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
-                <span className="text-sm font-semibold text-slate-600">Monthly surplus</span>
-                <span className={`text-xl font-black ${surplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {surplus >= 0 ? '+' : ''}{inr(surplus)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <Btn variant="ghost" onClick={() => setStep(0)}>← Back</Btn>
-              <Btn onClick={() => setStep(2)} disabled={!data.incomeString}>View Budget <ArrowRight size={18} /></Btn>
-            </div>
-          </motion.div>
-        )}
+          {/* Continue footer */}
+          <div className="mt-auto border-t border-slate-200 bg-white px-6 py-4 flex justify-end shrink-0">
+            <Btn onClick={handleComplete} disabled={!data.goals?.length}>
+              Looks good, continue <ArrowRight size={18} />
+            </Btn>
+          </div>
+        </div>
 
-        {step === 2 && (
-          <motion.div key="g2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
-              <div className="flex flex-col sm:flex-row items-center gap-8">
-                <div className="w-44 h-44 shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={budgetData} innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value" stroke="none">
-                        {budgetData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                      </Pie>
-                      <RechartsTooltip formatter={v => inr(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
+        {/* RIGHT — Goal Advisor AI chat */}
+        <div className="flex flex-col w-[45%] bg-white">
+          {/* Chat header */}
+          <div className="px-6 py-4 border-b border-slate-100 shrink-0 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#526B5C] flex items-center justify-center">
+              <Target size={17} className="text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-slate-800">Goal Advisor</p>
+              <p className="text-xs text-slate-400">AI-powered goal planning</p>
+            </div>
+            <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            {goalMessages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed
+                  ${m.role === 'user'
+                    ? 'bg-[#526B5C] text-white rounded-br-sm'
+                    : 'bg-slate-100 text-slate-700 rounded-bl-sm'}`}>
+                  {m.text.split('**').map((part, pi) =>
+                    pi % 2 === 1 ? <strong key={pi}>{part}</strong> : part
+                  )}
                 </div>
-                <div className="space-y-3 w-full">
-                  {budgetData.map(d => (
-                    <div key={d.name} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                      <div className="flex-1">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{d.name}</p>
-                        <p className="text-lg font-black text-slate-800">{inr(d.value)}</p>
-                      </div>
-                    </div>
+              </div>
+            ))}
+            {goalThinking && (
+              <div className="flex justify-start">
+                <div className="bg-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center">
+                  {[0, 1, 2].map(i => (
+                    <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-[#526B5C]"
+                      animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />
                   ))}
                 </div>
               </div>
+            )}
+            <div ref={goalChatEndRef} />
+          </div>
+
+          {/* Quick prompts */}
+          <div className="px-4 py-2 flex gap-2 flex-wrap border-t border-slate-100 shrink-0">
+            {GOALS_AI_PROMPTS.map((p, i) => (
+              <button key={i} onClick={() => sendGoalMessage(p)}
+                className="text-[11px] font-semibold bg-[#526B5C]/10 text-[#526B5C] border border-[#526B5C]/20 hover:bg-[#526B5C]/20 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="px-4 pb-4 pt-2 shrink-0">
+            <div className="flex gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2 focus-within:border-[#526B5C] focus-within:ring-4 focus-within:ring-[#526B5C]/10 transition-all">
+              <input ref={goalInputRef} value={goalInput} onChange={e => setGoalInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendGoalMessage(goalInput)}
+                placeholder="Ask about saving strategies, timelines…"
+                className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
+              <button onClick={() => sendGoalMessage(goalInput)} disabled={!goalInput.trim()}
+                className="w-8 h-8 rounded-xl bg-[#526B5C] disabled:bg-slate-200 flex items-center justify-center transition-colors shrink-0">
+                <Send size={14} className="text-white" />
+              </button>
             </div>
-            <div className="flex justify-between">
-              <Btn variant="ghost" onClick={() => setStep(1)}>← Back</Btn>
-              <Btn onClick={handleComplete}>Complete Goals <Check size={18} /></Btn>
-            </div>
-          </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Goal dialog */}
+      <AnimatePresence>
+        {goalDialog && (
+          <GoalDialog
+            goal={goalDialog}
+            existing={(data.goalDetails || {})[goalDialog.id]}
+            onSave={saveGoalDetail}
+            onRemove={removeGoal}
+            onClose={() => setGoalDialog(null)}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -1013,12 +1518,12 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
         <AnimatePresence mode="wait">
           {active === 'mapping' && (
             <motion.div key="mapping" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1">
-              <MappingSection data={mappingData} setData={setMappingData} onComplete={() => completeSection('mapping')} />
+              <MappingSection data={mappingData} setData={setMappingData} perspective={profileData.perspective} onComplete={() => completeSection('mapping')} />
             </motion.div>
           )}
           {active === 'goals' && (
             <motion.div key="goals" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1">
-              <GoalsSection data={goalsData} setData={setGoalsData} onComplete={() => completeSection('goals')} />
+              <GoalsSection data={goalsData} setData={setGoalsData} perspective={profileData.perspective} onComplete={() => completeSection('goals')} />
             </motion.div>
           )}
           {active === 'dashboards' && (
