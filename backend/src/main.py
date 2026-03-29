@@ -233,7 +233,18 @@ def create_app() -> FastAPI:
     
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
     if frontend_dist.exists():
-        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+        # Mount static files (this handles assets)
+        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+        
+        # Catch-all for SPA routing (this handles /onboarding etc.)
+        from fastapi.responses import FileResponse
+        @app.get("/{full_path:path}")
+        async def serve_spa_index(full_path: str):
+            index_path = frontend_dist / "index.html"
+            if index_path.exists():
+                return FileResponse(index_path)
+            return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found"})
+
         logger.info("Frontend served from root %s", frontend_dist)
 
     return app

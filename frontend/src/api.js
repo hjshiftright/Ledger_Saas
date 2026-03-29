@@ -328,6 +328,13 @@ export const API = {
     login: ({ email, password }) =>
       v1Call("/auth/login", "POST", { email, password }),
 
+    /** Select a tenant after signup/login to obtain a scoped JWT. */
+    selectTenant: ({ userId, tenantId }) =>
+      v1Call("/auth/select-tenant", "POST", {
+        ...(userId !== undefined && { user_id: userId }),
+        ...(tenantId !== undefined && { tenant_id: tenantId }),
+      }),
+
     /** Reset the database (destructive). */
     resetDb: () =>
       v1Call("/auth/reset-db", "POST", { confirm: true }),

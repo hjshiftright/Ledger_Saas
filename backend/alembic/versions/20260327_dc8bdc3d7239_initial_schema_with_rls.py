@@ -135,7 +135,7 @@ def upgrade() -> None:
             USING (FALSE)
     """))
 
-    # ── 5. Securities: global read, no app_service writes ────────────────────
+    # ── 5. Securities: global read, no app_service writes ────────────────
     op.execute(text("ALTER TABLE securities ENABLE ROW LEVEL SECURITY"))
     op.execute(text("ALTER TABLE securities FORCE ROW LEVEL SECURITY"))
     op.execute(text("""
@@ -145,8 +145,20 @@ def upgrade() -> None:
             USING (TRUE)
     """))
     op.execute(text("""
-        CREATE POLICY global_write_block ON securities
-            AS RESTRICTIVE FOR INSERT, UPDATE, DELETE
+        CREATE POLICY global_insert_block ON securities
+            AS RESTRICTIVE FOR INSERT
+            TO app_service
+            WITH CHECK (FALSE)
+    """))
+    op.execute(text("""
+        CREATE POLICY global_update_block ON securities
+            AS RESTRICTIVE FOR UPDATE
+            TO app_service
+            USING (FALSE)
+    """))
+    op.execute(text("""
+        CREATE POLICY global_delete_block ON securities
+            AS RESTRICTIVE FOR DELETE
             TO app_service
             USING (FALSE)
     """))
@@ -170,7 +182,7 @@ def upgrade() -> None:
         CREATE POLICY users_insert_block ON users
             AS RESTRICTIVE FOR INSERT
             TO app_service
-            USING (FALSE)
+            WITH CHECK (FALSE)
     """))
 
 
@@ -185,7 +197,9 @@ def downgrade() -> None:
     op.execute(text(f"ALTER TABLE {_AUDIT_LOG_TABLE} DISABLE ROW LEVEL SECURITY"))
 
     op.execute(text("DROP POLICY IF EXISTS global_read ON securities"))
-    op.execute(text("DROP POLICY IF EXISTS global_write_block ON securities"))
+    op.execute(text("DROP POLICY IF EXISTS global_insert_block ON securities"))
+    op.execute(text("DROP POLICY IF EXISTS global_update_block ON securities"))
+    op.execute(text("DROP POLICY IF EXISTS global_delete_block ON securities"))
     op.execute(text("ALTER TABLE securities DISABLE ROW LEVEL SECURITY"))
 
     op.execute(text("DROP POLICY IF EXISTS users_select ON users"))

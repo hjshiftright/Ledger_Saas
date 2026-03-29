@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from jose import jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -87,6 +87,7 @@ class AuthListResponse(BaseModel):
 
 class SelectTenantRequest(BaseModel):
     tenant_id: str = Field(..., description="UUID of the tenant to activate")
+    user_id: int | None = Field(None, description="Optional: user_id fallback for initial selection after signup/login")
 
 
 class TokenResponse(BaseModel):
@@ -284,7 +285,7 @@ async def login(
 @router.post("/select-tenant", response_model=TokenResponse, summary="Select active tenant and receive scoped JWT")
 async def select_tenant(
     body: SelectTenantRequest,
-    authorization: str | None = None,
+    authorization: str | None = Header(default=None),
     session: AsyncSession = Depends(_admin_session),
     settings: Settings = Depends(get_settings),
 ):
@@ -293,10 +294,10 @@ async def select_tenant(
     The JWT embeds ``tenant_id`` and ``role``, which the API uses to set
     ``app.tenant_id`` on every subsequent request so PostgreSQL RLS can enforce isolation.
 
-    To call this endpoint after login, pass the ``user_id`` in the request body or
-    authenticate via a pre-scoped token in the Authorization header.
+    Pass a Bearer token in the Authorization header (after login) OR pass ``user_id``
+    in the request body (immediately after signup, before any token exists).
     """
-    # Resolve who is calling: either from a prior token or via the Authorization header
+    # Resolve who is calling: either from a prior token or via the body user_id fallback
     user_id_str: str | None = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization.removeprefix("Bearer ").strip()
@@ -306,11 +307,15 @@ async def select_tenant(
                 user_id_str = payload.get("sub")
             except Exception:
                 pass
+    
+    # Fallback to body.user_id if no token or invalid token
+    if not user_id_str and body.user_id:
+        user_id_str = str(body.user_id)
 
     if not user_id_str:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "TOKEN_MISSING", "message": "Authorization header with Bearer token required."},
+            detail={"error": "TOKEN_MISSING", "message": "Authorization header or user_id required."},
         )
 
     try:
