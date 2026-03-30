@@ -26,7 +26,7 @@ const PRIORITY_COLOR = {
 
 function barColor(pct) {
   if (pct >= 75) return 'bg-green-500'
-  if (pct >= 40) return 'bg-indigo-500'
+  if (pct >= 40) return 'bg-[#2C4A70]'
   return 'bg-amber-400'
 }
 
@@ -167,7 +167,7 @@ function GoalVizModal({ apiGoal, userAge, onClose }) {
                   type="number"
                   value={sip}
                   onChange={e => setSip(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-36 text-lg font-bold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-36 text-lg font-bold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
                 />
                 <span className="text-slate-400 text-sm">/mo</span>
               </div>
@@ -184,13 +184,13 @@ function GoalVizModal({ apiGoal, userAge, onClose }) {
             </div>
             <div className="text-center">
               <div className="text-xs text-slate-500 font-medium mb-1">Recommended</div>
-              <div className="text-sm font-semibold text-indigo-600">₹{projected.toLocaleString('en-IN')}/mo</div>
+              <div className="text-sm font-semibold text-[#2C4A70]">₹{projected.toLocaleString('en-IN')}/mo</div>
             </div>
           </div>
 
           {/* Summary chips */}
           <div className="flex flex-wrap gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2C4A70]/5 border border-[#2C4A70]/25 text-[#2C4A70] text-xs font-semibold">
               💰 ₹{sip.toLocaleString('en-IN')}/mo SIP
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
@@ -243,7 +243,7 @@ function GoalVizModal({ apiGoal, userAge, onClose }) {
               <div className="text-xs text-slate-400 mt-0.5">Already saved</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <div className="text-lg font-bold text-indigo-600">{vizGoal.years}y</div>
+              <div className="text-lg font-bold text-[#2C4A70]">{vizGoal.years}y</div>
               <div className="text-xs text-slate-400 mt-0.5">Time horizon</div>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function GoalsPage() {
         </div>
         <button
           onClick={() => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2C4A70] text-white text-sm font-semibold rounded-lg hover:bg-[#1F344F] transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Add a goal
         </button>
@@ -379,7 +379,7 @@ export default function GoalsPage() {
       {goals.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-slate-100 p-3 text-center shadow-sm">
-            <div className="text-xl font-bold text-indigo-700">{goals.length}</div>
+            <div className="text-xl font-bold text-[#2C4A70]">{goals.length}</div>
             <div className="text-xs text-slate-400 mt-0.5">goals on the go</div>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-3 text-center shadow-sm">
@@ -403,7 +403,7 @@ export default function GoalsPage() {
           <div className="text-slate-500 mt-1 mb-6 text-sm">Add your first goal — a home, a holiday, retirement — and we'll help you figure out how much to set aside each month.</div>
           <button
             onClick={() => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true) }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2C4A70] text-white font-semibold rounded-xl hover:bg-[#1F344F] transition-colors"
           >
             <Plus className="w-4 h-4" /> Set your first goal
           </button>
@@ -425,7 +425,7 @@ export default function GoalsPage() {
                 <div className="flex gap-1">
                   <button
                     onClick={() => startEdit(g)}
-                    className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50"
+                    className="p-1.5 text-slate-400 hover:text-[#2C4A70] rounded-lg hover:bg-[#2C4A70]/5"
                     title="Edit goal"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -444,7 +444,7 @@ export default function GoalsPage() {
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-slate-500 mb-1">
                   <span>{fmtCurrency(g.current_amount)} saved so far</span>
-                  <span className="font-semibold text-indigo-600">{g.progress_pct}% there</span>
+                  <span className="font-semibold text-[#2C4A70]">{g.progress_pct}% there</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2.5">
                   <div
@@ -466,7 +466,7 @@ export default function GoalsPage() {
               {/* Visualize button */}
               <button
                 onClick={() => setSelectedGoal(g)}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors border border-indigo-100"
+                className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#2C4A70]/5 text-[#2C4A70] text-xs font-semibold hover:bg-[#2C4A70]/10 transition-colors border border-[#2C4A70]/15"
               >
                 <TrendingUp size={13} /> View Projection
               </button>
@@ -500,7 +500,7 @@ export default function GoalsPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Goal Name *</label>
                 <input
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                   value={form.name}
                   onChange={e => setField('name', e.target.value)}
                   placeholder="e.g. House Down Payment"
@@ -511,7 +511,7 @@ export default function GoalsPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.goal_type}
                     onChange={e => setField('goal_type', e.target.value)}
                   >
@@ -521,7 +521,7 @@ export default function GoalsPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.priority}
                     onChange={e => setField('priority', e.target.value)}
                   >
@@ -535,7 +535,7 @@ export default function GoalsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Target Amount (₹) *</label>
                   <input
                     type="number"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.target_amount}
                     onChange={e => setField('target_amount', e.target.value)}
                     placeholder="5000000"
@@ -545,7 +545,7 @@ export default function GoalsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Current Amount (₹)</label>
                   <input
                     type="number"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.current_amount}
                     onChange={e => setField('current_amount', e.target.value)}
                   />
@@ -557,7 +557,7 @@ export default function GoalsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Start Date *</label>
                   <input
                     type="date"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.start_date}
                     onChange={e => setField('start_date', e.target.value)}
                   />
@@ -566,7 +566,7 @@ export default function GoalsPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Target Date</label>
                   <input
                     type="date"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none"
                     value={form.target_date}
                     onChange={e => setField('target_date', e.target.value)}
                   />
@@ -577,7 +577,7 @@ export default function GoalsPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                 <textarea
                   rows={2}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none resize-none"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#2C4A70]/30 focus:outline-none resize-none"
                   value={form.notes}
                   onChange={e => setField('notes', e.target.value)}
                 />
@@ -594,7 +594,7 @@ export default function GoalsPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-[#2C4A70] text-white rounded-xl text-sm font-semibold hover:bg-[#1F344F] disabled:opacity-50"
                 >
                   {submitting ? 'Saving…' : editId ? 'Update Goal' : 'Create Goal'}
                 </button>

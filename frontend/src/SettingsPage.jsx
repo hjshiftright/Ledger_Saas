@@ -84,8 +84,8 @@ function SectionCard({ title, subtitle, icon: Icon, children }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
       <div className="px-6 py-5 border-b border-slate-100 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-          <Icon size={18} className="text-indigo-600" />
+        <div className="w-9 h-9 rounded-xl bg-[#2C4A70]/5 flex items-center justify-center flex-shrink-0">
+          <Icon size={18} className="text-[#2C4A70]" />
         </div>
         <div>
           <h2 className="text-base font-semibold text-slate-800">{title}</h2>
@@ -100,7 +100,7 @@ function SectionCard({ title, subtitle, icon: Icon, children }) {
 function Badge({ children, color = 'slate' }) {
   const map = {
     slate:  'bg-slate-100 text-slate-600',
-    indigo: 'bg-indigo-100 text-indigo-700',
+    indigo: 'bg-[#2C4A70]/10 text-[#2C4A70]',
     emerald:'bg-emerald-100 text-emerald-700',
     amber:  'bg-amber-100 text-amber-700',
     red:    'bg-red-100 text-red-700',
@@ -207,10 +207,10 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
             onClick={handleTest}
             disabled={testing}
             title="Test connection"
-            className="p-1.5 rounded-lg hover:bg-white/70 text-slate-500 hover:text-indigo-600 transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-lg hover:bg-white/70 text-slate-500 hover:text-[#2C4A70] transition-colors disabled:opacity-40"
           >
             {testing
-              ? <span className="animate-spin block border-2 border-indigo-400 border-t-transparent rounded-full w-4 h-4" />
+              ? <span className="animate-spin block border-2 border-[#2C4A70]/50 border-t-transparent rounded-full w-4 h-4" />
               : <RefreshCw size={15} />}
           </button>
 
@@ -264,7 +264,7 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
             />
           </div>
 
@@ -279,7 +279,7 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={meta.keyPlaceholder}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
               />
               <button
                 type="button"
@@ -300,7 +300,7 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
                 value={textModel}
                 onChange={(e) => setTextModel(e.target.value)}
                 placeholder={meta.defaultTextModel}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
               />
             </div>
             <div>
@@ -309,7 +309,7 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
                 value={visionModel}
                 onChange={(e) => setVisionModel(e.target.value)}
                 placeholder={meta.defaultVisionModel}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
               />
             </div>
           </div>
@@ -330,7 +330,7 @@ function ProviderRow({ provider, onUpdated, onDeleted }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="text-sm font-semibold bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+              className="text-sm font-semibold bg-[#2C4A70] text-white px-5 py-2 rounded-xl hover:bg-[#1F344F] disabled:opacity-40 transition-colors"
             >
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
@@ -391,7 +391,7 @@ function AddProviderForm({ onAdded, onCancel }) {
   };
 
   return (
-    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 space-y-4">
+    <div className="rounded-2xl border border-[#2C4A70]/25 bg-[#2C4A70]/5 p-5 space-y-4">
       <p className="text-sm font-semibold text-slate-700">Add New Provider</p>
 
       {/* Provider selector */}
@@ -402,7 +402,7 @@ function AddProviderForm({ onAdded, onCancel }) {
             onClick={() => setProviderName(key)}
             className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all
               ${providerName === key
-                ? `${m.bg} ${m.border} ${m.color} ring-2 ring-offset-1 ring-indigo-300`
+                ? `${m.bg} ${m.border} ${m.color} ring-2 ring-offset-1 ring-[#2C4A70]/30`
                 : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
           >
             {m.label}
@@ -419,7 +419,7 @@ function AddProviderForm({ onAdded, onCancel }) {
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder={meta.label}
-          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
         />
       </div>
 
@@ -434,7 +434,7 @@ function AddProviderForm({ onAdded, onCancel }) {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={meta.keyPlaceholder}
-            className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           />
           <button
@@ -450,7 +450,7 @@ function AddProviderForm({ onAdded, onCancel }) {
 
       {/* Models (advanced — collapsible) */}
       <details className="group">
-        <summary className="text-xs text-slate-500 cursor-pointer hover:text-indigo-600 select-none list-none flex items-center gap-1">
+        <summary className="text-xs text-slate-500 cursor-pointer hover:text-[#2C4A70] select-none list-none flex items-center gap-1">
           <ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
           Advanced: override models (optional)
         </summary>
@@ -461,7 +461,7 @@ function AddProviderForm({ onAdded, onCancel }) {
               value={textModel}
               onChange={(e) => setTextModel(e.target.value)}
               placeholder={meta.defaultTextModel}
-              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
             />
           </div>
           <div>
@@ -470,7 +470,7 @@ function AddProviderForm({ onAdded, onCancel }) {
               value={visionModel}
               onChange={(e) => setVisionModel(e.target.value)}
               placeholder={meta.defaultVisionModel}
-              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2C4A70]/40"
             />
           </div>
         </div>
@@ -482,7 +482,7 @@ function AddProviderForm({ onAdded, onCancel }) {
           type="checkbox"
           checked={isDefault}
           onChange={(e) => setIsDefault(e.target.checked)}
-          className="w-4 h-4 rounded accent-indigo-600"
+          className="w-4 h-4 rounded accent-[#2C4A70]"
         />
         <span className="text-xs text-slate-600">Set as default provider for AI-assisted import</span>
       </label>
@@ -503,7 +503,7 @@ function AddProviderForm({ onAdded, onCancel }) {
         <button
           onClick={handleAdd}
           disabled={saving || !apiKey.trim()}
-          className="text-sm font-semibold bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-colors flex items-center gap-2"
+          className="text-sm font-semibold bg-[#2C4A70] text-white px-5 py-2 rounded-xl hover:bg-[#1F344F] disabled:opacity-40 transition-colors flex items-center gap-2"
         >
           {saving ? (
             <><span className="animate-spin block border-2 border-white border-t-transparent rounded-full w-4 h-4" /> Saving…</>
@@ -557,7 +557,7 @@ function LlmProvidersSection() {
     >
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-400 py-2">
-          <span className="animate-spin block border-2 border-slate-300 border-t-indigo-500 rounded-full w-4 h-4" />
+          <span className="animate-spin block border-2 border-slate-300 border-t-[#2C4A70] rounded-full w-4 h-4" />
           Loading…
         </div>
       ) : (
@@ -583,7 +583,7 @@ function LlmProvidersSection() {
           ) : (
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-[#2C4A70]/50 hover:text-[#2C4A70] transition-colors"
             >
               <Plus size={15} /> Add Provider
             </button>
@@ -598,11 +598,11 @@ function LlmProvidersSection() {
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
+    <div className="min-h-screen bg-[#F7F8F9] px-4 py-10">
       <div className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 space-y-6">
         <div className="mb-2">
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Cpu size={22} className="text-indigo-600" />
+            <Cpu size={22} className="text-[#2C4A70]" />
             Settings
           </h1>
           <p className="text-slate-500 text-sm mt-1">Configure providers and application preferences.</p>

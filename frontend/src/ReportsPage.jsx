@@ -57,7 +57,7 @@ function KpiCard({ label, value, sub, color = 'slate', icon: Icon }) {
     slate: 'bg-white border-slate-100',
     emerald: 'bg-emerald-50 border-emerald-100',
     rose: 'bg-rose-50 border-rose-100',
-    indigo: 'bg-indigo-50 border-indigo-100',
+    indigo: 'bg-[#2C4A70]/5 border-[#2C4A70]/15',
   }
   return (
     <div className={`rounded-xl border p-4 shadow-sm ${colors[color]}`}>
@@ -109,8 +109,8 @@ function PeriodSelector({ preset, fromDate, toDate, onChange }) {
           onClick={() => onChange(p.id)}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors
             ${preset === p.id
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+              ? 'bg-[#2C4A70] text-white'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-[#2C4A70]/35 hover:text-[#2C4A70]'
             }`}
         >
           {p.label}
@@ -243,29 +243,29 @@ function InsightsPanel({ reportType, data }) {
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+    <div className="mt-4 rounded-xl border border-[#2C4A70]/15 bg-[#2C4A70]/5 p-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-indigo-700 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-[#2C4A70] font-semibold text-sm">
           <Sparkles size={15} />
           AI Insights
-          <span className="text-indigo-400 font-normal text-xs">(requires LLM provider in Settings)</span>
+          <span className="text-slate-400 font-normal text-xs">(requires LLM provider in Settings)</span>
         </div>
         <button
           onClick={() => { setOpen(o => !o); if (!open && !result) run() }}
-          className="text-xs px-3 py-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          className="text-xs px-3 py-1 rounded-full bg-[#2C4A70] text-white hover:bg-[#1F344F] transition-colors"
         >
           {open ? 'Hide' : 'Analyse'}
         </button>
       </div>
       {open && (
         <div className="mt-3">
-          {loading && <div className="flex items-center gap-2 text-indigo-500 text-sm"><RefreshCw size={14} className="animate-spin" /> Thinking…</div>}
+          {loading && <div className="flex items-center gap-2 text-[#2C4A70] text-sm"><RefreshCw size={14} className="animate-spin" /> Thinking…</div>}
           {result?.error && <div className="flex items-center gap-2 text-slate-500 text-sm"><AlertCircle size={14} />{result.error}</div>}
           {result?.insight && (
             <p className="text-slate-700 text-sm leading-relaxed">{result.insight}</p>
           )}
           {result && !loading && (
-            <button onClick={run} className="mt-2 text-xs text-indigo-500 hover:text-indigo-700">
+            <button onClick={run} className="mt-2 text-xs text-[#2C4A70] hover:text-[#2C4A70]">
               ↺ Regenerate
             </button>
           )}
@@ -347,13 +347,13 @@ function SummaryTab({ fromDate, toDate }) {
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
           <h3 className="text-sm font-bold text-slate-700 mb-2">How your net worth has moved (12 months)</h3>
           <div className="flex gap-3 mb-3 text-xs">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-indigo-400 inline-block" /> Net Worth</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-[#2C4A70] inline-block" /> Net Worth</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400 inline-block" /> Assets</span>
           </div>
           <MonthlyBars
             data={trend}
             keys={['net_worth', 'total_assets']}
-            colors={['bg-indigo-400', 'bg-emerald-200']}
+            colors={['bg-[#2C4A70]', 'bg-emerald-200']}
           />
         </div>
       </div>
@@ -527,7 +527,7 @@ function BalanceSheetTab() {
                 {/* Net Worth footer */}
                 <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
                   <span className="font-semibold text-slate-700">Net Worth</span>
-                  <span className={`font-mono font-bold text-lg ${parseFloat(data.net_worth) >= 0 ? 'text-indigo-700' : 'text-rose-600'}`}>
+                  <span className={`font-mono font-bold text-lg ${parseFloat(data.net_worth) >= 0 ? 'text-[#2C4A70]' : 'text-rose-600'}`}>
                     {fmt(data.net_worth)}
                   </span>
                 </div>
@@ -1133,8 +1133,8 @@ function LedgerBookTab({ fromDate, toDate }) {
             onClick={() => setCategory(c.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors
               ${category === c.id
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                ? 'bg-[#2C4A70] text-white'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-[#2C4A70]/35 hover:text-[#2C4A70]'
               }`}
           >
             {c.label}
@@ -1224,7 +1224,7 @@ export default function ReportsPage() {
             onClick={() => setActiveTab(id)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors
               ${activeTab === id
-                ? 'bg-white text-indigo-700 shadow-sm'
+                ? 'bg-white text-[#2C4A70] shadow-sm'
                 : 'text-slate-500 hover:text-slate-700'
               }`}
           >

@@ -1528,7 +1528,7 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
           )}
           {active === 'dashboards' && (
             <motion.div key="dashboards" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1 flex flex-col h-full">
-              <DashboardsSection onboardingData={profileData} />
+              <DashboardsSection onboardingData={{ profile: profileData, mapping: mappingData, goals: goalsData }} />
             </motion.div>
           )}
         </AnimatePresence>
