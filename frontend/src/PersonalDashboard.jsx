@@ -41,6 +41,31 @@ const ONBOARDING_GOAL_MAP = {
   custom:     { type: 'OTHERS',     label: 'Custom Goal'     },
 };
 
+// Mirrors DUMMY_GOALS in OnboardingV4 — used as last-resort fallback when the
+// user reaches Dashboards without having visited the Goals section at all.
+const PERSPECTIVE_DUMMY_GOALS = {
+  salaried: [
+    { id: 'emergency', targetAmount: 300000,   timelineMonths: 12,  note: '3× monthly salary as safety net' },
+    { id: 'retire',    targetAmount: 10000000, timelineMonths: 240, note: 'FIRE target at 50' },
+    { id: 'home',      targetAmount: 2000000,  timelineMonths: 48,  note: 'Down payment for home purchase' },
+  ],
+  business: [
+    { id: 'emergency', targetAmount: 1000000,  timelineMonths: 6,   note: 'Business continuity reserve' },
+    { id: 'debt',      targetAmount: 2500000,  timelineMonths: 36,  note: 'Clear working capital loan' },
+    { id: 'retire',    targetAmount: 20000000, timelineMonths: 180, note: 'Exit corpus target' },
+  ],
+  homemaker: [
+    { id: 'emergency', targetAmount: 200000,  timelineMonths: 12, note: 'Household emergency buffer' },
+    { id: 'education', targetAmount: 1500000, timelineMonths: 96, note: "Children's higher education fund" },
+    { id: 'home',      targetAmount: 500000,  timelineMonths: 24, note: 'Home renovation fund' },
+  ],
+  investor: [
+    { id: 'retire',  targetAmount: 50000000, timelineMonths: 120, note: 'FIRE corpus — 25× annual expenses' },
+    { id: 'custom',  targetAmount: 5000000,  timelineMonths: 60,  note: 'Passive income portfolio target' },
+    { id: 'debt',    targetAmount: 5500000,  timelineMonths: 48,  note: 'Prepay home loan early' },
+  ],
+};
+
 // ── goal projection helpers ──────────────────────────────────────────────────
 const GV_RETURN = 0.12;
 const GV_STEPUP = 0.0512;
@@ -80,13 +105,9 @@ function fmtCr(v) {
 }
 
 // ── goal projection modal ────────────────────────────────────────────────────
-function GoalProjectionModal({ goal, onClose }) {
+function GoalProjectionModal({ goal, onClose, userAge = 30 }) {
   const [sip, setSip] = useState(goal.monthlySavingNeeded || 0);
   const years = Math.max(1, Math.round((goal.timelineMonths || 12) / 12));
-  const userAge = (() => {
-    try { return parseInt(JSON.parse(localStorage.getItem('onboarding_v4_profile') || 'null')?.age) || 30; }
-    catch { return 30; }
-  })();
 
   const recommended = computeSip(goal.targetAmount, 0, years);
   const pct = recommended > 0 ? Math.round((sip / recommended) * 100) : 100;
@@ -264,7 +285,8 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
       .catch(() => {});
   }, []);
 
-  // ── Resolve local onboarding data ─────────────────────────────────────────
+  // ── Resolve onboarding data from props only (never localStorage) ──────────
+  // Reading localStorage here would leak one user's data to the next logged-in user.
   const profile   = onboardingData?.profile  || {};
   const mapping   = onboardingData?.mapping  || {};
   const goalsData = onboardingData?.goals    || {};
@@ -315,6 +337,28 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
 
   // Always prefer onboarding-saved goals; backend goals are supplementary only
   // when no onboarding goals exist at all.
+  // Last-resort fallback: perspective-based dummy goals so the section is never empty
+  const perspectiveDummies = (() => {
+    const key = profile.perspective || 'salaried';
+    const raw = PERSPECTIVE_DUMMY_GOALS[key] || PERSPECTIVE_DUMMY_GOALS.salaried;
+    return raw.map(d => {
+      const meta = ONBOARDING_GOAL_MAP[d.id] || { type: 'OTHERS', label: String(d.id) };
+      return {
+        id: String(d.id),
+        name: meta.label,
+        goalType: meta.type,
+        targetAmount: d.targetAmount || 0,
+        timelineMonths: d.timelineMonths || 12,
+        monthlySavingNeeded: d.targetAmount && d.timelineMonths
+          ? Math.ceil(d.targetAmount / d.timelineMonths) : 0,
+        priority: 'medium',
+        progress: 0,
+        note: d.note || '',
+        isDummy: true,
+      };
+    });
+  })();
+
   const goals = localGoals.length
     ? localGoals
     : (isDummyGoals ? dummyGoals : (dbGoals?.length
@@ -337,7 +381,7 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
               note: g.notes || '',
             };
           })
-        : []));
+        : perspectiveDummies));
 
   const totalMonthlyTarget = goals.reduce((s, g) => s + (g.monthlySavingNeeded || 0), 0);
   const inc = parseInt(String(goalsData.incomeString || '').replace(/\D/g, '')) || 0;
@@ -400,7 +444,7 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">Monthly savings needed to reach each goal</p>
                 </div>
-                {isDummyGoals && (
+                {(isDummyGoals || goals.some(g => g.isDummy)) && (
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                     ⚠️ Suggested — configure in Goals tab
                   </span>
@@ -626,7 +670,7 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
       {/* Goal projection modal */}
       <AnimatePresence>
         {selectedGoal && (
-          <GoalProjectionModal goal={selectedGoal} onClose={() => setSelectedGoal(null)} />
+          <GoalProjectionModal goal={selectedGoal} onClose={() => setSelectedGoal(null)} userAge={parseInt(profile.age) || 30} />
         )}
       </AnimatePresence>
     </div>

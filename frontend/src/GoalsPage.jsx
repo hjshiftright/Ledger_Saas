@@ -264,7 +264,7 @@ const EMPTY_FORM = {
   notes: '',
 }
 
-export default function GoalsPage() {
+export default function GoalsPage({ userAge: userAgeProp = 30 }) {
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -274,13 +274,7 @@ export default function GoalsPage() {
   const [editId, setEditId] = useState(null)
   const [selectedGoal, setSelectedGoal] = useState(null)
 
-  // Grab user age from onboarding data so the projection uses the right starting age
-  const userAge = (() => {
-    try {
-      const d = JSON.parse(localStorage.getItem('onboarding_v2_data') || 'null')
-      return parseInt(d?.profile?.age) || 30
-    } catch { return 30 }
-  })()
+  const userAge = userAgeProp
 
   useEffect(() => { fetchGoals() }, [])
 

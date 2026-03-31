@@ -20,6 +20,9 @@ function App() {
     sessionStorage.removeItem('ledger_auth_token')
     sessionStorage.removeItem('ledger_user_email')
     sessionStorage.removeItem('ledger_user_id')
+    // Clear all onboarding localStorage so the next user starts fresh
+    ;['onboarding_v4_sections','onboarding_v4_profile','onboarding_v4_mapping','onboarding_v4_goals',
+      'onboarding_v4_complete','onboarding_v2_complete','onboarding_v2_data'].forEach(k => localStorage.removeItem(k))
     setIsAuthenticated(false)
   }
 
