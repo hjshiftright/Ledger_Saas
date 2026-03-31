@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from typing import List, Dict, Any, Optional
 from repositories.protocols import (
@@ -6,6 +7,8 @@ from repositories.protocols import (
 from common.events import event_bus
 from .schemas import DashboardSaveRequest, DashboardDataResponse, AssetItem, GoalItem
 from onboarding.coa.service import COASetupService
+
+logger = logging.getLogger(__name__)
 
 # Map the wizard goal id (sent as GoalItem.id) to the DB goal_type enum value
 _GOAL_TYPE_MAP: dict[str, str] = {
@@ -63,8 +66,10 @@ class DashboardService:
         existing = existing_list[0] if existing_list else None
         if existing:
             await self._profiles.update(existing.id, profile_data)
+            logger.info("[DB PERSIST] Profile UPDATED — tenant=%s user=%s name=%r", tenant_id, user_id, data.name)
         else:
             await self._profiles.create(profile_data)
+            logger.info("[DB PERSIST] Profile CREATED — tenant=%s user=%s name=%r", tenant_id, user_id, data.name)
 
         # 2. Save Assets & Liabilities
         import json as _json
@@ -97,10 +102,14 @@ class DashboardService:
                 existing_acc = await self._find_account_by_name_and_parent(item.name, parent_code)
                 if not existing_acc:
                     existing_acc = await self._create_coa_leaf(parent_code, item.name)
+                    if existing_acc:
+                        logger.info(
+                            "[DB PERSIST] Account CREATED — tenant=%s name=%r code=%s parent=%s",
+                            tenant_id, item.name, _attr(existing_acc, "code"), parent_code,
+                        )
 
                 if not existing_acc:
-                    import logging
-                    logging.getLogger(__name__).warning(
+                    logger.warning(
                         "COA parent code %s not found; skipping account '%s'",
                         parent_code, item.name
                     )
@@ -116,22 +125,32 @@ class DashboardService:
                     if meta:
                         await self._accounts.update(_attr(existing_acc, "id"), {"description": _json.dumps(meta)})
 
+                logger.info(
+                    "[DB PERSIST] Opening balance SET — tenant=%s account=%r id=%s balance=%s",
+                    tenant_id, item.name, _attr(existing_acc, "id"), item.balance,
+                )
                 await self._set_opening_balance(_attr(existing_acc, "id"), item.balance)
 
         # 3. Save Goals
         today = date.today()
+        logger.info("[DB PERSIST] Goals CLEARED — tenant=%s (deleting all existing goals before re-save)", tenant_id)
         await self._goals.delete_all()
         for goal in data.goals:
             years = max(1, int(goal.years or 1))
             target_year = today.year + years
+            goal_type = _goal_type_from_id(goal.id)
             await self._goals.create({
                 "tenant_id": tenant_id,
                 "name": goal.name,
-                "goal_type": _goal_type_from_id(goal.id),
+                "goal_type": goal_type,
                 "target_amount": goal.target,
                 "current_amount": goal.current,
                 "target_date": f"{target_year}-{today.month:02d}-01",
             })
+            logger.info(
+                "[DB PERSIST] Goal CREATED (dashboard) — tenant=%s name=%r type=%s target=%s years=%d",
+                tenant_id, goal.name, goal_type, goal.target, years,
+            )
 
         return await self.get_dashboard(user_id)
 

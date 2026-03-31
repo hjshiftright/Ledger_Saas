@@ -287,9 +287,11 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
 
   // ── Resolve onboarding data from props only (never localStorage) ──────────
   // Reading localStorage here would leak one user's data to the next logged-in user.
-  const profile   = onboardingData?.profile  || {};
-  const mapping   = onboardingData?.mapping  || {};
-  const goalsData = onboardingData?.goals    || {};
+  const profile         = onboardingData?.profile        || {};
+  const mapping         = onboardingData?.mapping        || {};
+  const goalsData       = onboardingData?.goals          || {};
+  const cashflowData    = onboardingData?.cashflow        || {};
+  const annualExpenses  = onboardingData?.annualExpenses  || {};
 
   // Always use onboarding mapping data as the primary source for totals —
   // these are the values the user explicitly entered during the Mapping step.
@@ -385,6 +387,17 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
 
   const totalMonthlyTarget = goals.reduce((s, g) => s + (g.monthlySavingNeeded || 0), 0);
   const inc = parseInt(String(goalsData.incomeString || '').replace(/\D/g, '')) || 0;
+
+  // ── Cash flow derived values ─────────────────────────────────────────────
+  const cfIncome       = parseFloat(String(cashflowData.primaryIncome || '').replace(/[^0-9.]/g, '')) || 0;
+  const cfCategories   = (cashflowData.categories || []).filter(c => parseFloat(c.amount) > 0);
+  const cfTotalExp     = cfCategories.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+  const cfSurplus      = cfIncome - cfTotalExp;
+  const annualItems    = (annualExpenses.items || []).filter(i => parseFloat(i.amount) > 0);
+  const annualTotal    = annualItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const annualMonthly  = Math.round(annualTotal / 12);
+  const hasCashflow    = cfIncome > 0 || cfCategories.length > 0;
+  const hasAnnual      = annualItems.length > 0;
 
   const firstName = profile.legalName?.split(' ')[0] || 'there';
   const perspInfo = PERSPECTIVE_INFO[profile.perspective] || PERSPECTIVE_INFO.salaried;
@@ -552,6 +565,113 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
               </div>
             </div>
           )}
+          {/* ── Cash Flow section ──────────────────────────────────────────── */}
+          {hasCashflow && (
+            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+              <h2 className="text-base font-bold text-slate-800 mb-5">💸 Monthly Cash Flow</h2>
+
+              {/* Income vs expenses bar */}
+              {cfIncome > 0 && (
+                <div className="mb-5">
+                  <div className="flex h-8 rounded-xl overflow-hidden mb-2">
+                    <div
+                      className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+                      style={{ width: `${Math.min(100, Math.round((cfIncome / (cfIncome + cfTotalExp)) * 100))}%` }}
+                    >
+                      Income
+                    </div>
+                    <div
+                      className="bg-rose-400 flex items-center justify-center text-white text-xs font-bold transition-all"
+                      style={{ width: `${Math.min(100, Math.round((cfTotalExp / (cfIncome + cfTotalExp)) * 100))}%` }}
+                    >
+                      Expenses
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500 font-medium">
+                    <span className="text-emerald-600 font-bold">{fmt(cfIncome)} income</span>
+                    <span className="text-rose-500 font-bold">{fmt(cfTotalExp)} expenses</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Category breakdown */}
+              {cfCategories.length > 0 && (
+                <div className="space-y-2 mb-5">
+                  {cfCategories.map((cat, i) => {
+                    const amt = parseFloat(cat.amount) || 0;
+                    const pct = cfTotalExp > 0 ? Math.round((amt / cfTotalExp) * 100) : 0;
+                    return (
+                      <div key={cat.id || i} className="flex items-center gap-3">
+                        <p className="text-sm text-slate-600 w-24 shrink-0 truncate font-medium">{cat.label}</p>
+                        <div className="flex-1 bg-slate-100 rounded-full h-2">
+                          <div className="h-2 rounded-full bg-[#2C4A70]/60 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 w-20 text-right shrink-0">{fmt(amt)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Surplus / Deficit */}
+              {cfIncome > 0 && (
+                <div className={`rounded-xl px-5 py-3 flex justify-between items-center border ${
+                  cfSurplus >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
+                }`}>
+                  <span className="text-sm font-semibold text-slate-600">
+                    {cfSurplus >= 0 ? 'Monthly Surplus' : 'Monthly Deficit'}
+                  </span>
+                  <span className={`text-xl font-black ${cfSurplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {cfSurplus >= 0 ? '' : '−'}{fmt(Math.abs(cfSurplus))}
+                  </span>
+                </div>
+              )}
+
+              {/* Secondary income note */}
+              {cashflowData.secondaryIncome && (
+                <p className="mt-3 text-xs text-slate-400 italic">+ Variable income: {cashflowData.secondaryIncome}</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Annual Irregular Expenses ───────────────────────────────────── */}
+          {hasAnnual && (
+            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-base font-bold text-slate-800">📅 Annual Irregular Expenses</h2>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  ₹{annualMonthly.toLocaleString('en-IN')}/mo reserve needed
+                </span>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                {annualItems.map((item, i) => (
+                  <div key={item.id || i} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{item.label}</p>
+                      {item.desc && <p className="text-xs text-slate-400 truncate">{item.desc}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black" style={{ color: NAVY }}>
+                        {fmt(parseFloat(item.amount) || 0)}
+                      </p>
+                      <div className="flex gap-1 justify-end mt-0.5">
+                        {(item.months || []).map(m => (
+                          <span key={m} className="text-[9px] font-bold bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded tracking-widest">{m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-[#2C4A70]/5 border border-[#2C4A70]/10 px-5 py-3 flex justify-between items-center">
+                <span className="text-sm font-semibold text-slate-600">Total annual outlay</span>
+                <span className="text-xl font-black" style={{ color: NAVY }}>{fmt(annualTotal)}</span>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* ── Right: Actions + next steps ──────────────────────────────────── */}
@@ -603,27 +723,50 @@ export default function PersonalDashboard({ onboardingData, onStartImport, onNav
           </div>
 
           {/* Income vs goals snapshot (if income data available) */}
-          {inc > 0 && totalMonthlyTarget > 0 && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-              <h2 className="text-sm font-bold text-slate-800 mb-4">💰 Monthly allocation</h2>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Monthly income</span>
-                  <span className="font-bold text-slate-800">{fmt(inc)}</span>
+          {(cfIncome > 0 || inc > 0) && totalMonthlyTarget > 0 && (() => {
+            const baseIncome = cfIncome > 0 ? cfIncome : inc;
+            const goalsAlloc = Math.min(100, Math.round((totalMonthlyTarget / baseIncome) * 100));
+            const expensesAlloc = cfTotalExp > 0 ? Math.min(100, Math.round((cfTotalExp / baseIncome) * 100)) : 0;
+            const annualAlloc  = annualMonthly > 0 ? Math.min(100, Math.round((annualMonthly / baseIncome) * 100)) : 0;
+            return (
+              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                <h2 className="text-sm font-bold text-slate-800 mb-4">💰 Monthly allocation</h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Monthly income</span>
+                    <span className="font-bold text-slate-800">{fmt(baseIncome)}</span>
+                  </div>
+                  {cfTotalExp > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Fixed expenses</span>
+                      <span className="font-bold text-rose-500">{fmt(cfTotalExp)}</span>
+                    </div>
+                  )}
+                  {annualMonthly > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Annual reserve (÷12)</span>
+                      <span className="font-bold text-amber-600">{fmt(annualMonthly)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Towards goals</span>
+                    <span className="font-bold" style={{ color: SAGE }}>{fmt(totalMonthlyTarget)}</span>
+                  </div>
+                  {/* Stacked allocation bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">
+                    {expensesAlloc > 0 && <div className="h-2.5 bg-rose-400 transition-all" style={{ width: `${expensesAlloc}%` }} />}
+                    {annualAlloc  > 0 && <div className="h-2.5 bg-amber-400 transition-all" style={{ width: `${annualAlloc}%`  }} />}
+                    {goalsAlloc   > 0 && <div className="h-2.5 transition-all"               style={{ width: `${goalsAlloc}%`,   background: SAGE }} />}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {expensesAlloc > 0 && <p className="text-[10px] text-rose-400 font-semibold">{expensesAlloc}% expenses</p>}
+                    {annualAlloc   > 0 && <p className="text-[10px] text-amber-500 font-semibold">{annualAlloc}% annual reserve</p>}
+                    <p className="text-[10px] font-semibold" style={{ color: SAGE }}>{goalsAlloc}% goals</p>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Towards goals</span>
-                  <span className="font-bold" style={{ color: SAGE }}>{fmt(totalMonthlyTarget)}</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div className="h-2.5 rounded-full transition-all" style={{ width: `${Math.min(100, Math.round((totalMonthlyTarget / inc) * 100))}%`, background: SAGE }} />
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  {Math.round((totalMonthlyTarget / inc) * 100)}% of income allocated to goals
-                </p>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Money lent — only when DB data present */}
           {lentItems.length > 0 && (

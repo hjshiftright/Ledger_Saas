@@ -310,6 +310,14 @@ export const API = {
       }),
   },
 
+  // ── Goals ───────────────────────────────────────────────────────────────────
+  goals: {
+    list:   ()        => v1Call('/goals'),
+    create: (data)    => v1Call('/goals', 'POST', data),
+    update: (id, data)=> v1Call(`/goals/${id}`, 'PATCH', data),
+    delete: (id)      => v1Call(`/goals/${id}`, 'DELETE'),
+  },
+
   // ── Auth ────────────────────────────────────────────────────────────────────
   auth: {
     /** Check if any users exist in the database. */

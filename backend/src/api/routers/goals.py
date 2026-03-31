@@ -9,6 +9,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -20,6 +21,7 @@ from api.deps import CurrentUserPayload, TenantDBSession
 from repositories.sqla_goal_repo import SqlAlchemyGoalRepository
 
 router = APIRouter(prefix="/goals", tags=["Goals"])
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -94,6 +96,10 @@ async def create_goal(auth: CurrentUserPayload, session: TenantDBSession, body: 
     data = body.model_dump()
     data["tenant_id"] = uuid.UUID(auth.tenant_id)
     g = await repo.create(data)
+    logger.info(
+        "[DB PERSIST] Goal CREATED — tenant=%s user=%s id=%s name=%r type=%s target=%s",
+        auth.tenant_id, auth.user_id, g.id, g.name, g.goal_type, g.target_amount,
+    )
     return _to_out(g)
 
 
@@ -113,6 +119,10 @@ async def update_goal(auth: CurrentUserPayload, session: TenantDBSession, goal_i
     g = await repo.update(goal_id, updates)
     if not g:
         raise HTTPException(404, "Goal not found")
+    logger.info(
+        "[DB PERSIST] Goal UPDATED — tenant=%s user=%s id=%s name=%r fields=%s",
+        auth.tenant_id, auth.user_id, g.id, g.name, list(updates.keys()),
+    )
     return _to_out(g)
 
 
@@ -122,4 +132,8 @@ async def delete_goal(auth: CurrentUserPayload, session: TenantDBSession, goal_i
     g = await repo.get(goal_id)
     if not g:
         raise HTTPException(404, "Goal not found")
+    logger.info(
+        "[DB PERSIST] Goal DELETED — tenant=%s user=%s id=%s name=%r",
+        auth.tenant_id, auth.user_id, g.id, g.name,
+    )
     await session.delete(g)

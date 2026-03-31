@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API } from './api.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, ArrowRight, Shield, Briefcase, Store, Home, TrendingUp,
@@ -19,11 +20,12 @@ import SettingsPage from './SettingsPage';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────
 const SK = {
-  sections:  'onboarding_v4_sections',
-  profile:   'onboarding_v4_profile',
-  mapping:   'onboarding_v4_mapping',
-  goals:     'onboarding_v4_goals',
-  cashflow:  'onboarding_v4_cashflow',
+  sections:       'onboarding_v4_sections',
+  profile:        'onboarding_v4_profile',
+  mapping:        'onboarding_v4_mapping',
+  goals:          'onboarding_v4_goals',
+  cashflow:       'onboarding_v4_cashflow',
+  annualexpenses: 'onboarding_v4_annualexpenses',
 };
 const loadJson = (key, fb) => { try { return JSON.parse(localStorage.getItem(key)) || fb; } catch { return fb; } };
 const saveJson = (key, val) => localStorage.setItem(key, JSON.stringify(val));
@@ -209,45 +211,32 @@ function ProfileScreen({ initial, onDone }) {
 }
 
 // ─── Add Item Dialog ──────────────────────────────────────────────────────
-const ASSET_TYPES  = [
-  { type: 'bank',     label: 'Bank / FD',       icon: Landmark,   placeholder: 'e.g. HDFC Savings Account' },
-  { type: 'property', label: 'Property',         icon: Home,       placeholder: 'e.g. Apartment in Pune' },
-  { type: 'stocks',   label: 'Stocks / Funds',   icon: TrendingUp, placeholder: 'e.g. Zerodha Portfolio' },
-  { type: 'other',    label: 'Gold / Other',     icon: Gem,        placeholder: 'e.g. Gold Jewellery' },
-];
-const LIAB_TYPES   = [
-  { type: 'loan',   label: 'Home Loan',      icon: Home,       placeholder: 'e.g. SBI Home Loan' },
-  { type: 'loan',   label: 'Personal Loan',  icon: User,       placeholder: 'e.g. HDFC Personal Loan' },
-  { type: 'loan',   label: 'Car Loan',       icon: Car,        placeholder: 'e.g. Axis Car Loan' },
-  { type: 'credit', label: 'Credit Card',    icon: CreditCard, placeholder: 'e.g. HDFC Credit Card' },
-  { type: 'other',  label: 'Other Debt',     icon: AlertCircle,placeholder: 'e.g. Family loan' },
+const ITEM_TYPES = [
+  { type: 'bank',     kind: 'asset',     label: 'Bank / Savings',   icon: Landmark,   placeholder: 'e.g. HDFC Savings Account' },
+  { type: 'property', kind: 'asset',     label: 'Property',         icon: Home,       placeholder: 'e.g. Apartment in Pune' },
+  { type: 'stocks',   kind: 'asset',     label: 'Investments',      icon: TrendingUp, placeholder: 'e.g. Zerodha Portfolio' },
+  { type: 'other',    kind: 'asset',     label: 'Gold / Jewellery', icon: Gem,        placeholder: 'e.g. Gold & ornaments' },
+  { type: 'loan',     kind: 'liability', label: 'Loan',             icon: Building2,  placeholder: 'e.g. Home Loan – SBI' },
+  { type: 'credit',   kind: 'liability', label: 'Credit Card',      icon: CreditCard, placeholder: 'e.g. HDFC Credit Card' },
+  { type: 'other',    kind: 'asset',     label: 'Other',            icon: Wallet,     placeholder: 'e.g. Other item' },
 ];
 
-function AddItemDialog({ kind: initialKind = 'asset', onAdd, onClose }) {
-  const [kind, setKind] = useState(initialKind);
-  const types = kind === 'asset' ? ASSET_TYPES : LIAB_TYPES;
-  const [selectedType, setSelectedType] = useState(types[0]);
-  const [name, setName]   = useState('');
-  const [value, setValue] = useState('');
+function AddItemDialog({ onAdd, onClose }) {
+  const [selectedType, setSelectedType] = useState(ITEM_TYPES[0]);
+  const [name,   setName]   = useState('');
+  const [value,  setValue]  = useState('');
   const [detail, setDetail] = useState('');
 
-  // reset type when kind changes
-  const switchKind = (k) => { setKind(k); setSelectedType(k === 'asset' ? ASSET_TYPES[0] : LIAB_TYPES[0]); setName(''); };
-
-  const Icon = selectedType.icon;
   const canAdd = name.trim() && num(value) > 0;
 
   const handleAdd = () => {
-    onAdd({ name: name.trim(), value: num(value), type: selectedType.type, detail: detail.trim() }, kind);
+    onAdd({ name: name.trim(), value: num(value), type: selectedType.type, detail: detail.trim() }, selectedType.kind);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Card */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -255,31 +244,19 @@ function AddItemDialog({ kind: initialKind = 'asset', onAdd, onClose }) {
         transition={{ duration: 0.2 }}
         className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10"
       >
-        {/* Header strip — updates when kind toggle changes */}
-        <div className={`h-1.5 transition-all ${kind === 'asset' ? 'bg-gradient-to-r from-[#2C4A70] to-emerald-400' : 'bg-gradient-to-r from-rose-400 to-orange-300'}`} />
+        <div className="h-1.5 bg-gradient-to-r from-[#2C4A70] to-emerald-400" />
 
         <div className="p-8">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-serif font-black text-[#2C4A70]">Add Item</h3>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors text-lg leading-none">×</button>
           </div>
 
-          {/* Asset / Liability toggle */}
-          <div className="flex gap-2 mb-5 bg-slate-100 rounded-xl p-1">
-            {['asset', 'liability'].map(k => (
-              <button key={k} onClick={() => switchKind(k)}
-                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize
-                  ${kind === k ? (k === 'asset' ? 'bg-[#2C4A70] text-white shadow-sm' : 'bg-rose-500 text-white shadow-sm') : 'text-slate-500 hover:text-slate-700'}`}>
-                {k === 'asset' ? 'Asset' : 'Liability'}
-              </button>
-            ))}
-          </div>
-
-          {/* Type selector */}
+          {/* Category grid */}
           <div className="mb-5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Category</label>
             <div className="grid grid-cols-2 gap-2">
-              {types.map(t => {
+              {ITEM_TYPES.map(t => {
                 const TIcon = t.icon;
                 const active = selectedType.label === t.label;
                 return (
@@ -303,9 +280,7 @@ function AddItemDialog({ kind: initialKind = 'asset', onAdd, onClose }) {
 
           {/* Value */}
           <div className="mb-4">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
-              {kind === 'asset' ? 'Current Value' : 'Outstanding Amount'}
-            </label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Amount</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
               <input value={value} onChange={e => setValue(e.target.value)} placeholder="0" type="text" inputMode="numeric"
@@ -328,12 +303,8 @@ function AddItemDialog({ kind: initialKind = 'asset', onAdd, onClose }) {
               Cancel
             </button>
             <button onClick={handleAdd} disabled={!canAdd}
-              className={`flex-1 py-3 rounded-full font-semibold text-sm transition-all shadow-md
-                ${kind === 'asset'
-                  ? 'bg-[#2C4A70] text-white hover:bg-[#1F344F] disabled:opacity-40'
-                  : 'bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-40'}
-                disabled:cursor-not-allowed`}>
-              Add {kind === 'asset' ? 'Asset' : 'Liability'}
+              className="flex-1 py-3 rounded-full font-semibold text-sm transition-all shadow-md bg-[#2C4A70] text-white hover:bg-[#1F344F] disabled:opacity-40 disabled:cursor-not-allowed">
+              Add
             </button>
           </div>
         </div>
@@ -496,21 +467,22 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
     setMessages(m => [...m, { role: 'ai', text: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." }]);
   };
 
-  const [dialog, setDialog] = useState(null); // 'asset' | 'liability' | null
+  const [dialog, setDialog] = useState(false);
 
   const assets      = data.assets      || [];
   const liabilities = data.liabilities || [];
   const addAsset = (item) => { setIsDummy(false); setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] })); };
   const addLib   = (item) => { setIsDummy(false); setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] })); };
 
-  const handleDialogAdd = (kind, item) => {
+  const handleDialogAdd = (item, kind) => {
     if (kind === 'asset') {
       addAsset(item);
-      setMessages(m => [...m, { role: 'ai', text: `Added **${item.name}** (${inr(item.value)}) to your assets. Anything else?` }]);
+      setMessages(m => [...m, { role: 'ai', text: `Added **${item.name}** (${inr(item.value)}). Anything else?` }]);
     } else {
       addLib(item);
-      setMessages(m => [...m, { role: 'ai', text: `Recorded **${item.name}** (${inr(item.value)}) as a liability. Anything else to add?` }]);
+      setMessages(m => [...m, { role: 'ai', text: `Recorded **${item.name}** (${inr(item.value)}). Anything else to add?` }]);
     }
+    setDialog(false);
   };
 
   const simulateAIResponse = (text) => {
@@ -668,9 +640,38 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
         <div className={`rounded-2xl p-6 shadow-xl ${netWorth >= 0 ? 'bg-[#2C4A70] shadow-[#2C4A70]/20' : 'bg-rose-600 shadow-rose-600/20'}`}>
           <p className={`text-[10px] font-bold uppercase tracking-[2px] mb-2 ${netWorth >= 0 ? 'text-indigo-200' : 'text-rose-200'}`}>My Net Worth</p>
           <p className="text-4xl font-black text-white">{inr(netWorth)}</p>
-          {netWorth < 0 && <p className="text-[10px] text-rose-200 mt-1">Liabilities exceed assets</p>}
+          {netWorth < 0 && <p className="text-[10px] text-rose-200 mt-1">Debts exceed savings</p>}
         </div>
       </div>
+
+      {/* ── Insights strip ──────────────────────────────────────────── */}
+      {(() => {
+        const hints = [];
+        const hasProperty = assets.some(a => a.type === 'property');
+        const hasHomeLoan = liabilities.some(l => /home|housing|mortgage/i.test(l.name));
+        const hasVehicle  = assets.some(a => a.type === 'vehicle' || /car|bike|vehicle/i.test(a.name));
+        const hasVehicleLoan = liabilities.some(l => /car|vehicle|auto|bike/i.test(l.name));
+
+        if (hasHomeLoan && !hasProperty)
+          hints.push({ emoji: '🏠', text: "You've added a home loan — don't forget to add the property under What I own." });
+        if (hasProperty && !hasHomeLoan)
+          hints.push({ emoji: '💡', text: "You own a property. If there's a home loan against it, add it under What I owe." });
+        if (hasVehicleLoan && !hasVehicle)
+          hints.push({ emoji: '🚗', text: "You have a vehicle loan — consider adding the vehicle itself under What I own." });
+        if (hasVehicle && !hasVehicleLoan)
+          hints.push({ emoji: '💡', text: "You've listed a vehicle. If there's an auto loan on it, add it under What I owe." });
+
+        return hints.length > 0 ? (
+          <div className="shrink-0 bg-indigo-50 border-b border-indigo-100 px-8 py-3 space-y-1.5">
+            {hints.map((h, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-indigo-700 text-xs font-medium">
+                <span className="text-sm shrink-0">{h.emoji}</span>
+                <span>{h.text}</span>
+              </div>
+            ))}
+          </div>
+        ) : null;
+      })()}
 
       {/* ── Main split ──────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
@@ -682,120 +683,93 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
               <div className="w-16 h-16 bg-white rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center mb-4">
                 <Layers size={28} className="text-slate-300" />
               </div>
-              <p className="text-slate-400 font-medium font-serif italic text-lg text-slate-400">Your financial map will appear here.</p>
-              <p className="text-slate-300 text-sm mt-2">Start chatting on the right to build your ledger →</p>
-              
-              <div className="mt-8">
-                <button
-                  onClick={() => setDialog('add')}
-                  className="px-6 py-2.5 bg-indigo-50 text-[#2C4A70] font-bold text-sm rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors"
-                >
-                  <Plus size={14} className="inline mr-1" /> Add
-                </button>
-              </div>
+              <p className="font-serif italic text-lg text-slate-400">Your financial map will appear here.</p>
+              <p className="text-slate-300 text-sm mt-2">Start chatting on the right, or click Add to enter manually.</p>
+              <button onClick={() => setDialog(true)} className="mt-8 px-6 py-2.5 bg-indigo-50 text-[#2C4A70] font-bold text-sm rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors">
+                <Plus size={14} className="inline mr-1" /> Add
+              </button>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-x-12 gap-y-10 items-start">
-              {/* What I Own Column */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[#2C4A70] rounded flex items-center justify-center text-white">
-                      <Wallet size={14} />
-                    </div>
-                    <h3 className="text-xl font-serif font-black text-[#2C4A70]">What I own</h3>
-                  </div>
-                  
-                  <button onClick={() => setDialog('add')}
-                    className="text-xs font-bold text-[#2C4A70] flex items-center gap-1 px-3 py-1.5 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
-                    <Plus size={14} /> Add
-                  </button>
-                </div>
-                
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
-                  {assets.map((a) => {
-                    const Icon = ASSET_ICONS[a.type] || Wallet;
-                    return (
-                      <div key={a.id} className="group flex items-center gap-4 px-6 py-5 hover:bg-slate-50 transition-colors">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                          <Icon size={18} className="text-slate-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Title</p>
-                          <p className={`font-bold text-sm truncate ${a.value === 0 ? 'text-slate-400 italic' : 'text-[#2C4A70]'}`}>
-                            {a.name}
-                          </p>
-                        </div>
-                        <div className="text-right px-4">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Value</p>
-                          <p className={`font-black text-sm ${a.value === 0 ? 'text-rose-400' : 'text-slate-800'}`}>
-                            {a.value === 0 ? 'Pending...' : inr(a.value)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => removeAsset(a.id)} className="text-slate-300 hover:text-red-400 transition-colors p-1.5">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-slate-500">{assets.length + liabilities.length} item{assets.length + liabilities.length !== 1 ? 's' : ''}</p>
+                <button onClick={() => setDialog(true)} className="text-xs font-bold text-[#2C4A70] flex items-center gap-1 px-3 py-1.5 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+                  <Plus size={13} /> Add
+                </button>
               </div>
 
-              {/* What I Owe Column */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-rose-500 rounded flex items-center justify-center text-white">
-                      <Landmark size={14} />
-                    </div>
-                    <h3 className="text-xl font-serif font-black text-[#2C4A70]">What I owe</h3>
+              {/* Two-column layout */}
+              <div className="grid grid-cols-2 gap-5">
+                {/* Assets column */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-[#2C4A70]" />
+                    <p className="text-xs font-bold text-[#2C4A70] uppercase tracking-widest">What I own</p>
+                    <span className="ml-auto text-xs font-bold text-slate-400">{assets.length} item{assets.length !== 1 ? 's' : ''}</span>
                   </div>
-
-                  <button onClick={() => setDialog('add')}
-                    className="text-xs font-bold text-slate-500 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
-                    <Plus size={14} /> Add
-                  </button>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
+                    {assets.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-slate-300 text-xs italic">No assets added yet</div>
+                    ) : assets.map(item => {
+                      const iconMap = { bank: Landmark, property: Home, stocks: TrendingUp, loan: Building2, credit: CreditCard };
+                      const Icon = iconMap[item.type] || Wallet;
+                      return (
+                        <div key={item.id} className="group flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#2C4A70]/8 border border-[#2C4A70]/10">
+                            <Icon size={15} className="text-[#2C4A70]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
+                            {item.detail && <p className="text-xs text-slate-400 truncate">{item.detail}</p>}
+                          </div>
+                          <p className="font-black text-sm shrink-0 text-[#2C4A70]">{inr(item.value)}</p>
+                          <button onClick={() => removeAsset(item.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-400 p-1 shrink-0">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <div className="px-4 py-2.5 bg-[#2C4A70]/4 border-t border-[#2C4A70]/10">
+                      <p className="text-xs font-black text-[#2C4A70] text-right">{inr(totalA)} total</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  {liabilities.map(l => {
-                    const isLoan = l.type === 'loan';
-                    const isPending = l.value === 0;
-                    return (
-                      <div key={l.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
-                        {isLoan && <div className="absolute top-0 left-0 bottom-0 w-1 bg-rose-300" />}
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className={`font-bold text-base ${isPending ? 'text-slate-400 italic' : 'text-slate-800'}`}>
-                              {l.name}
-                            </h4>
-                            {!isPending && (
-                              <p className="text-[10px] text-slate-400 mt-0.5 font-medium tracking-wide">
-                                {isLoan ? '8.4% FIXED RATE' : 'CURRENT BILLING CYCLE'}
-                              </p>
-                            )}
+                {/* Liabilities column */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-rose-400" />
+                    <p className="text-xs font-bold text-rose-500 uppercase tracking-widest">What I owe</p>
+                    <span className="ml-auto text-xs font-bold text-slate-400">{liabilities.length} item{liabilities.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
+                    {liabilities.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-slate-300 text-xs italic">No liabilities added yet</div>
+                    ) : liabilities.map(item => {
+                      const iconMap = { loan: Building2, card: CreditCard, credit: CreditCard };
+                      const Icon = iconMap[item.type] || TrendingDown;
+                      return (
+                        <div key={item.id} className="group flex items-center gap-3 px-4 py-3.5 hover:bg-rose-50/40 transition-colors">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-rose-50 border border-rose-100">
+                            <Icon size={15} className="text-rose-400" />
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {!isPending && <button className="text-slate-300 hover:text-[#2C4A70] p-1.5"><Pencil size={15} /></button>}
-                            <button onClick={() => removeLib(l.id)} className="text-slate-300 hover:text-red-400 p-1.5"><Trash2 size={15} /></button>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
+                            {item.detail && <p className="text-xs text-slate-400 truncate">{item.detail}</p>}
                           </div>
+                          <p className="font-black text-sm shrink-0 text-rose-500">−{inr(item.value)}</p>
+                          <button onClick={() => removeLib(item.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-400 p-1 shrink-0">
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                        <div className="flex items-end justify-between">
-                          <p className={`text-2xl font-black tracking-tight ${isPending ? 'text-rose-400' : 'text-slate-800'}`}>
-                            {isPending ? 'Pending balance...' : inr(l.value)}
-                          </p>
-                          {!isPending && (
-                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded
-                              ${isLoan ? 'text-rose-500' : 'text-slate-400'}`}>
-                              {isLoan ? 'Outstanding' : 'Statement'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                    <div className="px-4 py-2.5 bg-rose-50/60 border-t border-rose-100">
+                      <p className="text-xs font-black text-rose-500 text-right">−{inr(totalL)} total</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -908,9 +882,8 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
       <AnimatePresence>
         {dialog && (
           <AddItemDialog
-            kind="asset"
-            onAdd={(item, kind) => handleDialogAdd(kind, item)}
-            onClose={() => setDialog(null)}
+            onAdd={handleDialogAdd}
+            onClose={() => setDialog(false)}
           />
         )}
       </AnimatePresence>
@@ -1159,7 +1132,39 @@ function GoalsSection({ data, setData, perspective = 'salaried', onComplete }) {
     }, 900);
   };
 
-  const handleComplete = () => { const u = { ...data, completed: true }; setData(u); saveJson(SK.goals, u); onComplete(); };
+  const GOAL_TYPE_MAP = {
+    emergency: 'EMERGENCY', home: 'HOME', retire: 'RETIREMENT',
+    education: 'EDUCATION', vehicle: 'VEHICLE', vacation: 'VACATION',
+    wedding: 'WEDDING', debt: 'OTHERS', custom: 'OTHERS',
+  };
+
+  const handleComplete = async () => {
+    const u = { ...data, completed: true };
+    setData(u);
+    saveJson(SK.goals, u);
+
+    // Persist goals to database — use configured details, fall back to dummies
+    const toSave = Object.keys(u.goalDetails || {}).length > 0
+      ? Object.values(u.goalDetails)
+      : (u.dummyGoalDetails || []);
+
+    for (const d of toSave) {
+      const targetDate = new Date();
+      targetDate.setMonth(targetDate.getMonth() + (d.timelineMonths || 12));
+      try {
+        await API.goals.create({
+          name: GOAL_OPTS.find(o => o.id === d.id)?.label || d.id,
+          goal_type: GOAL_TYPE_MAP[d.id] || 'OTHERS',
+          target_amount: d.targetAmount,
+          current_amount: 0,
+          target_date: targetDate.toISOString().slice(0, 10),
+          notes: d.note || null,
+        });
+      } catch (_) { /* non-blocking */ }
+    }
+
+    onComplete();
+  };
 
   const configuredGoals = Object.keys(data.goalDetails || {});
   const dummyGoalDetails = data.dummyGoalDetails || [];
@@ -1412,6 +1417,310 @@ function DashboardsSection({ onboardingData }) {
   );
 }
 
+// ─── Annual Irregular Expenses ────────────────────────────────────────────
+const MONTHS_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+const ANNUAL_ITEM_ICONS = {
+  insurance: Shield,
+  vacation:  Briefcase,
+  festival:  Bell,
+  school:    GraduationCap,
+  custom:    CreditCard,
+};
+
+const DEFAULT_ANNUAL_ITEMS = [];
+
+const DEFAULT_ANNUAL = { items: DEFAULT_ANNUAL_ITEMS, completed: false };
+
+function AnnualExpensesView({ data, setData, onBack, onComplete }) {
+  const [items, setItems] = useState(data.items || []);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newItem, setNewItem] = useState({ label: '', desc: '', amount: '', months: [] });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    API.dashboard.load()
+      .then(d => {
+        if (d?.annualExpenses?.length) {
+          setItems(d.annualExpenses);
+          setData(prev => ({ ...prev, items: d.annualExpenses }));
+          saveJson(SK.annualexpenses, { ...data, items: d.annualExpenses });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const totalOutlay = items.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+  const monthlyReserve = Math.round(totalOutlay / 12);
+  const monthsWithExpenses = new Set(items.flatMap(item => item.months));
+
+  const toggleMonth = (m) =>
+    setNewItem(prev => ({
+      ...prev,
+      months: prev.months.includes(m) ? prev.months.filter(x => x !== m) : [...prev.months, m],
+    }));
+
+  const addItem = () => {
+    if (!newItem.label.trim() || !newItem.amount) return;
+    setItems(prev => [...prev, { ...newItem, id: `custom_${Date.now()}`, iconKey: 'custom' }]);
+    setNewItem({ label: '', desc: '', amount: '', months: [] });
+    setShowAdd(false);
+  };
+
+  const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
+
+  const persist = async (extra = {}) => {
+    const updated = { ...data, items, ...extra };
+    setData(updated);
+    saveJson(SK.annualexpenses, updated);
+    setSaving(true);
+    try {
+      await API.dashboard.save({ annualExpenses: updated.items });
+    } catch (_) {
+      // silent — localStorage is the fallback
+    } finally {
+      setSaving(false);
+    }
+    return updated;
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#F7F8F9]">
+
+      {/* Top bar */}
+      <div className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-base italic font-serif font-bold text-[#2C4A70]">The Private Ledger</span>
+          <ChevronRight size={14} className="text-slate-300" />
+          <span className="text-sm font-semibold text-slate-600">Annual Irregular Expense Mapping</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#526B5C] bg-green-50 border border-green-100 px-3 py-1.5 rounded-full">
+            <Shield size={11} className="text-green-500" /> VAULT PROTECTED
+          </div>
+          <div className="w-8 h-8 rounded-full bg-[#2C4A70] flex items-center justify-center">
+            <User size={14} className="text-white" />
+          </div>
+        </div>
+      </div>
+
+      {/* Scroll area */}
+      <div className="flex-1 overflow-y-auto px-8 py-8">
+        <FadeIn>
+          <h1 className="text-4xl font-serif font-black text-[#2C4A70] leading-tight mb-2">
+            Some expenses don't happen every month.
+          </h1>
+          <p className="text-slate-500 mb-8 max-w-2xl text-[15px]">
+            Think about insurance premiums, annual subscriptions, festival spending, vacations, and school admissions. These "lumpy" costs often derail monthly budgets.
+          </p>
+
+          <div className="flex gap-6 items-start">
+
+            {/* ── LEFT: Projected Annual Outlays ── */}
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                  <h3 className="text-[15px] font-bold text-slate-800">Projected Annual Outlays</h3>
+                  <button
+                    onClick={() => setShowAdd(v => !v)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[#2C4A70] hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus size={13} /> Add New
+                  </button>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {items.length === 0 && (
+                    <div className="px-6 py-8 text-center">
+                      <div className="w-12 h-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center mx-auto mb-3">
+                        <Bell size={20} className="text-slate-300" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-500 mb-1">No annual expenses added yet</p>
+                      <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                        Add things like insurance premiums, school fees, vacations, or festival budgets — expenses that hit once a year and catch you off guard.
+                      </p>
+                    </div>
+                  )}
+                  {items.map(item => {
+                    const Icon = ANNUAL_ITEM_ICONS[item.iconKey] || CreditCard;
+                    const amt = parseFloat(item.amount) || 0;
+                    return (
+                      <div key={item.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors group">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
+                          <Icon size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 truncate">{item.label}</p>
+                          <p className="text-xs text-slate-400 truncate">{item.desc}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-black text-[#2C4A70]">₹{amt.toLocaleString('en-IN')}</p>
+                          <div className="flex gap-1 justify-end mt-1">
+                            {item.months.map(m => (
+                              <span key={m} className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded tracking-widest">{m}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-slate-300 hover:text-rose-500"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add new item form */}
+                {showAdd && (
+                  <div className="px-6 py-4 bg-indigo-50/40 border-t border-indigo-100">
+                    <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">New Annual Outlay</p>
+                    <div className="flex gap-3 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Expense name"
+                        value={newItem.label}
+                        onChange={e => setNewItem(p => ({ ...p, label: e.target.value }))}
+                        className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10"
+                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={newItem.amount}
+                          onChange={e => setNewItem(p => ({ ...p, amount: e.target.value }))}
+                          className="w-32 text-sm border border-slate-200 rounded-lg pl-7 pr-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Short description (optional)"
+                      value={newItem.desc}
+                      onChange={e => setNewItem(p => ({ ...p, desc: e.target.value }))}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 mb-3"
+                    />
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {MONTHS_SHORT.map(m => (
+                        <button
+                          key={m}
+                          onClick={() => toggleMonth(m)}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                            newItem.months.includes(m)
+                              ? 'bg-[#2C4A70] text-white'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setShowAdd(false)} className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-3 py-1.5 transition-colors">Cancel</button>
+                      <button
+                        onClick={addItem}
+                        disabled={!newItem.label.trim() || !newItem.amount}
+                        className="text-xs font-bold bg-[#2C4A70] text-white px-4 py-1.5 rounded-lg hover:bg-[#1e3557] disabled:opacity-40 transition-colors"
+                      >
+                        Add Outlay
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── RIGHT: Intensity grid + cards ── */}
+            <div className="w-[340px] shrink-0 flex flex-col gap-4">
+
+              {/* Cash Outflow Intensity */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h3 className="text-[15px] font-bold text-slate-800 mb-4">Cash Outflow Intensity</h3>
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {MONTHS_SHORT.map(m => {
+                    const active = monthsWithExpenses.has(m);
+                    return (
+                      <div key={m} className={`rounded-xl py-3 flex flex-col items-center gap-1.5 border transition-colors ${
+                        active ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
+                      }`}>
+                        <span className={`text-[10px] font-bold tracking-widest ${active ? 'text-green-700' : 'text-slate-400'}`}>{m}</span>
+                        {active && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Non-Monthly Outlay</p>
+                  <p className="text-3xl font-black text-[#2C4A70]">₹{totalOutlay.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    Requires a monthly reserve of ~₹{monthlyReserve.toLocaleString('en-IN')} to remain liquid.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sinking Fund Strategy */}
+              <div className="bg-[#2C4A70] rounded-2xl p-6 text-white relative overflow-hidden">
+                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-sm">💡</div>
+                <h3 className="text-[15px] font-bold mb-2">A Sinking Fund Strategy</h3>
+                <p className="text-sm text-white/70 mb-5 leading-relaxed">
+                  By identifying ₹{totalOutlay.toLocaleString('en-IN')} in annual costs now, we can structure your monthly cash flow to automatically set aside funds. This prevents high-interest debt when the bills arrive.
+                </p>
+                <button className="w-full bg-white text-[#2C4A70] font-bold text-sm py-3 rounded-xl hover:bg-slate-100 transition-colors">
+                  Enable Automatic Reserves
+                </button>
+              </div>
+
+              {/* Data Sovereignty */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#526B5C]/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Shield size={13} className="text-[#526B5C]" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800 mb-1">Data Sovereignty</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">Calculations for your irregular expenses are processed entirely on this device. No financial data ever leaves your local environment.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </FadeIn>
+      </div>
+
+      {/* Footer nav */}
+      <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-between shrink-0">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#2C4A70] transition-colors uppercase tracking-wide"
+        >
+          <ArrowRight size={14} className="rotate-180" /> Back to Cash Flow
+        </button>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full border-2 border-[#2C4A70] flex items-center justify-center text-[11px] font-black text-[#2C4A70]">5/8</div>
+            <div>
+              <p className="text-[10px] font-bold text-[#2C4A70] uppercase tracking-widest leading-none">Stage 5 of 8</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Annual Irregular Expense Mapping</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => persist()}
+              className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wide"
+            >
+              Save Draft
+            </button>
+            <Btn disabled={saving} onClick={async () => { await persist({ completed: true }); onComplete(); }}>
+              {saving ? 'Saving…' : 'Proceed to Mapping'}
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Cash Flow Section ────────────────────────────────────────────────────
 const DEFAULT_CF_CATS = [
   { id: 'housing',   icon: Home,     label: 'Housing',   sub: 'RENT / MORTGAGE',  color: 'bg-blue-100 text-blue-600',    amount: '' },
@@ -1423,7 +1732,8 @@ const DEFAULT_CF_CATS = [
 
 const DEFAULT_CASHFLOW = { primaryIncome: '', secondaryIncome: '', categories: DEFAULT_CF_CATS, completed: false };
 
-function CashFlowSection({ data, setData, onBack, onComplete }) {
+function CashFlowSection({ data, setData, annualData, setAnnualData, onBack, onComplete }) {
+  const [step, setStep] = useState(1);
   const [primaryIncome,   setPrimaryIncome]   = useState(data.primaryIncome   || '');
   const [secondaryIncome, setSecondaryIncome] = useState(data.secondaryIncome || '');
   const [categories,      setCategories]      = useState(
@@ -1431,6 +1741,17 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
   );
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName,  setNewCatName]  = useState('');
+
+  if (step === 2) {
+    return (
+      <AnnualExpensesView
+        data={annualData}
+        setData={setAnnualData}
+        onBack={() => setStep(1)}
+        onComplete={onComplete}
+      />
+    );
+  }
 
   const income        = parseFloat(String(primaryIncome).replace(/[^0-9.]/g, '')) || 0;
   const totalExpenses = categories.reduce((acc, c) => acc + (parseFloat(c.amount) || 0), 0);
@@ -1498,7 +1819,7 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
 
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Primary Monthly Take-Home</label>
                 <div className="relative mb-5">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">₹</span>
                   <input
                     type="text"
                     value={primaryIncome}
@@ -1512,7 +1833,7 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
                 <textarea
                   value={secondaryIncome}
                   onChange={e => setSecondaryIncome(e.target.value)}
-                  placeholder="e.g. Dividend payouts around $400 or freelance side-work"
+                  placeholder="e.g. Dividend payouts around ₹400 or freelance side-work"
                   rows={3}
                   className="w-full bg-white border-2 border-slate-200 rounded-xl p-4 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all resize-none"
                 />
@@ -1528,7 +1849,7 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
                 <h3 className="text-[15px] font-bold mb-1">Monthly Surplus Goal</h3>
                 <p className="text-sm text-white/60 mb-5">Aiming for 15% retention for long-term growth.</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black">${surplusGoal.toFixed(2)}</span>
+                  <span className="text-4xl font-black">₹{Math.round(surplusGoal).toLocaleString('en-IN')}</span>
                   <span className="text-sm text-white/50 font-medium">Target</span>
                 </div>
               </div>
@@ -1557,7 +1878,7 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
                           <p className="text-[10px] text-slate-400 font-medium tracking-wide truncate">{cat.sub}</p>
                         </div>
                         <div className="flex items-center gap-0.5 shrink-0">
-                          <span className="text-xs text-slate-400 font-medium">$</span>
+                          <span className="text-xs text-slate-400 font-medium">₹</span>
                           <input
                             type="number"
                             value={cat.amount}
@@ -1600,18 +1921,18 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
               <div className="bg-white rounded-2xl border border-slate-200 px-6 py-4 shadow-sm flex items-center gap-6">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Income</p>
-                  <p className="text-xl font-black text-slate-800">${income.toFixed(2)}</p>
+                  <p className="text-xl font-black text-slate-800">₹{Math.round(income).toLocaleString('en-IN')}</p>
                 </div>
                 <div className="w-px h-9 bg-slate-100 shrink-0" />
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Expenses</p>
-                  <p className="text-xl font-black text-rose-600">${totalExpenses.toFixed(2)}</p>
+                  <p className="text-xl font-black text-rose-600">₹{Math.round(totalExpenses).toLocaleString('en-IN')}</p>
                 </div>
                 <div className="w-px h-9 bg-slate-100 shrink-0" />
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Monthly Surplus</p>
                   <p className={`text-xl font-black ${surplus >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {surplus >= 0 ? '' : '-'}${Math.abs(surplus).toFixed(2)}
+                    {surplus >= 0 ? '' : '-'}₹{Math.round(Math.abs(surplus)).toLocaleString('en-IN')}
                   </p>
                 </div>
               </div>
@@ -1635,7 +1956,7 @@ function CashFlowSection({ data, setData, onBack, onComplete }) {
           >
             Save Draft
           </button>
-          <Btn onClick={() => { persist({ completed: true }); onComplete(); }}>Complete Discovery</Btn>
+          <Btn onClick={() => { persist(); setStep(2); }}>Next: Annual Expenses</Btn>
         </div>
       </div>
     </div>
@@ -1656,9 +1977,10 @@ const DEFAULT_GOALS    = { goals: [], incomeString: '', expenses: { housing: '',
 // DEFAULT_CASHFLOW is defined above CashFlowSection
 
 function Hub({ sections, setSections, profileData, setProfileData, userEmail, onLogout }) {
-  const [mappingData,   setMappingData]   = useState(() => loadJson(SK.mapping,   DEFAULT_MAPPING));
-  const [goalsData,     setGoalsData]     = useState(() => loadJson(SK.goals,     DEFAULT_GOALS));
-  const [cashflowData,  setCashflowData]  = useState(() => loadJson(SK.cashflow,  DEFAULT_CASHFLOW));
+  const [mappingData,      setMappingData]      = useState(() => loadJson(SK.mapping,        DEFAULT_MAPPING));
+  const [goalsData,        setGoalsData]        = useState(() => loadJson(SK.goals,          DEFAULT_GOALS));
+  const [cashflowData,     setCashflowData]     = useState(() => loadJson(SK.cashflow,       DEFAULT_CASHFLOW));
+  const [annualData,       setAnnualData]       = useState(() => loadJson(SK.annualexpenses, DEFAULT_ANNUAL));
   const [active, setActive] = useState(() => {
     if (!sections.mapping)  return 'mapping';
     if (!sections.goals)    return 'goals';
@@ -1769,6 +2091,8 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
               <CashFlowSection
                 data={cashflowData}
                 setData={setCashflowData}
+                annualData={annualData}
+                setAnnualData={setAnnualData}
                 onBack={() => setActive('goals')}
                 onComplete={() => completeSection('cashflow')}
               />
@@ -1776,7 +2100,7 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
           )}
           {active === 'dashboards' && (
             <motion.div key="dashboards" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1 flex flex-col h-full">
-              <DashboardsSection onboardingData={{ profile: profileData, mapping: mappingData, goals: goalsData }} />
+              <DashboardsSection onboardingData={{ profile: profileData, mapping: mappingData, goals: goalsData, cashflow: cashflowData, annualExpenses: annualData }} />
             </motion.div>
           )}
         </AnimatePresence>
