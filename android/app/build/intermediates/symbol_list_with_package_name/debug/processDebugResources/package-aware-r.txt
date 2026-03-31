@@ -3479,6 +3479,7 @@ id line3
 id linear
 id listMode
 id list_item
+id loadingOverlay
 id locale
 id ltr
 id m3_side_sheet
@@ -3796,6 +3797,7 @@ id view_tree_saved_state_registry_owner
 id view_tree_view_model_store_owner
 id visible
 id visible_removing_fragment_view_tag
+id webView
 id west
 id withText
 id with_icon
@@ -3924,6 +3926,7 @@ layout activity_login
 layout activity_main
 layout activity_signup
 layout activity_tenant_picker
+layout activity_web_app
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog

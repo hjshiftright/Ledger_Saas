@@ -88,3 +88,11 @@ backend/src/debug.txt
 # ── One-off dev / inspection scripts ─────────────────────────────────────────
 # bank-specific inspection scripts in backend root (not part of production code)
 backend/inspect_*.py
+
+
+# Byte-compiled files
+__pycache__/
+*.pyc
+/backend/src/__pycache__
+*.pyc
+*.pyc

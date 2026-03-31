@@ -116,6 +116,7 @@ id layoutError
 id layoutLineItems
 id layoutLoading
 id layoutSummary
+id loadingOverlay
 id moreFragment
 id navHostFragment
 id nav_graph
@@ -178,10 +179,12 @@ id tvTotalPlanned
 id tvTotalTarget
 id tvViewAll
 id tvWelcome
+id webView
 layout activity_login
 layout activity_main
 layout activity_signup
 layout activity_tenant_picker
+layout activity_web_app
 layout fragment_budgets
 layout fragment_dashboard
 layout fragment_goals

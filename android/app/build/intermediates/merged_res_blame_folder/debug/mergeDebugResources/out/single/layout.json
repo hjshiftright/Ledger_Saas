@@ -32,16 +32,16 @@
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/item_goal_card.xml"
     },
     {
-        "merged": "com.ledger.app-mergeDebugResources-51:/layout/activity_signup.xml",
-        "source": "com.ledger.app-main-54:/layout/activity_signup.xml"
-    },
-    {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_settings.xml",
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_settings.xml"
     },
     {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/fragment_budgets.xml",
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/layout/fragment_budgets.xml"
+    },
+    {
+        "merged": "com.ledger.app-mergeDebugResources-51:/layout/activity_web_app.xml",
+        "source": "com.ledger.app-main-54:/layout/activity_web_app.xml"
     },
     {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-mergeDebugResources-51:/layout/activity_login.xml",

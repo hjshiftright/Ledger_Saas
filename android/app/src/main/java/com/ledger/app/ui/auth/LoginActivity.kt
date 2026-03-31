@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.ledger.app.data.api.RetrofitClient
 import com.ledger.app.data.models.AuthListResponse
 import com.ledger.app.databinding.ActivityLoginBinding
-import com.ledger.app.ui.main.MainActivity
+import com.ledger.app.ui.web.WebAppActivity
 import com.ledger.app.util.TokenManager
 import com.ledger.app.util.UiState
 import com.squareup.moshi.Moshi
@@ -18,6 +18,7 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var viewModel: LoginViewModel
+    private var pendingEmail: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +54,7 @@ class LoginActivity : AppCompatActivity() {
                 is UiState.Loading -> showLoading(true)
                 is UiState.Success -> {
                     showLoading(false)
-                    navigateToMain()
+                    navigateToWebApp(state.data.access_token, pendingEmail, state.data.user_id)
                 }
                 is UiState.Error -> {
                     showLoading(false)
@@ -76,7 +77,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun handleLoginSuccess(authResponse: AuthListResponse) {
-        // Store pre_token so AuthInterceptor sends it with the select-tenant request
+        pendingEmail = authResponse.email
         TokenManager.savePreToken(authResponse.pre_token)
         if (viewModel.shouldAutoSelectTenant) {
             viewModel.selectTenant(authResponse.tenants[0].tenant_id)
@@ -89,9 +90,13 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    private fun navigateToWebApp(token: String, email: String, userId: Int) {
+        val intent = Intent(this, WebAppActivity::class.java).apply {
+            putExtra(WebAppActivity.EXTRA_TOKEN,   token)
+            putExtra(WebAppActivity.EXTRA_EMAIL,   email)
+            putExtra(WebAppActivity.EXTRA_USER_ID, userId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         startActivity(intent)
     }
 

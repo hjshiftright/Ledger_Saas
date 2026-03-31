@@ -10,7 +10,7 @@ import com.ledger.app.data.models.AuthListResponse
 import com.ledger.app.data.models.TenantInfo
 import com.ledger.app.util.TokenManager
 import com.ledger.app.databinding.ActivityTenantPickerBinding
-import com.ledger.app.ui.main.MainActivity
+import com.ledger.app.ui.web.WebAppActivity
 import com.ledger.app.util.UiState
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -56,7 +56,7 @@ class TenantPickerActivity : AppCompatActivity() {
 
         loginViewModel.tenantState.observe(this) { state ->
             if (state is UiState.Success) {
-                navigateToMain()
+                navigateToWebApp(state.data.access_token, authResponse.email, state.data.user_id)
             }
         }
     }
@@ -69,9 +69,13 @@ class TenantPickerActivity : AppCompatActivity() {
         binding.rvTenants.adapter = adapter
     }
 
-    private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    private fun navigateToWebApp(token: String, email: String, userId: Int) {
+        val intent = Intent(this, WebAppActivity::class.java).apply {
+            putExtra(WebAppActivity.EXTRA_TOKEN,   token)
+            putExtra(WebAppActivity.EXTRA_EMAIL,   email)
+            putExtra(WebAppActivity.EXTRA_USER_ID, userId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         startActivity(intent)
     }
 }

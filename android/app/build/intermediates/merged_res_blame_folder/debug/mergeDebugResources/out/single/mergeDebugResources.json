@@ -4,10 +4,6 @@
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/menu/bottom_nav_menu.xml"
     },
     {
-        "merged": "com.ledger.app-debug-52:/layout_activity_signup.xml.flat",
-        "source": "com.ledger.app-main-54:/layout/activity_signup.xml"
-    },
-    {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-debug-52:/drawable_bg_button_primary.xml.flat",
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/drawable/bg_button_primary.xml"
     },
@@ -106,6 +102,10 @@
     {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-debug-52:/drawable_ic_bar_chart.xml.flat",
         "source": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-main-54:/drawable/ic_bar_chart.xml"
+    },
+    {
+        "merged": "com.ledger.app-debug-52:/layout_activity_web_app.xml.flat",
+        "source": "com.ledger.app-main-54:/layout/activity_web_app.xml"
     },
     {
         "merged": "/home/testdevice/.gradle/daemon/8.9/com.ledger.app-debug-52:/layout_fragment_reports.xml.flat",
