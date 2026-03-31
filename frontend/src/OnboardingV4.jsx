@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, ArrowRight, Shield, Briefcase, Store, Home, TrendingUp,
   AlertCircle, GraduationCap, CreditCard, Plus, Lock, LogOut,
-  User, LayoutDashboard, Upload, PiggyBank, Target, BarChart2,
+  User, Users, LayoutDashboard, Upload, PiggyBank, Target, BarChart2,
   Settings, Layers, RefreshCw, ChevronRight, Edit2,
   Send, Sparkles, Trash2, Pencil, Building2, TrendingDown, Wallet, Landmark, Gem, Car,
   Utensils, Zap, Bell, Activity
@@ -174,6 +174,53 @@ function ProfileScreen({ initial, onDone }) {
 
               {/* Right column */}
               <div className="space-y-5">
+
+                {/* Household Type */}
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2.5">Household Type</p>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {[
+                      { id: 'single', label: 'Single',  Icon: User  },
+                      { id: 'couple', label: 'Couple',  Icon: Users },
+                      { id: 'family', label: 'Family',  Icon: Users },
+                    ].map(({ id, label, Icon }) => {
+                      const active = data.householdType === id;
+                      return (
+                        <button key={id} onClick={() => set('householdType', id)}
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all
+                            ${active ? 'border-[#2C4A70] bg-blue-50/40 shadow-sm' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center
+                            ${active ? 'bg-[#2C4A70] text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>
+                            <Icon size={id === 'family' ? 18 : 16} strokeWidth={id === 'family' ? 1.5 : 2} />
+                          </div>
+                          <span className={`text-xs font-bold ${active ? 'text-[#2C4A70]' : 'text-slate-500'}`}>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dependents counter */}
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Dependents</p>
+                      <p className="text-xs text-slate-400">Children or others financially reliant on you</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => set('dependents', Math.max(0, (data.dependents || 0) - 1))}
+                        className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors font-bold text-base leading-none">
+                        −
+                      </button>
+                      <span className="w-5 text-center font-black text-slate-800 text-base">{data.dependents || 0}</span>
+                      <button
+                        onClick={() => set('dependents', (data.dependents || 0) + 1)}
+                        className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors font-bold text-base leading-none">
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
                     Describe your situation <span className="text-slate-300 font-normal normal-case">(optional)</span>
@@ -1971,7 +2018,7 @@ const NAV = [
   { id: 'dashboards', label: 'Dashboards', icon: LayoutDashboard,desc: 'Your financial overview' },
 ];
 
-const DEFAULT_PROFILE  = { perspective: '', timeAvailable: '', legalName: '', partnerName: '', householdFor: '' };
+const DEFAULT_PROFILE  = { perspective: '', timeAvailable: '', legalName: '', partnerName: '', householdFor: '', householdType: '', dependents: 0 };
 const DEFAULT_MAPPING  = { rawAssetsMap: '', assets: [], liabilities: [] };
 const DEFAULT_GOALS    = { goals: [], incomeString: '', expenses: { housing: '', transport: '', food: '', utilities: '', other: '' }, completed: false };
 // DEFAULT_CASHFLOW is defined above CashFlowSection
