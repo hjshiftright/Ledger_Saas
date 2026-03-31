@@ -756,10 +756,173 @@ function NavTab({ liData, liLoading, showAdvanced, onToggleAdvanced }) {
 // TAB 2 — CASH FLOW
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── Collapsible wrapper shown when actuals exist alongside onboarding budget ──
+function OnboardingBudgetPlanToggle({ cashflow, annual }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl overflow-hidden">
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-indigo-100/60 transition-colors">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">📋</span>
+          <div>
+            <p className="text-sm font-bold text-[#2C4A70]">Budget plan from setup</p>
+            <p className="text-xs text-indigo-500">Your planned income, expenses &amp; annual outflows</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className={`text-indigo-400 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-5">
+          <OnboardingBudgetPanel cashflow={cashflow} annual={annual} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Onboarding budget panel — uses localStorage data captured during setup ──
+function OnboardingBudgetPanel({ cashflow, annual }) {
+  const income      = parseFloat(String(cashflow.primaryIncome || '').replace(/[^0-9.]/g, '')) || 0
+  const categories  = (cashflow.categories || []).filter(c => parseFloat(c.amount) > 0)
+  const totalExp    = categories.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0)
+  const surplus     = income - totalExp
+  const annualItems = (annual.items || []).filter(i => parseFloat(i.amount) > 0)
+  const annualTotal = annualItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+  const annualMonthly = Math.round(annualTotal / 12)
+
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+  // Build annual calendar: bucket items by month
+  const annualByMonth = {}
+  annualItems.forEach(item => {
+    const m = item.month || ''
+    const key = MONTHS_SHORT.find(s => s.toLowerCase() === m.slice(0,3).toLowerCase()) || m
+    if (!annualByMonth[key]) annualByMonth[key] = []
+    annualByMonth[key].push(item)
+  })
+
+  const catColors = ['#2C4A70','#22c55e','#f59e0b','#06b6d4','#526B5C','#ec4899','#f97316','#84cc16','#ef4444','#14b8a6']
+
+  if (income === 0 && categories.length === 0) return null
+
+  return (
+    <div className="space-y-5">
+      {/* Income vs expenses bar */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Your monthly budget plan 📋</h3>
+            <p className="text-slate-500 text-sm">Set during onboarding · import transactions to track actuals</p>
+          </div>
+          {surplus >= 0
+            ? <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">₹{surplus.toLocaleString('en-IN')} surplus</span>
+            : <span className="text-xs font-bold px-3 py-1 bg-rose-50 text-rose-600 rounded-full border border-rose-100">₹{Math.abs(surplus).toLocaleString('en-IN')} deficit</span>
+          }
+        </div>
+
+        {income > 0 && (
+          <div className="mb-5">
+            <div className="flex h-7 rounded-xl overflow-hidden mb-2">
+              <div className="bg-emerald-500 flex items-center justify-center text-white text-[11px] font-bold"
+                style={{ width: `${Math.round(income / (income + totalExp) * 100)}%` }}>
+                Income
+              </div>
+              <div className="bg-rose-400 flex items-center justify-center text-white text-[11px] font-bold"
+                style={{ width: `${Math.round(totalExp / (income + totalExp) * 100)}%` }}>
+                Expenses
+              </div>
+            </div>
+            <div className="flex justify-between text-xs text-slate-500 font-medium">
+              <span className="text-emerald-600 font-bold">{fmt(income)} income</span>
+              <span className="text-rose-500 font-bold">{fmt(totalExp)} expenses</span>
+            </div>
+          </div>
+        )}
+
+        {/* Category breakdown */}
+        {categories.length > 0 && (
+          <div className="space-y-2.5">
+            {categories.map((cat, i) => {
+              const amt = parseFloat(cat.amount) || 0
+              const pct = totalExp > 0 ? Math.round(amt / totalExp * 100) : 0
+              return (
+                <div key={cat.id || i} className="flex items-center gap-3">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: catColors[i % catColors.length] }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-700 truncate">{cat.label}</span>
+                      <span className="font-mono font-semibold text-slate-800 shrink-0 ml-2">{fmt(amt)}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: catColors[i % catColors.length] }} />
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-400 w-8 text-right shrink-0">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {cashflow.secondaryIncome && (
+          <p className="mt-4 text-xs text-slate-400 italic">+ Variable income: {cashflow.secondaryIncome}</p>
+        )}
+      </div>
+
+      {/* Annual irregular expenses */}
+      {annualItems.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-800">Annual irregular expenses 📅</h3>
+              <p className="text-slate-500 text-sm">One-time and seasonal outflows across the year</p>
+            </div>
+            <div className="text-right">
+              <div className="text-base font-black text-slate-800">{fmt(annualTotal)}</div>
+              <div className="text-xs text-slate-400">≈ {fmt(annualMonthly)}/mo reserve</div>
+            </div>
+          </div>
+
+          {/* Month-by-month calendar */}
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(annualByMonth).map(([month, items]) => (
+              <div key={month} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{month}</p>
+                {items.map((item, j) => (
+                  <div key={j} className="flex justify-between items-center py-0.5">
+                    <span className="text-xs text-slate-700 truncate mr-2">{item.name}</span>
+                    <span className="text-xs font-bold text-amber-600 shrink-0">{fmt(parseFloat(item.amount))}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <p className="text-xs text-amber-700 font-medium">Monthly sinking fund needed</p>
+            <p className="text-sm font-black text-amber-700">{fmt(annualMonthly)}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CashFlowTab({ liData, liLoading, showAdvanced, onToggleAdvanced }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [months, setMonths] = useState(12)
+
+  // Read onboarding budget from localStorage
+  const obCashflow = (() => {
+    try { return JSON.parse(localStorage.getItem('onboarding_v4_cashflow')) || {} } catch { return {} }
+  })()
+  const obAnnual = (() => {
+    try { return JSON.parse(localStorage.getItem('onboarding_v4_annualexpenses')) || {} } catch { return {} }
+  })()
+  const hasOnboardingData = (parseFloat(String(obCashflow.primaryIncome || '').replace(/[^0-9.]/g, '')) > 0) ||
+    (obCashflow.categories || []).some(c => parseFloat(c.amount) > 0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -771,7 +934,18 @@ function CashFlowTab({ liData, liLoading, showAdvanced, onToggleAdvanced }) {
   useEffect(() => { load() }, [load])
 
   if (loading) return <Spinner />
-  if (!data) return <Empty />
+
+  // No transactions yet — show onboarding budget plan or empty state
+  if (!data) {
+    return (
+      <div className="space-y-8">
+        {hasOnboardingData
+          ? <OnboardingBudgetPanel cashflow={obCashflow} annual={obAnnual} />
+          : <Empty />
+        }
+      </div>
+    )
+  }
 
   const cur = data.current_month
   const surplus = cur.income - cur.expenses
@@ -792,6 +966,9 @@ function CashFlowTab({ liData, liLoading, showAdvanced, onToggleAdvanced }) {
 
   return (
     <div className="space-y-8">
+      {/* Onboarding budget plan reference (collapsed/expandable if actuals exist) */}
+      {hasOnboardingData && <OnboardingBudgetPlanToggle cashflow={obCashflow} annual={obAnnual} />}
+
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Money In" value={fmt(cur.income)} sub="Income this month" icon={TrendingUp} accent="emerald" />
