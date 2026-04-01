@@ -221,26 +221,6 @@ function ProfileScreen({ initial, onDone }) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
-                    Describe your situation <span className="text-slate-300 font-normal normal-case">(optional)</span>
-                  </label>
-                  <Textarea value={data.householdFor} onChange={v => set('householdFor', v)}
-                    placeholder="E.g. Married with two kids, managing joint finances and a rental property…" />
-                </div>
-
-                {/* Vellum guarantee */}
-                <div className="flex gap-4 items-start bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="w-9 h-9 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0 mt-0.5">
-                    <Shield size={18} className="text-[#2C4A70]" />
-                  </div>
-                  <div>
-                    <p className="font-bold italic font-serif text-[#2C4A70] text-sm">The Vellum Guarantee</p>
-                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      Your data is encrypted locally. We never see your balances.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </FadeIn>
@@ -268,11 +248,11 @@ const ITEM_TYPES = [
   { type: 'other',    kind: 'asset',     label: 'Other',            icon: Wallet,     placeholder: 'e.g. Other item' },
 ];
 
-function AddItemDialog({ onAdd, onClose }) {
-  const [selectedType, setSelectedType] = useState(ITEM_TYPES[0]);
-  const [name,   setName]   = useState('');
-  const [value,  setValue]  = useState('');
-  const [detail, setDetail] = useState('');
+function AddItemDialog({ onAdd, onClose, initial = null }) {
+  const [selectedType, setSelectedType] = useState(initial ? ITEM_TYPES.find(t => t.type === initial.type && t.kind === initial._kind) || ITEM_TYPES[0] : ITEM_TYPES[0]);
+  const [name,   setName]   = useState(initial?.name || '');
+  const [value,  setValue]  = useState(initial?.value ? String(initial.value) : '');
+  const [detail, setDetail] = useState(initial?.detail || '');
 
   const canAdd = name.trim() && num(value) > 0;
 
@@ -295,7 +275,7 @@ function AddItemDialog({ onAdd, onClose }) {
 
         <div className="p-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-serif font-black text-[#2C4A70]">Add Item</h3>
+            <h3 className="text-xl font-serif font-black text-[#2C4A70]">{initial ? 'Edit Item' : 'Add Item'}</h3>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors text-lg leading-none">×</button>
           </div>
 
@@ -351,7 +331,7 @@ function AddItemDialog({ onAdd, onClose }) {
             </button>
             <button onClick={handleAdd} disabled={!canAdd}
               className="flex-1 py-3 rounded-full font-semibold text-sm transition-all shadow-md bg-[#2C4A70] text-white hover:bg-[#1F344F] disabled:opacity-40 disabled:cursor-not-allowed">
-              Add
+              {initial ? 'Save Changes' : 'Add'}
             </button>
           </div>
         </div>
@@ -515,11 +495,23 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   };
 
   const [dialog, setDialog] = useState(false);
+  const [editItem, setEditItem] = useState(null);
 
   const assets      = data.assets      || [];
   const liabilities = data.liabilities || [];
   const addAsset = (item) => { setIsDummy(false); setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] })); };
   const addLib   = (item) => { setIsDummy(false); setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] })); };
+
+  const handleDialogEdit = (item, kind) => {
+    const id = editItem.id;
+    if (kind === 'asset') {
+      setData(d => ({ ...d, assets: d.assets.map(a => a.id === id ? { ...item, id, _kind: 'asset' } : a) }));
+    } else {
+      setData(d => ({ ...d, liabilities: d.liabilities.map(l => l.id === id ? { ...item, id, _kind: 'liability' } : l) }));
+    }
+    setIsDummy(false);
+    setEditItem(null);
+  };
 
   const handleDialogAdd = (item, kind) => {
     if (kind === 'asset') {
@@ -627,6 +619,28 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   const handleComplete = () => { saveJson(SK.mapping, data); onComplete(); };
   const hasAny = assets.length > 0 || liabilities.length > 0;
 
+  const PERSPECTIVE_TIPS = {
+    salaried: [
+      { id: 'epf',      check: (a) => !a.some(x => /epf|pf|provident/i.test(x.name)), emoji: '🏦', text: 'As a salaried employee, your EPF corpus is likely your largest retirement asset. Add it under investments.' },
+      { id: 'fd',       check: (a) => !a.some(x => /fd|fixed.deposit/i.test(x.name)),  emoji: '💰', text: 'Most salaried professionals keep a Fixed Deposit as an emergency buffer. Don\'t forget to add it.' },
+      { id: 'creditcard', check: (_, l) => !l.some(x => /credit.card|card/i.test(x.name)), emoji: '💳', text: 'Credit card outstanding is often overlooked. Add your current card balance under what you owe.' },
+    ],
+    business: [
+      { id: 'currentacc', check: (a) => !a.some(x => /current.account|business.account/i.test(x.name)), emoji: '🏦', text: 'Add your business current account separately from personal savings for accurate net worth tracking.' },
+      { id: 'gst',        check: (_, l) => !l.some(x => /gst|tax/i.test(x.name)),                        emoji: '📋', text: 'Business owners often have GST payables. Add any tax liabilities under what you owe.' },
+    ],
+    homemaker: [
+      { id: 'gold',    check: (a) => !a.some(x => /gold|jewel/i.test(x.name)),      emoji: '🪙', text: 'Gold and jewellery are significant assets for most Indian households. Add their estimated current value.' },
+      { id: 'rd',      check: (a) => !a.some(x => /rd|recurring/i.test(x.name)),    emoji: '📅', text: 'If you have an RD (Recurring Deposit), add it — it counts as a liquid savings asset.' },
+    ],
+    investor: [
+      { id: 'nps',     check: (a) => !a.some(x => /nps|pension/i.test(x.name)),     emoji: '🎯', text: 'NPS corpus is often missed. Add it under investments for accurate retirement projection.' },
+      { id: 'demat',   check: (a) => !a.some(x => /demat|portfolio|zerodha|groww/i.test(x.name)), emoji: '📊', text: 'Your demat/equity portfolio is likely your largest asset. Add its current market value.' },
+    ],
+  };
+
+  const activeTips = (PERSPECTIVE_TIPS[perspective] || []).filter(t => t.check(assets, liabilities));
+
   return (
     <div className="flex flex-col h-full bg-[#F7F8F9]">
 
@@ -691,13 +705,25 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
         </div>
       </div>
 
+      {/* Perspective-aware tips */}
+      {activeTips.length > 0 && (
+        <div className="shrink-0 bg-amber-50 border-b border-amber-100 px-8 py-3 flex flex-wrap gap-2">
+          {activeTips.map(tip => (
+            <div key={tip.id} className="flex items-start gap-2 text-amber-800 text-xs bg-white border border-amber-200 rounded-xl px-3 py-2 max-w-sm">
+              <span className="shrink-0">{tip.emoji}</span>
+              <span>{tip.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Insights strip ──────────────────────────────────────────── */}
       {(() => {
         const hints = [];
         const hasProperty = assets.some(a => a.type === 'property');
         const hasHomeLoan = liabilities.some(l => /home|housing|mortgage/i.test(l.name));
-        const hasVehicle  = assets.some(a => a.type === 'vehicle' || /car|bike|vehicle/i.test(a.name));
-        const hasVehicleLoan = liabilities.some(l => /car|vehicle|auto|bike/i.test(l.name));
+        const hasVehicle  = assets.some(a => a.type === 'vehicle' || /\bcar\b|\bbike\b|\bvehicle\b/i.test(a.name));
+        const hasVehicleLoan = liabilities.some(l => /\bcar\s*loan\b|\bvehicle\s*loan\b|\bauto\s*loan\b|\bbike\s*loan\b/i.test(l.name));
 
         if (hasHomeLoan && !hasProperty)
           hints.push({ emoji: '🏠', text: "You've added a home loan — don't forget to add the property under What I own." });
@@ -770,6 +796,10 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
                             {item.detail && <p className="text-xs text-slate-400 truncate">{item.detail}</p>}
                           </div>
                           <p className="font-black text-sm shrink-0 text-[#2C4A70]">{inr(item.value)}</p>
+                          <button onClick={() => setEditItem({ ...item, _kind: 'asset' })}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-[#2C4A70] p-1 shrink-0">
+                            <Edit2 size={14} />
+                          </button>
                           <button onClick={() => removeAsset(item.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-400 p-1 shrink-0">
                             <Trash2 size={14} />
@@ -806,6 +836,10 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
                             {item.detail && <p className="text-xs text-slate-400 truncate">{item.detail}</p>}
                           </div>
                           <p className="font-black text-sm shrink-0 text-rose-500">−{inr(item.value)}</p>
+                          <button onClick={() => setEditItem({ ...item, _kind: 'liability' })}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-[#2C4A70] p-1 shrink-0">
+                            <Edit2 size={14} />
+                          </button>
                           <button onClick={() => removeLib(item.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-400 p-1 shrink-0">
                             <Trash2 size={14} />
@@ -934,6 +968,15 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {editItem && (
+          <AddItemDialog
+            initial={editItem}
+            onAdd={handleDialogEdit}
+            onClose={() => setEditItem(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -950,7 +993,7 @@ const TIMELINE_OPTS = [
   { label: '20+ years', months: 240 },
 ];
 
-function GoalDialog({ goal, existing, onSave, onRemove, onClose }) {
+function GoalDialog({ goal, existing, assets = [], onSave, onRemove, onClose }) {
   const Icon = goal.icon;
   const seed = existing || {};
   const [targetAmount, setTargetAmount] = useState(seed.targetAmount ? String(seed.targetAmount) : '');
@@ -958,8 +1001,35 @@ function GoalDialog({ goal, existing, onSave, onRemove, onClose }) {
   const [priority, setPriority]   = useState(seed.priority   || 'medium');
   const [note, setNote]           = useState(seed.note       || '');
 
+  const computePrefill = () => {
+    if (existing?.alreadySaved) return String(existing.alreadySaved);
+    const match = {
+      emergency: (a) => a.filter(x => /saving|bank|liquid|fd|fixed.deposit/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      retire:    (a) => a.filter(x => /epf|ppf|nps|pension|provident|pf/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      home:      (a) => a.filter(x => /home|property|real.estate|flat|house/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      vehicle:   (a) => a.filter(x => /car|vehicle|bike|auto/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      education: (a) => a.filter(x => /education|college|sukanya|ppf/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+    };
+    const fn = match[goal.id];
+    const prefilled = fn ? fn(assets) : 0;
+    return prefilled > 0 ? String(prefilled) : '';
+  };
+  const [alreadySaved, setAlreadySaved] = useState(computePrefill);
+  const prefillAmt = (() => {
+    const match = {
+      emergency: (a) => a.filter(x => /saving|bank|liquid|fd|fixed.deposit/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      retire:    (a) => a.filter(x => /epf|ppf|nps|pension|provident|pf/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      home:      (a) => a.filter(x => /home|property|real.estate|flat|house/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      vehicle:   (a) => a.filter(x => /car|vehicle|bike|auto/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+      education: (a) => a.filter(x => /education|college|sukanya|ppf/i.test(x.name)).reduce((s,x)=>s+x.value,0),
+    };
+    const fn = match[goal.id];
+    return fn ? fn(assets) : 0;
+  })();
+
   const canSave = num(targetAmount) > 0;
-  const monthlySaving = timelineMonths > 0 ? Math.ceil(num(targetAmount) / timelineMonths) : 0;
+  const remaining = Math.max(0, num(targetAmount) - num(alreadySaved));
+  const monthlySaving = timelineMonths > 0 ? Math.ceil(remaining / timelineMonths) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -997,6 +1067,28 @@ function GoalDialog({ goal, existing, onSave, onRemove, onClose }) {
                   className="w-full border-2 border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
               </div>
               {num(targetAmount) > 0 && <p className="text-xs text-slate-400 mt-1 pl-1">{inr(num(targetAmount))}</p>}
+            </div>
+
+            {/* Already saved */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                Already Saved <span className="text-slate-300 font-normal normal-case">(optional)</span>
+              </label>
+              {prefillAmt > 0 && !existing && (
+                <div className="mb-2 flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
+                  <span className="text-indigo-500 text-xs">💡</span>
+                  <p className="text-xs text-indigo-700 flex-1">
+                    We found <strong>{inr(prefillAmt)}</strong> from your assets that may count towards this goal.
+                  </p>
+                  <button onClick={() => setAlreadySaved(String(prefillAmt))}
+                    className="text-xs font-bold text-indigo-600 hover:underline shrink-0">Use this</button>
+                </div>
+              )}
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
+                <input value={alreadySaved} onChange={e => setAlreadySaved(e.target.value)} placeholder="0" inputMode="numeric"
+                  className="w-full border-2 border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all" />
+              </div>
             </div>
 
             {/* Timeline */}
@@ -1060,7 +1152,7 @@ function GoalDialog({ goal, existing, onSave, onRemove, onClose }) {
             <button onClick={onClose} className="flex-1 py-3 rounded-full border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            <button onClick={() => { onSave({ id: goal.id, targetAmount: num(targetAmount), timelineMonths, priority, note }); onClose(); }}
+            <button onClick={() => { onSave({ id: goal.id, targetAmount: num(targetAmount), alreadySaved: num(alreadySaved), timelineMonths, priority, note }); onClose(); }}
               disabled={!canSave}
               className="flex-1 py-3 rounded-full bg-[#2C4A70] text-white font-semibold text-sm hover:bg-[#1F344F] disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all">
               {existing ? 'Update Goal' : 'Add Goal'}
@@ -1113,7 +1205,7 @@ const GOALS_AI_PROMPTS = [
   'How can I reach my home goal faster?',
 ];
 
-function GoalsSection({ data, setData, perspective = 'salaried', onComplete }) {
+function GoalsSection({ data, setData, perspective = 'salaried', assets = [], onComplete }) {
   // Seed dummy goals on first load
   const [isDummyGoals, setIsDummyGoals] = useState(() => {
     if (!data.goals?.length) {
@@ -1414,6 +1506,7 @@ function GoalsSection({ data, setData, perspective = 'salaried', onComplete }) {
           <GoalDialog
             goal={goalDialog}
             existing={(data.goalDetails || {})[goalDialog.id]}
+            assets={assets}
             onSave={saveGoalDetail}
             onRemove={removeGoal}
             onClose={() => setGoalDialog(null)}
@@ -1477,13 +1570,38 @@ const ANNUAL_ITEM_ICONS = {
 
 const DEFAULT_ANNUAL_ITEMS = [];
 
+const DUMMY_ANNUAL_ITEMS = [
+  { id: 'dummy_1', label: 'Health Insurance Premium',   desc: 'Annual family floater policy renewal',     amount: '25000',  months: ['APR'],        iconKey: 'insurance' },
+  { id: 'dummy_2', label: 'Vehicle Insurance',          desc: 'Car / two-wheeler insurance renewal',      amount: '12000',  months: ['JAN'],        iconKey: 'insurance' },
+  { id: 'dummy_3', label: 'Family Vacation',            desc: 'Summer holiday travel & stay',             amount: '60000',  months: ['MAY'],        iconKey: 'vacation'  },
+  { id: 'dummy_4', label: 'Diwali & Festive Spending',  desc: 'Gifts, sweets, home décor, new clothes',   amount: '30000',  months: ['OCT','NOV'],  iconKey: 'festival'  },
+  { id: 'dummy_5', label: 'School / Tuition Fees',      desc: 'Annual school admission & tuition',        amount: '80000',  months: ['APR','JUN'],  iconKey: 'school'    },
+  { id: 'dummy_6', label: 'Annual Subscriptions',       desc: 'OTT, cloud storage, software renewals',    amount: '8000',   months: ['JAN'],        iconKey: 'custom'    },
+];
+
 const DEFAULT_ANNUAL = { items: DEFAULT_ANNUAL_ITEMS, completed: false };
 
 function AnnualExpensesView({ data, setData, onBack, onComplete }) {
-  const [items, setItems] = useState(data.items || []);
+  const [isDummy, setIsDummy] = useState(() => {
+    if (!data.items?.length) {
+      return true;  // will seed on first render
+    }
+    return data.items.every(i => String(i.id).startsWith('dummy_'));
+  });
+  const [items, setItems] = useState(() => {
+    if (!data.items?.length) return DUMMY_ANNUAL_ITEMS;
+    return data.items;
+  });
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', desc: '', amount: '', months: [] });
+  const [editId,  setEditId]  = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const clearDummy = () => {
+    setItems([]);
+    setIsDummy(false);
+  };
 
   useEffect(() => {
     API.dashboard.load()
@@ -1509,12 +1627,32 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
 
   const addItem = () => {
     if (!newItem.label.trim() || !newItem.amount) return;
+    setIsDummy(false);
     setItems(prev => [...prev, { ...newItem, id: `custom_${Date.now()}`, iconKey: 'custom' }]);
     setNewItem({ label: '', desc: '', amount: '', months: [] });
     setShowAdd(false);
   };
 
-  const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
+  const removeItem = (id) => { setIsDummy(false); setItems(prev => prev.filter(i => i.id !== id)); };
+
+  const startEdit = (item) => {
+    setEditId(item.id);
+    setEditItem({ label: item.label, desc: item.desc || '', amount: String(item.amount), months: [...item.months] });
+    setShowAdd(false);
+  };
+  const cancelEdit = () => { setEditId(null); setEditItem(null); };
+  const saveEdit = () => {
+    if (!editItem.label.trim() || !editItem.amount) return;
+    setIsDummy(false);
+    const newId = String(editId).startsWith('dummy_') ? `custom_${Date.now()}` : editId;
+    setItems(prev => prev.map(i => i.id === editId ? { ...i, ...editItem, id: newId } : i));
+    cancelEdit();
+  };
+  const toggleEditMonth = (m) =>
+    setEditItem(prev => ({
+      ...prev,
+      months: prev.months.includes(m) ? prev.months.filter(x => x !== m) : [...prev.months, m],
+    }));
 
   const persist = async (extra = {}) => {
     const updated = { ...data, items, ...extra };
@@ -1557,9 +1695,24 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
           <h1 className="text-4xl font-serif font-black text-[#2C4A70] leading-tight mb-2">
             Some expenses don't happen every month.
           </h1>
-          <p className="text-slate-500 mb-8 max-w-2xl text-[15px]">
+          <p className="text-slate-500 mb-4 max-w-2xl text-[15px]">
             Think about insurance premiums, annual subscriptions, festival spending, vacations, and school admissions. These "lumpy" costs often derail monthly budgets.
           </p>
+
+          {isDummy && (
+            <div className="mb-6 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3.5">
+              <div className="flex items-center gap-2.5 text-amber-700">
+                <span className="text-base">⚠️</span>
+                <p className="text-sm font-medium">
+                  These are <strong>sample expenses</strong> to help you get started — not your real data. Edit any entry, remove what doesn't apply, or clear all and start fresh.
+                </p>
+              </div>
+              <button onClick={clearDummy}
+                className="ml-4 shrink-0 text-xs font-bold text-amber-700 border border-amber-300 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+                Clear & Start Fresh
+              </button>
+            </div>
+          )}
 
           <div className="flex gap-6 items-start">
 
@@ -1568,12 +1721,22 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                   <h3 className="text-[15px] font-bold text-slate-800">Projected Annual Outlays</h3>
-                  <button
-                    onClick={() => setShowAdd(v => !v)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-[#2C4A70] hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Plus size={13} /> Add New
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {items.length > 0 && (
+                      <button
+                        onClick={clearDummy}
+                        className="text-xs font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setShowAdd(v => !v); setEditId(null); setEditItem(null); }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#2C4A70] hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Plus size={13} /> Add New
+                    </button>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-slate-100">
@@ -1591,29 +1754,78 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
                   {items.map(item => {
                     const Icon = ANNUAL_ITEM_ICONS[item.iconKey] || CreditCard;
                     const amt = parseFloat(item.amount) || 0;
+                    const isEditing = editId === item.id;
                     return (
-                      <div key={item.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
-                          <Icon size={16} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 truncate">{item.label}</p>
-                          <p className="text-xs text-slate-400 truncate">{item.desc}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-black text-[#2C4A70]">₹{amt.toLocaleString('en-IN')}</p>
-                          <div className="flex gap-1 justify-end mt-1">
-                            {item.months.map(m => (
-                              <span key={m} className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded tracking-widest">{m}</span>
-                            ))}
+                      <div key={item.id}>
+                        {/* Normal row */}
+                        {!isEditing && (
+                          <div className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors group">
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
+                              <Icon size={16} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-bold text-slate-800 truncate">{item.label}</p>
+                                {String(item.id).startsWith('dummy_') && (
+                                  <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded tracking-wider shrink-0">SAMPLE</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 truncate">{item.desc}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-black text-[#2C4A70]">₹{amt.toLocaleString('en-IN')}</p>
+                              <div className="flex gap-1 justify-end mt-1">
+                                {item.months.map(m => (
+                                  <span key={m} className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded tracking-widest">{m}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex items-center gap-1">
+                              <button onClick={() => startEdit(item)} className="text-slate-300 hover:text-[#2C4A70] p-1">
+                                <Edit2 size={14} />
+                              </button>
+                              <button onClick={() => removeItem(item.id)} className="text-slate-300 hover:text-rose-500 p-1">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-slate-300 hover:text-rose-500"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        )}
+
+                        {/* Inline edit form */}
+                        {isEditing && (
+                          <div className="px-6 py-4 bg-indigo-50/40 border-t border-indigo-100">
+                            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">Edit Item</p>
+                            <div className="flex gap-3 mb-3">
+                              <input type="text" placeholder="Expense name" value={editItem.label}
+                                onChange={e => setEditItem(p => ({ ...p, label: e.target.value }))}
+                                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10" />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
+                                <input type="number" placeholder="0" value={editItem.amount}
+                                  onChange={e => setEditItem(p => ({ ...p, amount: e.target.value }))}
+                                  className="w-32 text-sm border border-slate-200 rounded-lg pl-7 pr-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                              </div>
+                            </div>
+                            <input type="text" placeholder="Short description (optional)" value={editItem.desc}
+                              onChange={e => setEditItem(p => ({ ...p, desc: e.target.value }))}
+                              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white outline-none focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 mb-3" />
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {MONTHS_SHORT.map(m => (
+                                <button key={m} onClick={() => toggleEditMonth(m)}
+                                  className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                                    editItem.months.includes(m) ? 'bg-[#2C4A70] text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                  }`}>{m}</button>
+                              ))}
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button onClick={cancelEdit} className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-3 py-1.5 transition-colors">Cancel</button>
+                              <button onClick={saveEdit} disabled={!editItem.label.trim() || !editItem.amount}
+                                className="text-xs font-bold bg-[#2C4A70] text-white px-4 py-1.5 rounded-lg hover:bg-[#1e3557] disabled:opacity-40 transition-colors">
+                                Save Changes
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1745,9 +1957,9 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
         </button>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full border-2 border-[#2C4A70] flex items-center justify-center text-[11px] font-black text-[#2C4A70]">5/8</div>
+            <div className="w-9 h-9 rounded-full border-2 border-[#2C4A70] flex items-center justify-center text-[11px] font-black text-[#2C4A70]">2/2</div>
             <div>
-              <p className="text-[10px] font-bold text-[#2C4A70] uppercase tracking-widest leading-none">Stage 5 of 8</p>
+              <p className="text-[10px] font-bold text-[#2C4A70] uppercase tracking-widest leading-none">Step 2 of 2</p>
               <p className="text-[10px] text-slate-400 mt-0.5">Annual Irregular Expense Mapping</p>
             </div>
           </div>
@@ -1996,14 +2208,23 @@ function CashFlowSection({ data, setData, annualData, setAnnualData, onBack, onC
         >
           <ArrowRight size={14} className="rotate-180" /> Back to Goals
         </button>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => persist()}
-            className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wide"
-          >
-            Save Draft
-          </button>
-          <Btn onClick={() => { persist(); setStep(2); }}>Next: Annual Expenses</Btn>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full border-2 border-[#2C4A70] flex items-center justify-center text-[11px] font-black text-[#2C4A70]">1/2</div>
+            <div>
+              <p className="text-[10px] font-bold text-[#2C4A70] uppercase tracking-widest leading-none">Step 1 of 2</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Monthly Cash Flow</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => persist()}
+              className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wide"
+            >
+              Save Draft
+            </button>
+            <Btn onClick={() => { persist(); setStep(2); }}>Next: Annual Expenses</Btn>
+          </div>
         </div>
       </div>
     </div>
@@ -2130,7 +2351,7 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
           )}
           {active === 'goals' && (
             <motion.div key="goals" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1">
-              <GoalsSection data={goalsData} setData={setGoalsData} perspective={profileData.perspective} onComplete={() => completeSection('goals')} />
+              <GoalsSection data={goalsData} setData={setGoalsData} perspective={profileData.perspective} assets={mappingData.assets || []} onComplete={() => completeSection('goals')} />
             </motion.div>
           )}
           {active === 'cashflow' && (
