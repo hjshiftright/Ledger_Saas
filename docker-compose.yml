@@ -10,12 +10,74 @@ services:
       POSTGRES_PASSWORD: ledger_secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # PostgreSQL is NOT exposed to the host — all app traffic goes through PgBouncer.
+    # Admin access: docker compose exec db psql -U ledger ledger
     healthcheck:
       test:     ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
       interval: 5s
       timeout:  5s
       retries:  10
       start_period: 10s
+
+  # ── PgBouncer (connection pooler) ────────────────────────────────────────────
+  # Sits between the API and PostgreSQL.
+  # Multiplexes many short-lived app connections → a small fixed pool of server connections.
+  # Transaction-mode pooling: safe with asyncpg (statement_cache_size=0) and SET LOCAL RLS vars.
+  #
+  # Connection flow:
+  #   api (pool_size=5, max_overflow=10) → pgbouncer:6432 → db:5432
+  #   admin engine                       → db:5432  (bypasses pgbouncer — DDL / migrations)
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # ── Backend PostgreSQL connection ──────────────────────────────────────
+      DB_HOST:     db
+      DB_PORT:     "5432"
+      DB_NAME:     ledger
+      DB_USER:     ledger
+      DB_PASSWORD: ledger_secret
+      # ── Pooling ────────────────────────────────────────────────────────────
+      # transaction mode: safe with asyncpg (statement_cache_size=0) and SET LOCAL RLS vars
+      POOL_MODE:              transaction
+      MAX_CLIENT_CONN:        "200"
+      DEFAULT_POOL_SIZE:      "10"
+      MIN_POOL_SIZE:          "2"
+      RESERVE_POOL_SIZE:      "2"
+      RESERVE_POOL_TIMEOUT:   "3"
+      # ── Lifecycle ──────────────────────────────────────────────────────────
+      SERVER_LIFETIME:         "3600"
+      SERVER_IDLE_TIMEOUT:     "600"
+      SERVER_CONNECT_TIMEOUT:  "10"
+      QUERY_WAIT_TIMEOUT:      "30"
+      # ── Auth ───────────────────────────────────────────────────────────────
+      AUTH_TYPE:    plain
+      # ── Listen ─────────────────────────────────────────────────────────────
+      # edoburu defaults to port 5432 inside the container; set 6432 to match
+      # the DATABASE_URL used by the api service and the host port mapping below.
+      LISTEN_PORT:  "6432"
+      LISTEN_ADDR:  "*"
+      # ── TLS ────────────────────────────────────────────────────────────────
+      # Both containers share a private Docker bridge network — SSL not needed here.
+      # PgBouncer → PostgreSQL also on private network; enable SERVER_TLS_SSLMODE=require
+      # for any deployment where PostgreSQL is reachable over a public network.
+      CLIENT_TLS_SSLMODE: disable
+      SERVER_TLS_SSLMODE: disable
+      # ── Logging ────────────────────────────────────────────────────────────
+      LOG_CONNECTIONS:    "0"
+      LOG_DISCONNECTIONS: "0"
+      STATS_PERIOD:       "60"
+    ports:
+      - "6432:6432"
+    healthcheck:
+      test:     ["CMD-SHELL", "nc -z 127.0.0.1 6432"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+      start_period: 5s
 
   # ── API Server (FastAPI + Uvicorn) ───────────────────────────────────────────
   api:
@@ -24,10 +86,15 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
+      pgbouncer:
+        condition: service_healthy
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL:    postgresql://ledger:ledger_secret@db:5432/ledger
+      # app traffic → PgBouncer → PostgreSQL (RLS enforced, SSL disabled on private network)
+      DATABASE_URL:       postgresql+asyncpg://ledger:ledger_secret@pgbouncer:6432/ledger
+      # admin / migrations → PostgreSQL directly (bypasses PgBouncer — DDL needs a stable session)
+      ADMIN_DATABASE_URL: postgresql+asyncpg://ledger:ledger_secret@db:5432/ledger
       APP_ENV:         production
       APP_HOST:        0.0.0.0
       APP_PORT:        "8000"
@@ -39,8 +106,6 @@ services:
       # GEMINI_API_KEY:     your-key-here
       # OPENAI_API_KEY:     your-key-here
       # ANTHROPIC_API_KEY:  your-key-here
-    # Expose port 8000 on the host for direct API access / debugging.
-    # Remove or comment this out if you only want access via the web container.
     ports:
       - "8000:8000"
 

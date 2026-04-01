@@ -4,19 +4,37 @@ from config import get_settings
 
 settings = get_settings()
 
-# ── Primary engine (app_service role — RLS enforced) ──────────────────────────
-# Used by all normal API requests. RLS isolates data per tenant.
+# ── Primary engine (app_service role — routes through PgBouncer) ──────────────
+# DATABASE_URL points to PgBouncer (:6432), which multiplexes connections to PostgreSQL.
+#
+# Key PgBouncer-compatibility settings:
+#   statement_cache_size=0  — asyncpg caches prepared statements per-connection by default.
+#                             PgBouncer (transaction mode) reassigns server connections between
+#                             transactions, so a cached statement from connection A may be sent
+#                             to connection B → protocol error. Disabling the cache prevents this.
+#   ssl=False               — app and PgBouncer share a private Docker bridge network.
+#                             SSL on this segment adds TLS handshake overhead with no security
+#                             benefit (traffic never leaves the host). PgBouncer handles its own
+#                             SSL to PostgreSQL independently via server_tls_sslmode in pgbouncer.ini.
+#
+# Pool sizing rationale:
+#   PgBouncer caps real PostgreSQL connections at default_pool_size=10 regardless of how many
+#   client-side connections the app opens. Reducing pool_size/max_overflow here lowers the
+#   number of persistent TCP sockets between the app and PgBouncer (75% reduction vs. before).
 engine = create_async_engine(
     settings.database_url,
-    pool_size=20,
-    max_overflow=40,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    pool_size=5,             # reduced: PgBouncer multiplexes these into 10 server connections
+    max_overflow=10,         # reduced: burst headroom is now handled by PgBouncer's reserve pool
+    pool_pre_ping=True,      # validate client→pgbouncer connections before reuse
+    pool_recycle=7200,       # relaxed: PgBouncer manages server-side recycling via server_lifetime
     connect_args={
+        "statement_cache_size": 0,           # REQUIRED for PgBouncer transaction mode
+        "prepared_statement_cache_size": 0,  # asyncpg >=0.29 alias
+        "ssl": False,                        # no SSL on private Docker network (app → pgbouncer)
         "server_settings": {
             "application_name": "ledger_api",
             "jit": "off",
-        }
+        },
     },
 )
 
@@ -27,18 +45,26 @@ SessionFactory = async_sessionmaker(
     autoflush=False,
 )
 
-# ── Admin engine (superadmin role — bypasses RLS) ─────────────────────────────
-# Used ONLY by admin API routes (auth, provisioning, billing support).
-# NEVER expose this session through tenant-facing endpoints.
+# ── Admin engine (superadmin role — bypasses PgBouncer, direct to PostgreSQL) ─
+# ADMIN_DATABASE_URL points directly to PostgreSQL (:5432).
+#
+# Why bypass PgBouncer:
+#   - DDL statements (CREATE TABLE, ALTER, REINDEX) need a stable session connection.
+#   - Alembic migrations use NullPool + admin_database_url; they must never go through PgBouncer.
+#   - Superadmin operations (provisioning, billing, schema introspection) are low-frequency
+#     and do not benefit from connection multiplexing.
+#
+# NEVER expose AdminSessionFactory through tenant-facing API endpoints.
 admin_engine = create_async_engine(
     settings.admin_database_url,
     pool_size=3,
     max_overflow=5,
     pool_pre_ping=True,
+    pool_recycle=3600,
     connect_args={
         "server_settings": {
             "application_name": "ledger_admin",
-        }
+        },
     },
 )
 
@@ -65,7 +91,8 @@ async def get_session_with_context(tenant_id: str, user_id: str = "0") -> AsyncS
     """FastAPI dependency: sets both app.tenant_id and app.user_id for RLS enforcement.
 
     Uses is_local=TRUE so the settings are transaction-scoped — safe with PgBouncer
-    transaction-mode pooling (resets automatically on COMMIT/ROLLBACK).
+    transaction-mode pooling (resets automatically on COMMIT/ROLLBACK, no tenant
+    context leaks to the next client that reuses the server connection).
     """
     async with SessionFactory() as session:
         await session.execute(

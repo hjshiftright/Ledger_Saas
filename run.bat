@@ -6,22 +6,50 @@ echo        Starting Ledger Application
 echo ==============================================
 
 :: ─────────────────────────────────────────────────────────────────────────────
-:: PostgreSQL connection settings — change these if you use a different host or
-:: credentials.  The DATABASE_URL is passed to the Python process as an env var
-:: so pydantic-settings picks it up automatically.
+:: Connection settings
+::
+:: Connection flow (local dev):
+::   Python backend (localhost) → PgBouncer (Docker :6432) → PostgreSQL (Docker :5432)
+::
+:: DATABASE_URL       : asyncpg URL pointing to PgBouncer (:6432)
+:: ADMIN_DATABASE_URL : asyncpg URL pointing directly to PostgreSQL (:5432) — DDL / migrations
+:: PG_SYNC_URL        : plain psycopg2 URL used only for the readiness health check below
 :: ─────────────────────────────────────────────────────────────────────────────
-set PG_USER=ledgeradmin
-set PG_PASS=ledger123
-set PG_DB=ledgerdb
+set PG_USER=ledger
+set PG_PASS=ledger_secret
+set PG_DB=ledger
 set PG_HOST=127.0.0.1
 set PG_PORT=5432
+set PGB_PORT=6432
 
-:: Async URL used by SQLAlchemy asyncio engine (asyncpg driver)
-set DATABASE_URL=postgresql+asyncpg://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+:: Async URL via PgBouncer — used by the main SQLAlchemy engine (asyncpg)
+set DATABASE_URL=postgresql+asyncpg://%PG_USER%:%PG_PASS%@%PG_HOST%:%PGB_PORT%/%PG_DB%
+
+:: Async URL direct to PostgreSQL — used by the admin engine and Alembic migrations
 set ADMIN_DATABASE_URL=postgresql+asyncpg://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
 
-:: Sync URL used only by the psycopg2 connection health-check below
-set PG_SYNC_URL=postgresql://%PG_USER%:%PG_PASS%@%PG_HOST%:%PG_PORT%/%PG_DB%
+:: Sync URL via PgBouncer — used only by the psycopg2 readiness check below
+set PG_SYNC_URL=postgresql://%PG_USER%:%PG_PASS%@%PG_HOST%:%PGB_PORT%/%PG_DB%
+
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:: Start PostgreSQL + PgBouncer via Docker Compose
+:: ─────────────────────────────────────────────────────────────────────────────
+docker --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker was not found. Install Docker Desktop and ensure it is running.
+    pause
+    exit /b 1
+)
+
+echo [INFO] Starting PostgreSQL and PgBouncer containers...
+docker compose up -d db pgbouncer
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to start Docker containers.
+    echo         Ensure Docker Desktop is running: docker compose logs
+    pause
+    exit /b 1
+)
 
 
 :: ─────────────────────────────────────────────────────────────────────────────
@@ -79,25 +107,27 @@ if %errorlevel% neq 0 (
 )
 
 :: ─────────────────────────────────────────────────────────────────────────────
-:: Wait for PostgreSQL to accept connections (up to ~60 s)
+:: Wait for PgBouncer to accept connections via :6432 (up to ~60 s)
 :: ─────────────────────────────────────────────────────────────────────────────
-echo [INFO] Waiting for PostgreSQL at %PG_HOST%:%PG_PORT%...
-set /a PG_TRIES=0
-:pg_wait
+echo [INFO] Waiting for PgBouncer at %PG_HOST%:%PGB_PORT%...
+set /a PGB_TRIES=0
+
+:pgb_wait
 ".venv\Scripts\python.exe" -c "import psycopg2, os, sys; psycopg2.connect(os.environ['PG_SYNC_URL']).close(); sys.exit(0)" >nul 2>&1
-if %errorlevel% equ 0 goto :pg_ready
-set /a PG_TRIES+=1
-if %PG_TRIES% geq 30 (
-    echo [ERROR] Cannot connect to PostgreSQL at %PG_HOST%:%PG_PORT%/%PG_DB%.
-    echo         Verify the database is running and the credentials in this script are correct.
+if %errorlevel% equ 0 goto :pgb_ready
+set /a PGB_TRIES+=1
+if %PGB_TRIES% geq 30 (
+    echo [ERROR] PgBouncer at %PG_HOST%:%PGB_PORT% did not become ready after 60 seconds.
+    echo         Check containers: docker compose logs pgbouncer
+    echo         Check database:   docker compose logs db
     pause
     exit /b 1
 )
 timeout /t 2 /nobreak >nul
-goto :pg_wait
+goto :pgb_wait
 
-:pg_ready
-echo [INFO] PostgreSQL is ready.
+:pgb_ready
+echo [INFO] PgBouncer is ready.
 
 :: ─────────────────────────────────────────────────────────────────────────────
 :: Build the frontend
@@ -133,14 +163,15 @@ if %errorlevel% neq 0 (
 cd ..
 
 :: ─────────────────────────────────────────────────────────────────────────────
-:: Launch the API server (serves the built frontend from /frontend/dist)
+:: Launch the API server
 :: ─────────────────────────────────────────────────────────────────────────────
 set PYTHONPATH=%cd%\backend\src
 
 echo ==============================================
 echo [INFO] Launching Ledger API server...
-echo [INFO] Database : PostgreSQL at %PG_HOST%:%PG_PORT%/%PG_DB%
-echo [INFO] App URL  : http://127.0.0.1:8000/
+echo [INFO] App engine   : PgBouncer at %PG_HOST%:%PGB_PORT% (pooled)
+echo [INFO] Admin engine : PostgreSQL at %PG_HOST%:%PG_PORT% (direct)
+echo [INFO] App URL      : http://127.0.0.1:8000/
 echo ==============================================
 ".venv\Scripts\python.exe" backend\src\main.py
 

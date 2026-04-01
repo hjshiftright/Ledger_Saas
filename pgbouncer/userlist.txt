@@ -1,0 +1,19 @@
+; PgBouncer user authentication file
+;
+; Format (plain auth_type):
+;   "username" "password"
+;
+; These credentials are used for:
+;   1. Client authentication  : app → pgbouncer (auth_type = plain)
+;   2. Server authentication  : pgbouncer → PostgreSQL (forwarded to pg_hba.conf)
+;
+; PRODUCTION NOTE:
+;   Switch auth_type to scram-sha-256 and replace plaintext passwords with hashes.
+;   Generate the hash from a running PostgreSQL instance:
+;     psql -U postgres -c "SELECT concat('\"', rolname, '\" \"', rolpassword, '\"') FROM pg_authid WHERE rolname = 'ledger';"
+;
+; Development credentials (matches docker-compose.yml POSTGRES_USER / POSTGRES_PASSWORD)
+"ledger" "ledger_secret"
+
+; PgBouncer admin console user (for SHOW POOLS; SHOW STATS; RELOAD; etc.)
+"pgbouncer" "pgbouncer_admin"
