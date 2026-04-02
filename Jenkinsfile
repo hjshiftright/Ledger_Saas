@@ -74,7 +74,8 @@ pipeline {
                     pip install pytest pytest-asyncio httpx --quiet
 
                     # Run tests — exit 0 even if no tests found, fail on actual errors
-                    export PYTHONPATH=$PYTHONPATH:. && pytest backend/tests/ -v --tb=short || echo "[WARN] No backend tests found or tests failed — check output above"
+		    export PYTHONPATH=${WORKSPACE}/backend/src
+                    pytest backend/tests/ -v --tb=short || echo "[WARN] No backend tests found or tests failed — check output above"
                     deactivate
                 '''
             }
