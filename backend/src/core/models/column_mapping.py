@@ -39,7 +39,7 @@ class ColumnMapping(BaseModel):
     header_row_index: int = 0
     data_start_row: int = 1              # 0-indexed row where data begins
 
-    created_at: datetime = Field(default_factory=datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     confirmed_at: datetime | None = None  # Null until user explicitly confirms
 
 
