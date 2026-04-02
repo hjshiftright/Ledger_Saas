@@ -3,6 +3,8 @@
 .. note::
     Skipped pending migration of raw_session from sync to async SQLAlchemy.
 """
+from __future__ import annotations
+
 import pytest
 pytestmark = pytest.mark.skip(reason="raw_session not yet migrated to async; pending Phase D")
 
@@ -28,7 +30,6 @@ Fixture strategy
                         to insert one income txn (₹75 000 salary) and one expense
                         txn (₹4 500 dining) so every computed metric is non-zero.
 """
-from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
