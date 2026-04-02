@@ -5,7 +5,7 @@ It uses an in-memory store; swap _store with a DB session in production.
 """
 
 from __future__ import annotations
-
+from datetime import datetime, timezone
 from accounts.models import (
     Account,
     AccountSubType,
@@ -152,7 +152,7 @@ class AccountService:
             acc.sub_type = sub_type
 
         from datetime import datetime
-        acc.updated_at = datetime.now(datetime.UTC)
+        acc.updated_at = datetime.now(timezone.utc)
         return acc
 
     # ── Move ──────────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ class AccountService:
             self._user_accounts(user_id)[new_parent_id].is_leaf = False
 
         from datetime import datetime
-        acc.updated_at = datetime.now(datetime.UTC)
+        acc.updated_at = datetime.now(timezone.utc)
         return acc
 
     def _fix_depths(self, user_id: str, root_id: str) -> None:
@@ -254,7 +254,7 @@ class AccountService:
             raise AccountServiceError(f"Cannot archive system account '{acc.name}'.")
         acc.is_active = False
         from datetime import datetime
-        acc.updated_at = datetime.now(datetime.UTC)
+        acc.updated_at = datetime.now(timezone.utc)
         return acc
 
     def restore_account(self, user_id: str, account_id: str) -> Account:

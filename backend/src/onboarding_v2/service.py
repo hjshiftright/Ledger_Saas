@@ -5,7 +5,7 @@ Orchestrates onboarding workflow, applies defaults, and generates financial plan
 """
 from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .models import (
     OnboardingProfile,
@@ -68,8 +68,8 @@ class OnboardingService:
             monthly_income_range=data.monthly_income_range,
             risk_tolerance=data.risk_tolerance or defaults["risk_tolerance"],
             investment_experience=data.investment_experience or defaults["investment_experience"],
-            created_at=datetime.now(datetime.UTC),
-            updated_at=datetime.now(datetime.UTC)
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         
         self.db.add(profile)
@@ -117,7 +117,7 @@ class OnboardingService:
                 return_rate=calculation.get("return_rate", 0.12),
                 details=calculation,  # Store full calculation as JSON
                 is_active=True,
-                created_at=datetime.now(datetime.UTC)
+                created_at=datetime.now(timezone.utc)
             )
             
             self.db.add(goal)
@@ -156,7 +156,7 @@ class OnboardingService:
                 institution=asset_data.institution,
                 account_number_last4=asset_data.account_number_last4,
                 details=asset_data.details or {},
-                created_at=datetime.now(datetime.UTC)
+                created_at=datetime.now(timezone.utc)
             )
             
             self.db.add(asset)
@@ -196,7 +196,7 @@ class OnboardingService:
                 interest_rate=liability_data.interest_rate,
                 institution=liability_data.institution,
                 details=liability_data.details or {},
-                created_at=datetime.now(datetime.UTC)
+                created_at=datetime.now(timezone.utc)
             )
             
             self.db.add(liability)
@@ -346,7 +346,7 @@ class OnboardingService:
         
         # Mark as complete
         profile.is_complete = True
-        profile.updated_at = datetime.now(datetime.UTC)
+        profile.updated_at = datetime.now(timezone.utc)
         self.db.commit()
         
         # Gather all data

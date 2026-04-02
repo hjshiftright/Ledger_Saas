@@ -50,4 +50,5 @@ python-jose[cryptography]>=3.3.0
 
 # ── Testing ────────────────────────────────────────────────────────────
 testcontainers[postgres]==4.14.2
+aiosqlite==0.22.1
 
