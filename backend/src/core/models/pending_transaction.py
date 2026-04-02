@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from core.models.enums import ConfidenceBand, ReviewStatus
@@ -52,7 +52,7 @@ class PendingTransaction:
     revised_category: str | None = None   # Set when user overrides the category
 
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(UTC))
     reviewed_at: datetime | None = None   # Set when user acts on this item
 
     # Link to the approved Transaction (set after APPROVED)

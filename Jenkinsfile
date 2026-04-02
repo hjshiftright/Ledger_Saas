@@ -66,7 +66,10 @@ pipeline {
         stage('Backend Tests') {
             steps {
                 echo '==> Setting up Python virtual environment and running tests...'
+        sh 'docker run --name ledger-test-db -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:15-alpine'
+        sh 'sleep 5' 
                 sh '''
+            export DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/postgres
                     python3.13 -m venv .venv-ci
                     source .venv-ci/bin/activate
                     pip install --upgrade pip --quiet
@@ -79,6 +82,11 @@ pipeline {
                     deactivate
                 '''
             }
+ post {
+        always {
+            sh 'docker rm -f ledger-test-db'
+        }
+    }
         }
 
         // ── Stage 4: Build Docker Images ──────────────────────────────────────

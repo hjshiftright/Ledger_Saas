@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
@@ -49,7 +49,7 @@ class _StoredJob:
     confidence: float
     tokens_used: int
     processing_ms: float
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(UTC))
 
 
 _jobs: dict[str, list[_StoredJob]] = {}

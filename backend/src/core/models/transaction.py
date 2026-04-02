@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from decimal import Decimal
 from typing import Any
 
@@ -66,7 +66,7 @@ class Transaction:
     approved_at: datetime | None = None
     approved_by: str | None = None   # user_id of the approver (None = auto-approved)
 
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(UTC))
     extra_fields: dict[str, Any] = field(default_factory=dict)
 
     @property

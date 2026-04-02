@@ -3,7 +3,7 @@ Onboarding V2 - Database Models
 
 Profile-first, goal-oriented onboarding models
 """
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from typing import Optional, Dict, Any
 from enum import Enum
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, JSON, ForeignKey, Text
@@ -55,8 +55,8 @@ class OnboardingProfile(Base):
     onboarding_step = Column(Integer, default=1)  # Current step (1-4)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime, nullable=True)
     
     # Relationships
@@ -123,8 +123,8 @@ class FinancialGoal(Base):
     last_contribution = Column(DateTime, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
     
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="goals")
@@ -196,8 +196,8 @@ class UserAsset(Base):
     ledger_account_id = Column(String(50), nullable=True)  # Link to accounting system
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
     
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="assets")
@@ -263,8 +263,8 @@ class UserLiability(Base):
     ledger_account_id = Column(String(50), nullable=True)  # Link to accounting system
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
     
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="liabilities")
@@ -307,8 +307,8 @@ class CityData(Base):
     is_active = Column(Boolean, default=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
     
     def __repr__(self):
         return f"<CityData(name={self.name}, tier={self.tier}, col_index={self.col_index})>"

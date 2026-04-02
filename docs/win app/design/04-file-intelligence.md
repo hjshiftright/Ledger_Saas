@@ -268,7 +268,7 @@ public async Task<VaultResult> VaultAsync(string filePath, CancellationToken ct)
         };
 
     // Genuinely new — copy to vault
-    var vaultPath = BuildVaultPath(filePath, DateTime.UtcNow);
+    var vaultPath = BuildVaultPath(filePath, datetime.now(UTC));
     File.Copy(filePath, vaultPath);
     File.SetAttributes(vaultPath, FileAttributes.ReadOnly);  // immutable protection
 
@@ -279,7 +279,7 @@ public async Task<VaultResult> VaultAsync(string filePath, CancellationToken ct)
         ContentHash      = hash,
         FileSizeBytes    = bytes.Length,
         ProcessingStatus = "Vaulted",
-        DroppedAt        = DateTime.UtcNow
+        DroppedAt        = datetime.now(UTC)
     });
     await _db.SaveChangesAsync(ct);
     return new VaultResult(VaultAction.Proceed, null);

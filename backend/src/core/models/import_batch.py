@@ -6,7 +6,7 @@ Created by SM-B (Document Ingestion) and updated by every downstream module.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, Field
 
@@ -43,7 +43,7 @@ class ImportBatch(BaseModel):
 
     error_message: str | None = None
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=datetime.now(UTC))
 
     model_config = {"frozen": False}

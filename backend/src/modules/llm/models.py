@@ -7,7 +7,7 @@ provider-specific configuration that lives only in the LLM module.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -28,8 +28,8 @@ class LLMProvider(BaseModel):
     is_default: bool = False
     test_status: str = "UNTESTED"       # UNTESTED / OK / FAILED
     test_last_run_at: datetime | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=datetime.now(UTC))
 
     model_config = {"frozen": False}
 
@@ -47,7 +47,7 @@ class PromptTemplate(BaseModel):
     output_schema: dict = Field(default_factory=dict)   # JSON Schema
     max_tokens: int = 4096
     temperature: float = 0.0    # Always 0.0 for extraction tasks
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(UTC))
 
 
 class LLMExtractionJob(BaseModel):
@@ -68,7 +68,7 @@ class LLMExtractionJob(BaseModel):
     rows_extracted: int = 0
     overall_confidence: float = 0.0
     error_message: str | None = None
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=datetime.now(UTC))
     completed_at: datetime | None = None
 
     model_config = {"frozen": False}

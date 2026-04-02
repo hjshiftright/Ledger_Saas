@@ -72,7 +72,7 @@ class Account(Base):
     account_type: Mapped[str] = mapped_column(String(20))  # asset, liability, etc.
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     is_active: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
 
     entries: Mapped[list["JournalEntry"]] = relationship(back_populates="account")
 ```

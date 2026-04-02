@@ -20,7 +20,7 @@ Business Rules (BR-A-01 through BR-A-11):
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -150,8 +150,8 @@ class Account(BaseModel):
     balance_market: Decimal = Field(default=Decimal("0"))      # market value
 
     # ── Timestamps ────────────────────────────────────────────────────────────
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=datetime.now(UTC))
 
     model_config = {"frozen": False}
 

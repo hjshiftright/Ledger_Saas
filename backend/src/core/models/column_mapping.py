@@ -7,7 +7,7 @@ file format is uploaded again (matched by format_fingerprint = hash of header ro
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, Field
 
@@ -39,7 +39,7 @@ class ColumnMapping(BaseModel):
     header_row_index: int = 0
     data_start_row: int = 1              # 0-indexed row where data begins
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(UTC))
     confirmed_at: datetime | None = None  # Null until user explicitly confirms
 
 
