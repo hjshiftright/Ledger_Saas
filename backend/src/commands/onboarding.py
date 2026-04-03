@@ -7,7 +7,7 @@ from pathlib import Path
 
 from commands._helpers import (
     _bold, _dim, _green, _yellow, _red, _blue,
-    _get_db_session, _repos, _load_profile,
+    _get_async_session, _repos, _load_profile,
 )
 
 
@@ -31,7 +31,7 @@ def _render_coa_node(node, prefix: str = "", is_last: bool = True) -> None:
 
 # ── onboarding profile ────────────────────────────────────────────────────────
 
-def cmd_onboarding_profile(args: argparse.Namespace) -> int:
+async def cmd_onboarding_profile(args: argparse.Namespace) -> int:
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
 
@@ -40,7 +40,7 @@ def cmd_onboarding_profile(args: argparse.Namespace) -> int:
     from onboarding.profile.schemas import ProfileSetupRequest
     from common.enums import Currency, TaxRegime
 
-    session = _get_db_session()
+    session = await _get_async_session()
     ps = ProfileService(SqlAlchemyProfileRepository(session))
 
     if args.profile_name:
@@ -53,15 +53,15 @@ def cmd_onboarding_profile(args: argparse.Namespace) -> int:
                 date_format=args.profile_date_format,
                 number_format=args.profile_number_format.upper(),
             )
-            profile = ps.setup_profile(req)
+            profile = await ps.setup_profile(req)
         except Exception as exc:
             print(_red(f"  Error: {exc}"), file=sys.stderr)
             return 1
         print()
         print(_green("  Profile saved."))
 
-    elif ps.is_profile_complete():
-        profile = ps.get_profile()
+    elif await ps.is_profile_complete():
+        profile = await ps.get_profile()
 
     else:
         print()
@@ -90,7 +90,7 @@ def cmd_onboarding_profile(args: argparse.Namespace) -> int:
                 date_format=dfmt_in,
                 number_format=nfmt_in,
             )
-            profile = ps.setup_profile(req)
+            profile = await ps.setup_profile(req)
         except Exception as exc:
             print(_red(f"  Error: {exc}"), file=sys.stderr)
             return 1
@@ -112,7 +112,7 @@ def cmd_onboarding_profile(args: argparse.Namespace) -> int:
 
 # ── onboarding status ─────────────────────────────────────────────────────────
 
-def cmd_onboarding_status(args: argparse.Namespace) -> int:
+async def cmd_onboarding_status(args: argparse.Namespace) -> int:
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
 
@@ -120,7 +120,7 @@ def cmd_onboarding_status(args: argparse.Namespace) -> int:
     from onboarding.orchestrator.service import OrchestratorService
     from common.enums import OnboardingStepStatus
 
-    session = _get_db_session()
+    session = await _get_async_session()
     s_repo = SqlAlchemySettingsRepository(session)
     orch  = OrchestratorService(s_repo)
     state = orch.get_state()
@@ -143,7 +143,7 @@ def cmd_onboarding_status(args: argparse.Namespace) -> int:
     bar      = _green("█" * filled) + _dim("░" * (bar_len - filled))
     done_tag = _green("COMPLETE ✓") if state.is_complete else _yellow("in progress")
 
-    display_name, _ = _load_profile(store_dir, args.user_id)
+    display_name, _ = await _load_profile(store_dir, args.user_id)
 
     print()
     print(_bold("  ─── Onboarding Status ────────────────────────────────────────"))
@@ -163,32 +163,32 @@ def cmd_onboarding_status(args: argparse.Namespace) -> int:
 
 # ── onboarding coa ────────────────────────────────────────────────────────────
 
-def cmd_onboarding_coa(args: argparse.Namespace) -> int:
+async def cmd_onboarding_coa(args: argparse.Namespace) -> int:
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
 
     from repositories.sqla_account_repo import AccountRepository
     from onboarding.coa.service import COASetupService
 
-    session = _get_db_session()
+    session = await _get_async_session()
     svc = COASetupService(AccountRepository(session))
 
     if args.coa_command == "init":
-        if svc.is_coa_ready():
+        if await svc.is_coa_ready():
             print(_yellow("\n  COA is already initialized. Use 'coa tree' to view it.\n"))
             return 0
-        accounts = svc.create_default_coa()
+        accounts = await svc.create_default_coa()
         print()
         print(_green(f"  COA initialized — {len(accounts)} accounts created."))
         print(_dim("  Tip: run 'onboarding coa tree' to see the full tree."))
         print()
 
     elif args.coa_command == "tree":
-        if not svc.is_coa_ready():
+        if not await svc.is_coa_ready():
             print(_yellow("\n  COA not initialized yet."))
             print(_dim("  Run: python cli.py onboarding coa init\n"))
             return 0
-        tree = svc.get_coa_tree()
+        tree = await svc.get_coa_tree()
         print()
         print(_bold("  ─── Chart of Accounts ────────────────────────────────────────"))
         print(_dim("  (placeholder/group nodes are dimmed)"))
@@ -202,7 +202,7 @@ def cmd_onboarding_coa(args: argparse.Namespace) -> int:
 
 # ── onboarding institution ────────────────────────────────────────────────────
 
-def cmd_onboarding_institution(args: argparse.Namespace) -> int:
+async def cmd_onboarding_institution(args: argparse.Namespace) -> int:
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
 
@@ -211,7 +211,7 @@ def cmd_onboarding_institution(args: argparse.Namespace) -> int:
     from onboarding.institution.schemas import InstitutionCreateDTO
     from common.enums import InstitutionType
 
-    session = _get_db_session()
+    session = await _get_async_session()
     svc = InstitutionService(SqlAlchemyInstitutionRepository(session))
 
     if args.inst_command == "add":
@@ -222,7 +222,7 @@ def cmd_onboarding_institution(args: argparse.Namespace) -> int:
                 website_url=args.inst_website or None,
                 notes=args.inst_notes or None,
             )
-            created = svc.add_institution(dto)
+            created = await svc.add_institution(dto)
         except Exception as exc:
             print(_red(f"  Error: {exc}"), file=sys.stderr)
             return 1
@@ -231,7 +231,7 @@ def cmd_onboarding_institution(args: argparse.Namespace) -> int:
         print()
 
     elif args.inst_command == "list":
-        result = svc.list_institutions()
+        result = await svc.list_institutions()
         items  = result.get("items", [])
         print()
         print(_bold("  ─── Institutions ─────────────────────────────────────────────"))
@@ -252,11 +252,11 @@ def cmd_onboarding_institution(args: argparse.Namespace) -> int:
 
 # ── dispatcher ────────────────────────────────────────────────────────────────
 
-def cmd_onboarding(args: argparse.Namespace) -> int:
+async def cmd_onboarding(args: argparse.Namespace) -> int:
     dispatch = {
         "profile":     cmd_onboarding_profile,
         "status":      cmd_onboarding_status,
         "coa":         cmd_onboarding_coa,
         "institution": cmd_onboarding_institution,
     }
-    return dispatch[args.ob_command](args)
+    return await dispatch[args.ob_command](args)

@@ -12,7 +12,7 @@ from pathlib import Path
 from commands._helpers import (
     _bold, _dim, _green, _yellow, _red,
     _band_colour, _fmt_amount, _truncate,
-    _get_db_session, _load_profile, _store_stats_line,
+    _get_async_session, _load_profile, _store_stats_line,
     _resolve_llm_provider,
 )
 
@@ -152,7 +152,7 @@ def _confirm(prompt: str = "  Continue? [Y/n]: ") -> bool:
 
 # ── Stage 1: parse ────────────────────────────────────────────────────────────
 
-def cmd_pipeline_parse(args: argparse.Namespace) -> int:
+async def cmd_pipeline_parse(args: argparse.Namespace) -> int:
     """Stage 1 — detect source type + parse file into raw rows."""
     path = Path(args.file)
     if not path.is_file():
@@ -161,7 +161,7 @@ def cmd_pipeline_parse(args: argparse.Namespace) -> int:
 
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
-    _, base_currency = _load_profile(store_dir, args.user_id)
+    _, base_currency = await _load_profile(store_dir, args.user_id)
 
     file_bytes = path.read_bytes()
     batch_id   = str(uuid.uuid4())
@@ -268,11 +268,11 @@ def cmd_pipeline_parse(args: argparse.Namespace) -> int:
     _parse_llm = None
     if getattr(args, "use_llm", False):
         try:
-            _p_sess = _get_db_session()
-            _parse_llm = _resolve_llm_provider(
+            _p_sess = await _get_async_session()
+            _parse_llm = await _resolve_llm_provider(
                 _p_sess, args.user_id, getattr(args, "provider_id", None) or None
             )
-            _p_sess.close()
+            await _p_sess.close()
         except Exception:
             pass
 
@@ -319,13 +319,13 @@ def cmd_pipeline_parse(args: argparse.Namespace) -> int:
 
     if _confirm("\n  Continue to Stage 2 — Analyze now? [Y/n]: "):
         args.batch_id = batch_id
-        return cmd_pipeline_analyze(args)
+        return await cmd_pipeline_analyze(args)
     return 0
 
 
 # ── Stage 2: analyze ──────────────────────────────────────────────────────────
 
-def cmd_pipeline_analyze(args: argparse.Namespace) -> int:
+async def cmd_pipeline_analyze(args: argparse.Namespace) -> int:
     """Stage 2 — normalize + dedup + categorize + score. Allow category corrections."""
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
@@ -361,8 +361,8 @@ def cmd_pipeline_analyze(args: argparse.Namespace) -> int:
     use_llm = getattr(args, "use_llm", False) or getattr(args, "llm_all", False)
     if use_llm:
         try:
-            _session = _get_db_session()
-            llm_provider = _resolve_llm_provider(
+            _session = await _get_async_session()
+            llm_provider = await _resolve_llm_provider(
                 _session, user_id, getattr(args, "provider_id", None) or None
             )
             if llm_provider:
@@ -460,13 +460,13 @@ def cmd_pipeline_analyze(args: argparse.Namespace) -> int:
 
     if _confirm("\n  Continue to Stage 3 — Propose journal entries? [Y/n]: "):
         args.batch_id = batch_id
-        return cmd_pipeline_propose(args)
+        return await cmd_pipeline_propose(args)
     return 0
 
 
 # ── Stage 3: propose ──────────────────────────────────────────────────────────
 
-def cmd_pipeline_propose(args: argparse.Namespace) -> int:
+async def cmd_pipeline_propose(args: argparse.Namespace) -> int:
     """Stage 3 — generate journal entry proposals; allow reject before commit."""
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
@@ -545,13 +545,13 @@ def cmd_pipeline_propose(args: argparse.Namespace) -> int:
 
     if approved and _confirm("\n  Continue to Stage 4 — Commit to database? [Y/n]: "):
         args.batch_id = batch_id
-        return cmd_pipeline_commit(args)
+        return await cmd_pipeline_commit(args)
     return 0
 
 
 # ── Stage 4: commit ───────────────────────────────────────────────────────────
 
-def cmd_pipeline_commit(args: argparse.Namespace) -> int:
+async def cmd_pipeline_commit(args: argparse.Namespace) -> int:
     """Stage 4 — write approved proposals to the database as journal entries."""
     from modules.store import get_store_dir
     store_dir = Path(args.store_dir) if args.store_dir else get_store_dir()
@@ -603,17 +603,17 @@ def cmd_pipeline_commit(args: argparse.Namespace) -> int:
     )
 
     print("  Writing to database…")
-    session = _get_db_session()
+    session = await _get_async_session()
     try:
         from services.approval_service import ApprovalService  # noqa: PLC0415
-        result = ApprovalService(session).commit_proposals(approved, pydantic_batch)
-        session.commit()
+        result = await ApprovalService(session).commit_proposals(approved, pydantic_batch)
+        await session.commit()
     except Exception as exc:
-        session.rollback()
+        await session.rollback()
         print(_red(f"  Database error: {exc}"), file=sys.stderr)
         return 1
     finally:
-        session.close()
+        await session.close()
 
     committed     = result["committed"]
     skipped       = result["skipped"]
@@ -638,7 +638,7 @@ def cmd_pipeline_commit(args: argparse.Namespace) -> int:
 
 # ── Status: list / inspect batches ────────────────────────────────────────────
 
-def cmd_pipeline_status(args: argparse.Namespace) -> int:
+async def cmd_pipeline_status(args: argparse.Namespace) -> int:
     """List all saved batches or show detail for one batch."""
     from modules.store import get_store_dir
     store_dir   = Path(args.store_dir) if args.store_dir else get_store_dir()
@@ -693,7 +693,7 @@ def cmd_pipeline_status(args: argparse.Namespace) -> int:
 
 # ── Dispatcher ────────────────────────────────────────────────────────────────
 
-def cmd_pipeline(args: argparse.Namespace) -> int:
+async def cmd_pipeline(args: argparse.Namespace) -> int:
     dispatch = {
         "parse":   cmd_pipeline_parse,
         "analyze": cmd_pipeline_analyze,
@@ -701,4 +701,4 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
         "commit":  cmd_pipeline_commit,
         "status":  cmd_pipeline_status,
     }
-    return dispatch[args.pl_command](args)
+    return await dispatch[args.pl_command](args)

@@ -1,4 +1,4 @@
-﻿"""Ledger 3.0 — CLI entry point.
+"""Ledger 3.0 — CLI entry point.
 
 All command logic lives in the commands/ package:
   commands/_helpers.py    — shared colour/format helpers, DB session, profile loader
@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import sys
@@ -24,7 +25,7 @@ logging.getLogger("modules").setLevel(logging.INFO)
 logging.getLogger("core").setLevel(logging.INFO)
 
 
-def main() -> None:
+async def main() -> None:
     from commands.parser import build_parser
     from commands.onboarding import cmd_onboarding
     from commands.cmd_import import cmd_import
@@ -41,21 +42,21 @@ def main() -> None:
     configure_store_dir(get_store_dir())
 
     # Ensure DB tables exist and seed default Chart of Accounts if the accounts table is empty
-    from commands._helpers import _get_db_session
+    from commands._helpers import _get_async_session
     from sqlalchemy import func, select
-    _seed = _get_db_session()
+    _seed = await _get_async_session()
     try:
         from db.models.accounts import Account
-        count = _seed.scalar(select(func.count()).select_from(Account))
+        count = await _seed.scalar(select(func.count()).select_from(Account))
         if count == 0:
             from repositories.sqla_account_repo import AccountRepository
             from onboarding.coa.service import COASetupService
-            COASetupService(AccountRepository(_seed)).create_default_coa()
-            _seed.commit()
+            await COASetupService(AccountRepository(_seed)).create_default_coa()
+            await _seed.commit()
     except Exception:
         pass
     finally:
-        _seed.close()
+        await _seed.close()
 
     dispatch = {
         "import":     cmd_import,
@@ -63,8 +64,8 @@ def main() -> None:
         "info":       cmd_info,
         "onboarding": cmd_onboarding,
     }
-    sys.exit(dispatch[args.command](args))
+    sys.exit(await dispatch[args.command](args))
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -1,9 +1,9 @@
-﻿from contextlib import contextmanager
-from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import AsyncSession
 from db.engine import SessionFactory
 
-@contextmanager
-def unit_of_work(existing_session: Session | None = None):
+@asynccontextmanager
+async def unit_of_work(existing_session: AsyncSession | None = None):
     if existing_session is not None:
         yield existing_session
         return
@@ -11,9 +11,9 @@ def unit_of_work(existing_session: Session | None = None):
     session = SessionFactory()
     try:
         yield session
-        session.commit()
+        await session.commit()
     except Exception:
-        session.rollback()
+        await session.rollback()
         raise
     finally:
-        session.close()
+        await session.close()

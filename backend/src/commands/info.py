@@ -6,15 +6,15 @@ from pathlib import Path
 
 from commands._helpers import (
     _bold, _dim, _green, _yellow,
-    _get_db_session, _repos, _load_profile,
+    _get_async_session, _repos, _load_profile,
 )
 
 
-def cmd_info(args: argparse.Namespace) -> int:
+async def cmd_info(args: argparse.Namespace) -> int:
     from modules.store import store_stats, get_store_dir
     store_dir    = Path(args.store_dir) if args.store_dir else get_store_dir()
     stats        = store_stats()
-    display_name, base_currency = _load_profile(store_dir, args.user_id)
+    display_name, base_currency = await _load_profile(store_dir, args.user_id)
 
     print()
     print(_bold("  Ledger 3.0 — Info"))
@@ -34,7 +34,7 @@ def cmd_info(args: argparse.Namespace) -> int:
 
     if display_name != args.user_id:
         try:
-            s_repo, _, _ = _repos(store_dir, args.user_id)
+            s_repo, _, _ = await _repos(store_dir, args.user_id)
             from onboarding.orchestrator.service import OrchestratorService
             state   = OrchestratorService(s_repo).get_state()
             bar_len = 20

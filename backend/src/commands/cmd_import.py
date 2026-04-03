@@ -10,12 +10,12 @@ from pathlib import Path
 from commands._helpers import (
     _bold, _dim, _green, _yellow, _red,
     _band_colour, _fmt_amount, _truncate,
-    _get_db_session, _load_profile, _store_stats_line,
+    _get_async_session, _load_profile, _store_stats_line,
     _resolve_llm_provider,
 )
 
 
-def cmd_import(args: argparse.Namespace) -> int:
+async def cmd_import(args: argparse.Namespace) -> int:
     """Full pipeline: detect → parse → normalize → dedup → categorize → propose."""
     path = Path(args.file)
     if not path.is_file():
@@ -29,7 +29,7 @@ def cmd_import(args: argparse.Namespace) -> int:
 
     from modules.store import get_store_dir
     store_dir    = Path(args.store_dir) if args.store_dir else get_store_dir()
-    display_name, base_currency = _load_profile(store_dir, user_id)
+    display_name, base_currency = await _load_profile(store_dir, user_id)
 
     from core.models.source_map import get_source_account as _get_src_acct
     _src_info_early = _get_src_acct(account_type_override=args.account_type or None)
@@ -117,11 +117,11 @@ def cmd_import(args: argparse.Namespace) -> int:
     _parse_llm = None
     if getattr(args, "use_llm", False) or getattr(args, "llm_all", False):
         try:
-            _p_sess = _get_db_session()
-            _parse_llm = _resolve_llm_provider(
+            _p_sess = await _get_async_session()
+            _parse_llm = await _resolve_llm_provider(
                 _p_sess, user_id, getattr(args, "provider_id", None) or None
             )
-            _p_sess.close()
+            await _p_sess.close()
             if _parse_llm:
                 print(f"  {'LLM fallback:':<16} {_parse_llm.PROVIDER_NAME}  {_dim('(vision mode — for scanned PDFs)')}")
             else:
@@ -157,12 +157,12 @@ def cmd_import(args: argparse.Namespace) -> int:
     llm_provider = None
     _session = None
     try:
-        _session = _get_db_session()
-        acc = AccountRepository(_session).find_by_code(account_id)
+        _session = await _get_async_session()
+        acc = await AccountRepository(_session).find_by_code(account_id)
         if acc:
-            db_hashes = TransactionRepository(_session).get_committed_hashes_for_account(acc.id)
+            db_hashes = await TransactionRepository(_session).get_committed_hashes_for_account(acc.id)
         if getattr(args, "use_llm", False) or getattr(args, "llm_all", False):
-            llm_provider = _resolve_llm_provider(
+            llm_provider = await _resolve_llm_provider(
                 _session, user_id, getattr(args, "provider_id", None) or None
             )
             if llm_provider:

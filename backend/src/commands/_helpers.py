@@ -43,29 +43,19 @@ def _safe_uid(user_id: str) -> str:
 
 # ── Database / repositories ───────────────────────────────────────────────────
 
-def _get_db_session():
-    """Return a SQLAlchemy Session connected to the shared SQLite DB."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from db.engine import init_db
-    from config import get_settings
-
-    db_url = get_settings().database_url
-    if db_url.startswith("sqlite:///"):
-        Path(db_url[len("sqlite:///"):]).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(db_url, connect_args={"check_same_thread": False})
-    init_db(engine)
-    Session = sessionmaker(bind=engine, autoflush=True, autocommit=False)
-    return Session()
+async def _get_async_session():
+    """Return an AsyncSession connected to the configured PostgreSQL database."""
+    from db.engine import SessionFactory
+    return SessionFactory()
 
 
-def _repos(store_dir: Path, user_id: str):
+async def _repos(store_dir: Path, user_id: str):
     """Return (settings_repo, account_repo, institution_repo)."""
     from repositories.sqla_settings_repo import SqlAlchemySettingsRepository
     from repositories.sqla_account_repo import AccountRepository
     from repositories.sqla_institution_repo import SqlAlchemyInstitutionRepository
 
-    session = _get_db_session()
+    session = await _get_async_session()
     return (
         SqlAlchemySettingsRepository(session),
         AccountRepository(session),
@@ -73,13 +63,13 @@ def _repos(store_dir: Path, user_id: str):
     )
 
 
-def _load_profile(store_dir: Path, user_id: str) -> tuple[str, str]:
+async def _load_profile(store_dir: Path, user_id: str) -> tuple[str, str]:
     """Return (display_name, base_currency). Falls back to (user_id, 'INR')."""
     try:
         from repositories.sqla_profile_repo import SqlAlchemyProfileRepository
-        session = _get_db_session()
+        session = await _get_async_session()
         repo = SqlAlchemyProfileRepository(session)
-        profiles = repo.list(limit=1, sort_by="id")
+        profiles = await repo.list(limit=1, sort_by="id")
         if profiles:
             p = profiles[0]
             return p.display_name, str(p.base_currency)
@@ -94,7 +84,7 @@ def _store_stats_line() -> str:
     return s["store_dir"]
 
 
-def _resolve_llm_provider(session, user_id: str, provider_id: str | None = None):
+async def _resolve_llm_provider(session, user_id: str, provider_id: str | None = None):
     """Return a configured LLM provider instance from the database, or None."""
     try:
         from sqlalchemy import select  # noqa: PLC0415
@@ -110,7 +100,7 @@ def _resolve_llm_provider(session, user_id: str, provider_id: str | None = None)
                 LlmProvider.user_id == user_id,
                 LlmProvider.is_default.is_(True),
             )
-        row = session.scalar(stmt)
+        row = await session.scalar(stmt)
 
         if row is None:
             # Fall back to first active provider
@@ -118,7 +108,7 @@ def _resolve_llm_provider(session, user_id: str, provider_id: str | None = None)
                 LlmProvider.user_id == user_id,
                 LlmProvider.is_active.is_(True),
             )
-            row = session.scalar(stmt)
+            row = await session.scalar(stmt)
 
         if row is None:
             return None
