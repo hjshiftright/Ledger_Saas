@@ -662,16 +662,12 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[2px] mb-2">What I own</p>
           <div className="flex items-baseline gap-2">
             <p className="text-4xl font-black text-[#2C4A70]">{inr(totalA)}</p>
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">+2.4%</span>
           </div>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative overflow-hidden">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[2px] mb-2">What I owe</p>
           <div className="flex items-baseline gap-2">
             <p className="text-4xl font-black text-[#2C4A70]">{inr(totalL)}</p>
-            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400" /> Fixed
-            </span>
           </div>
         </div>
         <div className={`rounded-2xl p-6 shadow-xl ${netWorth >= 0 ? 'bg-[#2C4A70] shadow-[#2C4A70]/20' : 'bg-rose-600 shadow-rose-600/20'}`}>
