@@ -99,7 +99,7 @@ services:
       # admin / migrations → PostgreSQL directly (bypasses PgBouncer — DDL needs a stable session)
       ADMIN_DATABASE_URL: postgresql+asyncpg://ledger:ledger_secret@db:5432/ledger
       APP_ENV:         production
-      APP_HOST:        0.0.0.0
+      APP_HOST:        ${APP_HOST:-0.0.0.0}
       APP_PORT:        "8000"
       APP_DEBUG:       "false"
       # Change this to a long random string before going to production
