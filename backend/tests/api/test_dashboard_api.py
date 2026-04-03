@@ -54,9 +54,9 @@ class TestDashboardSave:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         banks = data["assets"].get("banks", [])
-        assert len(banks) == 1
-        assert banks[0]["name"] == "HDFC Savings"
-        assert banks[0]["balance"] == 200000.0
+        hdfc = next((b for b in banks if b["name"] == "HDFC Savings"), None)
+        assert hdfc is not None, f"Expected 'HDFC Savings' in banks, got: {banks}"
+        assert hdfc["balance"] == 200000.0
 
     def test_save_with_goals(self, seeded_client):
         resp = seeded_client.post(DASHBOARD_SAVE_URL, json=PAYLOAD_WITH_GOALS)

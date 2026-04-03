@@ -49,7 +49,7 @@ class _StoredJob:
     confidence: float
     tokens_used: int
     processing_ms: float
-    created_at: datetime = field(default_factory=datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 _jobs: dict[str, list[_StoredJob]] = {}

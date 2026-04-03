@@ -52,7 +52,7 @@ class PendingTransaction:
     revised_category: str | None = None   # Set when user overrides the category
 
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     reviewed_at: datetime | None = None   # Set when user acts on this item
 
     # Link to the approved Transaction (set after APPROVED)
