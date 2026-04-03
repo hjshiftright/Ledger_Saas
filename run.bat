@@ -19,7 +19,7 @@ set PG_USER=ledger
 set PG_PASS=ledger_secret
 set PG_DB=ledger
 set PG_HOST=127.0.0.1
-set PG_PORT=5432
+set PG_PORT=5433
 set PGB_PORT=6432
 
 :: Async URL via PgBouncer — used by the main SQLAlchemy engine (asyncpg)

@@ -10,8 +10,11 @@ services:
       POSTGRES_PASSWORD: ledger_secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # PostgreSQL is NOT exposed to the host — all app traffic goes through PgBouncer.
+    # Port 5432 exposed to host for local dev — admin engine and Alembic connect directly.
     # Admin access: docker compose exec db psql -U ledger ledger
+    # Exposed on 5433 to avoid conflict with any local PostgreSQL on port 5432.
+    ports:
+      - "5433:5432"
     healthcheck:
       test:     ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
       interval: 5s

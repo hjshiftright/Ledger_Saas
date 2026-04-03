@@ -17,6 +17,7 @@ import GoalsPage from './GoalsPage';
 import ReportsPage from './ReportsPage';
 import ImportWizard from './ImportWizard';
 import SettingsPage from './SettingsPage';
+import { FinnyInline } from './FinnyAssistant.jsx';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────
 const SK = {
@@ -480,18 +481,12 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
     return allNeg && (data.assets?.length > 0 || data.liabilities?.length > 0);
   });
 
-  const [messages, setMessages] = useState([
-    { role: 'ai', text: "I've pre-filled a starting map based on your profile. You can edit any entry, remove what doesn't apply, or just tell me what you own and owe in plain language." }
-  ]);
-  const [input, setInput] = useState('');
-  const [thinking, setThinking] = useState(false);
-  const chatEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const finnyRef = useRef(null);
 
   const clearDummy = () => {
     setData(d => ({ ...d, assets: [], liabilities: [] }));
     setIsDummy(false);
-    setMessages(m => [...m, { role: 'ai', text: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." }]);
+    finnyRef.current?.addMessage({ role: 'finny', content: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." });
   };
 
   const [dialog, setDialog] = useState(false);
@@ -516,10 +511,10 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   const handleDialogAdd = (item, kind) => {
     if (kind === 'asset') {
       addAsset(item);
-      setMessages(m => [...m, { role: 'ai', text: `Added **${item.name}** (${inr(item.value)}). Anything else?` }]);
+      finnyRef.current?.addMessage({ role: 'finny', content: `Added **${item.name}** (${inr(item.value)}). Anything else?` });
     } else {
       addLib(item);
-      setMessages(m => [...m, { role: 'ai', text: `Recorded **${item.name}** (${inr(item.value)}). Anything else to add?` }]);
+      finnyRef.current?.addMessage({ role: 'finny', content: `Recorded **${item.name}** (${inr(item.value)}). Anything else to add?` });
     }
     setDialog(false);
   };
@@ -591,27 +586,16 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
       message = "I couldn't quite catch the specific amounts or institutions. Try saying something like 'I have a savings account with 5L in HDFC' or 'HDFC home loan of 30L'.";
     }
 
-    setMessages(prev => [...prev, { role: 'assistant', text: message }]);
+    return message;
   };
 
-  const totalA      = assets.reduce((s, a) => s + a.value, 0);
-  const totalL      = liabilities.reduce((s, a) => s + a.value, 0);
-  const netWorth    = totalA - totalL;
+  const totalA   = assets.reduce((s, a) => s + a.value, 0);
+  const totalL   = liabilities.reduce((s, a) => s + a.value, 0);
+  const netWorth = totalA - totalL;
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const sendMessage = (text) => {
-    if (!text.trim()) return;
-    const userMsg = { role: 'user', text };
-    setMessages(m => [...m, userMsg]);
-    setInput('');
-    setThinking(true);
-
-    setTimeout(() => {
-      simulateAIResponse(text);
-      setThinking(false);
-      inputRef.current?.focus();
-    }, 800);
+  const handleFinnySend = async (text) => {
+    await new Promise(r => setTimeout(r, 800));
+    return simulateAIResponse(text);
   };
 
   const removeAsset = (id) => { setIsDummy(false); setData(d => ({ ...d, assets: d.assets.filter(a => a.id !== id) })); };
@@ -623,7 +607,7 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
     salaried: [
       { id: 'epf',      check: (a) => !a.some(x => /epf|pf|provident/i.test(x.name)), emoji: '🏦', text: 'As a salaried employee, your EPF corpus is likely your largest retirement asset. Add it under investments.' },
       { id: 'fd',       check: (a) => !a.some(x => /fd|fixed.deposit/i.test(x.name)),  emoji: '💰', text: 'Most salaried professionals keep a Fixed Deposit as an emergency buffer. Don\'t forget to add it.' },
-      { id: 'creditcard', check: (_, l) => !l.some(x => /credit.card|card/i.test(x.name)), emoji: '💳', text: 'Credit card outstanding is often overlooked. Add your current card balance under what you owe.' },
+      { id: 'creditcard', check: (_, l) => !l.some(x => x.type === 'credit' || /credit.card/i.test(x.name)), emoji: '💳', text: 'Credit card outstanding is often overlooked. Add your current card balance under what you owe.' },
     ],
     business: [
       { id: 'currentacc', check: (a) => !a.some(x => /current.account|business.account/i.test(x.name)), emoji: '🏦', text: 'Add your business current account separately from personal savings for accurate net worth tracking.' },
@@ -653,14 +637,6 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
           <p className="text-slate-400 text-sm mt-1">
             We have synthesized your digital footprint into a private architectural view of your wealth.
           </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0 ml-6">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span> Safe & Local
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-            <Shield size={12} className="text-[#2C4A70]" /> End-to-End Encrypted
-          </div>
         </div>
       </div>
 
@@ -860,88 +836,16 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
         {/* Divider */}
         <div className="w-px bg-slate-200 shrink-0" />
 
-        {/* Right — AI assistant sidebar */}
-        <div className="w-[380px] shrink-0 flex flex-col bg-white border-l border-slate-100">
-          {/* Assistant Header */}
-          <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between bg-white z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#2C4A70] rounded-2xl flex items-center justify-center shadow-lg shadow-[#2C4A70]/20">
-                <Sparkles size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-[#2C4A70] tracking-tight">Ledger Assistant</p>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Processing Local</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {m.role === 'ai' && (
-                  <div className="w-6 h-6 bg-[#2C4A70] rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                    <Sparkles size={11} className="text-white" />
-                  </div>
-                )}
-                <div className={`max-w-[260px] px-4 py-3 rounded-2xl text-sm leading-relaxed
-                  ${m.role === 'user'
-                    ? 'bg-[#2C4A70] text-white rounded-tr-sm'
-                    : 'bg-slate-100 text-slate-700 rounded-tl-sm'}`}
-                  dangerouslySetInnerHTML={{
-                    __html: m.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>')
-                  }}
-                />
-              </div>
-            ))}
-            {thinking && (
-              <div className="flex justify-start">
-                <div className="w-6 h-6 bg-[#2C4A70] rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                  <Sparkles size={11} className="text-white" />
-                </div>
-                <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Suggested prompts — only before any entries */}
-          {!hasAny && messages.length <= 1 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-2">
-              {SUGGESTED_PROMPTS.slice(0, 3).map((p, i) => (
-                <button key={i} onClick={() => sendMessage(p)}
-                  className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 text-slate-500 hover:border-[#2C4A70] hover:text-[#2C4A70] transition-all">
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input */}
-          <div className="px-4 pb-4 pt-2 border-t border-slate-100">
-            <div className="flex gap-2 items-end">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-                placeholder="E.g. HDFC savings ₹3L, home loan ₹28L…"
-                rows={2}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 resize-none focus:outline-none focus:border-[#2C4A70] focus:ring-4 focus:ring-[#2C4A70]/10 transition-all"
-              />
-              <button onClick={() => sendMessage(input)} disabled={!input.trim() || thinking}
-                className="w-10 h-10 bg-[#2C4A70] hover:bg-[#1F344F] disabled:opacity-40 rounded-xl flex items-center justify-center transition-all shadow-md shrink-0">
-                <Send size={16} className="text-white" />
-              </button>
-            </div>
-          </div>
+        {/* Right — Finny assistant sidebar */}
+        <div className="w-[380px] shrink-0 flex flex-col border-l border-slate-100">
+          <FinnyInline
+            ref={finnyRef}
+            subtitle="Your financial companion"
+            placeholder="E.g. HDFC savings ₹3L, home loan ₹28L…"
+            prompts={!hasAny ? SUGGESTED_PROMPTS.slice(0, 3) : []}
+            initialMessage="I've pre-filled a starting map based on your profile. You can edit any entry, remove what doesn't apply, or just tell me what you own and owe in plain language."
+            onSend={handleFinnySend}
+          />
         </div>
       </div>
 
@@ -1217,15 +1121,6 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
   });
 
   const [goalDialog, setGoalDialog] = useState(null);
-  const [goalMessages, setGoalMessages] = useState([
-    { role: 'ai', text: "I'm your Goal Advisor. Ask me anything about saving strategies, timelines, or how to prioritise your financial milestones." }
-  ]);
-  const [goalInput, setGoalInput] = useState('');
-  const [goalThinking, setGoalThinking] = useState(false);
-  const goalChatEndRef = useRef(null);
-  const goalInputRef = useRef(null);
-
-  useEffect(() => { goalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [goalMessages]);
 
   const clearDummyGoals = () => {
     setData(d => ({ ...d, goals: [], goalDetails: {}, dummyGoalDetails: [] }));
@@ -1253,22 +1148,15 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
     });
   };
 
-  const sendGoalMessage = (text) => {
-    if (!text.trim()) return;
-    setGoalMessages(m => [...m, { role: 'user', text }]);
-    setGoalInput('');
-    setGoalThinking(true);
-    setTimeout(() => {
-      const lower = text.toLowerCase();
-      let reply = "That's a thoughtful question. Based on your goals, I'd suggest reviewing your emergency fund first — it's the foundation everything else rests on. Once that's set, allocate surplus income toward your highest-priority goal using a SIP or recurring deposit.";
-      if (lower.includes('retire')) reply = "For retirement, the rule of thumb is to save 15–20% of monthly income. With a 20-year horizon, even ₹10,000/month compounding at 12% grows to ~₹1 crore. Start early, stay consistent.";
-      if (lower.includes('home') || lower.includes('house')) reply = "For a home purchase, target a 20% down payment to avoid PMI and keep EMIs manageable. If your goal is ₹20L down payment in 5 years, you need to save ~₹27,000/month at 8% returns.";
-      if (lower.includes('emergency')) reply = "Emergency fund goal: 6 months of expenses in a liquid account. For most households, ₹3–6L is a good target. Prioritise this before any investment-linked goal.";
-      if (lower.includes('priorit')) reply = "Priority order: 1) Emergency fund 2) High-interest debt clearance 3) Retirement (start early for compounding) 4) Medium-term goals like education or home down payment.";
-      setGoalMessages(m => [...m, { role: 'ai', text: reply }]);
-      setGoalThinking(false);
-      goalInputRef.current?.focus();
-    }, 900);
+  const handleGoalFinnySend = async (text) => {
+    await new Promise(r => setTimeout(r, 900));
+    const lower = text.toLowerCase();
+    let reply = "That's a thoughtful question. Based on your goals, I'd suggest reviewing your emergency fund first — it's the foundation everything else rests on. Once that's set, allocate surplus income toward your highest-priority goal using a SIP or recurring deposit.";
+    if (lower.includes('retire')) reply = "For retirement, the rule of thumb is to save 15–20% of monthly income. With a 20-year horizon, even ₹10,000/month compounding at 12% grows to ~₹1 crore. Start early, stay consistent.";
+    if (lower.includes('home') || lower.includes('house')) reply = "For a home purchase, target a 20% down payment to avoid PMI and keep EMIs manageable. If your goal is ₹20L down payment in 5 years, you need to save ~₹27,000/month at 8% returns.";
+    if (lower.includes('emergency')) reply = "Emergency fund goal: 6 months of expenses in a liquid account. For most households, ₹3–6L is a good target. Prioritise this before any investment-linked goal.";
+    if (lower.includes('priorit')) reply = "Priority order: 1) Emergency fund 2) High-interest debt clearance 3) Retirement (start early for compounding) 4) Medium-term goals like education or home down payment.";
+    return reply;
   };
 
   const GOAL_TYPE_MAP = {
@@ -1360,26 +1248,33 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
               if (!opt) return null;
               const Icon = opt.icon;
               return (
-                <button key={gd.id} onClick={() => setGoalDialog(opt)}
-                  className="flex flex-col gap-3 p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/60 text-left hover:border-amber-300 hover:shadow-sm transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                      <Icon size={17} className="text-amber-700" />
+                <div key={gd.id} className="relative group">
+                  <button onClick={() => setGoalDialog(opt)}
+                    className="w-full flex flex-col gap-3 p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/60 text-left hover:border-amber-300 hover:shadow-sm transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                        <Icon size={17} className="text-amber-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-800">{opt.label}</p>
+                        <p className="text-xs text-slate-400 truncate">{gd.note}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-slate-800">{opt.label}</p>
-                      <p className="text-xs text-slate-400 truncate">{gd.note}</p>
+                    <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-amber-100">
+                      <p className="text-xs font-black text-[#2C4A70]">{inr(gd.targetAmount)}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        {gd.timelineMonths >= 12 ? `${gd.timelineMonths / 12}yr` : `${gd.timelineMonths}mo`}
+                      </p>
+                      <p className="text-[10px] text-slate-400">~{inr(Math.ceil(gd.targetAmount / gd.timelineMonths))}/mo</p>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-amber-100">
-                    <p className="text-xs font-black text-[#2C4A70]">{inr(gd.targetAmount)}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold">
-                      {gd.timelineMonths >= 12 ? `${gd.timelineMonths / 12}yr` : `${gd.timelineMonths}mo`}
-                    </p>
-                    <p className="text-[10px] text-slate-400">~{inr(Math.ceil(gd.targetAmount / gd.timelineMonths))}/mo</p>
-                  </div>
-                  <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1"><Pencil size={9} /> Click to configure</p>
-                </button>
+                    <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1"><Pencil size={9} /> Click to configure</p>
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setData(d => ({ ...d, dummyGoalDetails: (d.dummyGoalDetails || []).filter(x => x.id !== gd.id) })); }}
+                    className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:border-rose-200 shadow-sm">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
               );
             })}
 
@@ -1389,38 +1284,47 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
               const detail = (data.goalDetails || {})[g.id];
               const Icon = g.icon;
               return (
-                <button key={g.id} onClick={() => setGoalDialog(g)}
-                  className={`flex flex-col gap-3 p-5 rounded-2xl border-2 text-left transition-all
-                    ${active ? 'border-[#526B5C] bg-[#526B5C]/5 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-[#526B5C] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                      <Icon size={17} />
+                <div key={g.id} className="relative group">
+                  <button onClick={() => setGoalDialog(g)}
+                    className={`w-full flex flex-col gap-3 p-5 rounded-2xl border-2 text-left transition-all
+                      ${active ? 'border-[#526B5C] bg-[#526B5C]/5 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-[#526B5C] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        <Icon size={17} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-bold text-sm ${active ? 'text-[#2C4A70]' : 'text-slate-700'}`}>{g.label}</p>
+                        <p className="text-xs text-slate-400 truncate">{g.desc}</p>
+                      </div>
+                      {active && (
+                        <span className="bg-[#526B5C] text-white rounded-full p-0.5 shrink-0">
+                          <Check size={11} strokeWidth={3} />
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-bold text-sm ${active ? 'text-[#2C4A70]' : 'text-slate-700'}`}>{g.label}</p>
-                      <p className="text-xs text-slate-400 truncate">{g.desc}</p>
-                    </div>
-                    {active && (
-                      <span className="bg-[#526B5C] text-white rounded-full p-0.5 shrink-0">
-                        <Check size={11} strokeWidth={3} />
-                      </span>
+                    {detail ? (
+                      <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-[#526B5C]/15">
+                        <p className="text-xs font-black text-[#2C4A70]">{inr(detail.targetAmount)}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12}yr` : `${detail.timelineMonths}mo`}
+                        </p>
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full
+                          ${detail.priority === 'high' ? 'bg-rose-50 text-rose-500' : detail.priority === 'low' ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-500'}`}>
+                          {detail.priority}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-300 flex items-center gap-1"><Plus size={10} /> Click to configure</p>
                     )}
-                  </div>
-                  {detail ? (
-                    <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-[#526B5C]/15">
-                      <p className="text-xs font-black text-[#2C4A70]">{inr(detail.targetAmount)}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold">
-                        {detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12}yr` : `${detail.timelineMonths}mo`}
-                      </p>
-                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full
-                        ${detail.priority === 'high' ? 'bg-rose-50 text-rose-500' : detail.priority === 'low' ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-500'}`}>
-                        {detail.priority}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-300 flex items-center gap-1"><Plus size={10} /> Click to configure</p>
+                  </button>
+                  {active && (
+                    <button
+                      onClick={e => { e.stopPropagation(); removeGoal(g.id); }}
+                      className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:border-rose-200 shadow-sm">
+                      <Trash2 size={11} />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -1433,70 +1337,16 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
           </div>
         </div>
 
-        {/* RIGHT — Goal Advisor AI chat */}
-        <div className="flex flex-col w-[45%] bg-white">
-          {/* Chat header */}
-          <div className="px-6 py-4 border-b border-slate-100 shrink-0 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#526B5C] flex items-center justify-center">
-              <Target size={17} className="text-white" />
-            </div>
-            <div>
-              <p className="font-bold text-sm text-slate-800">Goal Advisor</p>
-              <p className="text-xs text-slate-400">AI-powered goal planning</p>
-            </div>
-            <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-            {goalMessages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed
-                  ${m.role === 'user'
-                    ? 'bg-[#526B5C] text-white rounded-br-sm'
-                    : 'bg-slate-100 text-slate-700 rounded-bl-sm'}`}>
-                  {m.text.split('**').map((part, pi) =>
-                    pi % 2 === 1 ? <strong key={pi}>{part}</strong> : part
-                  )}
-                </div>
-              </div>
-            ))}
-            {goalThinking && (
-              <div className="flex justify-start">
-                <div className="bg-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center">
-                  {[0, 1, 2].map(i => (
-                    <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-[#526B5C]"
-                      animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />
-                  ))}
-                </div>
-              </div>
-            )}
-            <div ref={goalChatEndRef} />
-          </div>
-
-          {/* Quick prompts */}
-          <div className="px-4 py-2 flex gap-2 flex-wrap border-t border-slate-100 shrink-0">
-            {GOALS_AI_PROMPTS.map((p, i) => (
-              <button key={i} onClick={() => sendGoalMessage(p)}
-                className="text-[11px] font-semibold bg-[#526B5C]/10 text-[#526B5C] border border-[#526B5C]/20 hover:bg-[#526B5C]/20 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">
-                {p}
-              </button>
-            ))}
-          </div>
-
-          {/* Input */}
-          <div className="px-4 pb-4 pt-2 shrink-0">
-            <div className="flex gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2 focus-within:border-[#526B5C] focus-within:ring-4 focus-within:ring-[#526B5C]/10 transition-all">
-              <input ref={goalInputRef} value={goalInput} onChange={e => setGoalInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendGoalMessage(goalInput)}
-                placeholder="Ask about saving strategies, timelines…"
-                className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none" />
-              <button onClick={() => sendGoalMessage(goalInput)} disabled={!goalInput.trim()}
-                className="w-8 h-8 rounded-xl bg-[#526B5C] disabled:bg-slate-200 flex items-center justify-center transition-colors shrink-0">
-                <Send size={14} className="text-white" />
-              </button>
-            </div>
-          </div>
+        {/* RIGHT — Finny goal assistant */}
+        <div className="w-[380px] shrink-0 flex flex-col border-l border-slate-100">
+          <FinnyInline
+            subtitle="Your financial companion"
+            placeholder="Ask about saving strategies, timelines…"
+            prompts={GOALS_AI_PROMPTS}
+            showPromptsAlways
+            initialMessage="I'm Finny, your financial companion. Ask me anything about saving strategies, timelines, or how to prioritise your financial milestones."
+            onSend={handleGoalFinnySend}
+          />
         </div>
       </div>
 
@@ -1528,10 +1378,51 @@ const DASH_TABS = [
   { id: 'settings',  label: 'Settings',  icon: Settings        },
 ];
 
-function DashboardsSection({ onboardingData }) {
+function DashboardsSection({ onboardingData, completedSections = {}, onNavigate }) {
   const [tab, setTab] = useState('overview');
+
+  const missing = [
+    !completedSections.mapping  && { id: 'mapping',  label: 'Mapping',   desc: 'your assets & liabilities' },
+    !completedSections.goals    && { id: 'goals',     label: 'Goals',     desc: 'your financial goals'      },
+    !completedSections.cashflow && { id: 'cashflow',  label: 'Cash Flow', desc: 'your income & expenses'    },
+  ].filter(Boolean);
+
   return (
     <div className="flex flex-col h-full">
+
+      {/* Sample data disclaimer */}
+      {missing.length > 0 && (
+        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-2.5">
+            <span className="text-base shrink-0 mt-0.5">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                You're viewing sample data — this is not your real financial picture.
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Complete{' '}
+                {missing.map((s, i) => (
+                  <span key={s.id}>
+                    <button onClick={() => onNavigate(s.id)}
+                      className="font-bold underline underline-offset-2 hover:text-amber-900 transition-colors">
+                      {s.label}
+                    </button>
+                    {i < missing.length - 2 ? ', ' : i === missing.length - 2 ? ' and ' : ''}
+                  </span>
+                ))}
+                {' '}to see your actual numbers.
+              </p>
+            </div>
+          </div>
+          {missing.length === 1 && (
+            <button onClick={() => onNavigate(missing[0].id)}
+              className="shrink-0 text-xs font-bold text-amber-800 border border-amber-300 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+              Go to {missing[0].label} →
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Sub-tab bar */}
       <div className="bg-white border-b border-slate-200 px-6 flex items-center gap-0.5 overflow-x-auto shrink-0">
         {DASH_TABS.map(({ id, label, icon: Icon }) => (
@@ -1680,9 +1571,6 @@ function AnnualExpensesView({ data, setData, onBack, onComplete }) {
           <span className="text-sm font-semibold text-slate-600">Annual Irregular Expense Mapping</span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#526B5C] bg-green-50 border border-green-100 px-3 py-1.5 rounded-full">
-            <Shield size={11} className="text-green-500" /> VAULT PROTECTED
-          </div>
           <div className="w-8 h-8 rounded-full bg-[#2C4A70] flex items-center justify-center">
             <User size={14} className="text-white" />
           </div>
@@ -2044,9 +1932,6 @@ function CashFlowSection({ data, setData, annualData, setAnnualData, onBack, onC
           <span className="text-sm font-semibold text-slate-600">Cash Flow Discovery</span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#526B5C] bg-green-50 border border-green-100 px-3 py-1.5 rounded-full">
-            <Shield size={11} className="text-green-500" /> VAULT PROTECTED
-          </div>
           <div className="w-8 h-8 rounded-full bg-[#2C4A70] flex items-center justify-center">
             <User size={14} className="text-white" />
           </div>
@@ -2245,10 +2130,40 @@ const DEFAULT_GOALS    = { goals: [], incomeString: '', expenses: { housing: '',
 // DEFAULT_CASHFLOW is defined above CashFlowSection
 
 function Hub({ sections, setSections, profileData, setProfileData, userEmail, onLogout }) {
-  const [mappingData,      setMappingData]      = useState(() => loadJson(SK.mapping,        DEFAULT_MAPPING));
-  const [goalsData,        setGoalsData]        = useState(() => loadJson(SK.goals,          DEFAULT_GOALS));
-  const [cashflowData,     setCashflowData]     = useState(() => loadJson(SK.cashflow,       DEFAULT_CASHFLOW));
-  const [annualData,       setAnnualData]       = useState(() => loadJson(SK.annualexpenses, DEFAULT_ANNUAL));
+  // Start with empty defaults — never read localStorage.
+  // useEffect below populates from the DB; until it resolves we show a spinner
+  // so child sections (MappingSection etc.) don't mount with stale state.
+  const [mappingData,      setMappingData]      = useState(DEFAULT_MAPPING);
+  const [goalsData,        setGoalsData]        = useState(DEFAULT_GOALS);
+  const [cashflowData,     setCashflowData]     = useState(DEFAULT_CASHFLOW);
+  const [annualData,       setAnnualData]       = useState(DEFAULT_ANNUAL);
+  const [dbReady,          setDbReady]          = useState(false);
+
+  useEffect(() => {
+    API.dashboard.load()
+      .then(dbData => {
+        if (!dbData) return;
+        // Map assets/liabilities from DB format to flat arrays the form expects
+        const flatAssets = Object.entries(dbData.assets || {}).flatMap(([cat, items]) =>
+          items.map(a => ({ id: a.id, name: a.name, value: a.balance, type: cat }))
+        );
+        const flatLiabilities = Object.entries(dbData.liabilities || {}).flatMap(([cat, items]) =>
+          items.map(l => ({ id: l.id, name: l.name, value: l.balance, type: cat }))
+        );
+        if (flatAssets.length || flatLiabilities.length) {
+          setMappingData(d => ({ ...d, assets: flatAssets, liabilities: flatLiabilities }));
+        }
+        const mappedGoals = (dbData.goals || []).map(g => ({
+          id: g.id, name: g.name, targetAmount: g.target,
+          years: g.years, alreadySaved: g.current, status: 'Confirmed',
+        }));
+        if (mappedGoals.length) {
+          setGoalsData(d => ({ ...d, goals: mappedGoals, completed: true }));
+        }
+      })
+      .catch(() => {})  // new user — proceed with empty defaults
+      .finally(() => setDbReady(true));
+  }, []);
   const [active, setActive] = useState(() => {
     if (!sections.mapping)  return 'mapping';
     if (!sections.goals)    return 'goals';
@@ -2280,6 +2195,14 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
   };
 
   const firstName = profileData.legalName?.split(' ')[0] || '';
+
+  if (!dbReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F7F8F9]">
+        <div className="w-8 h-8 rounded-full border-2 border-[#2C4A70] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#F7F8F9] overflow-hidden">
@@ -2368,7 +2291,11 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
           )}
           {active === 'dashboards' && (
             <motion.div key="dashboards" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex-1 flex flex-col h-full">
-              <DashboardsSection onboardingData={{ profile: profileData, mapping: mappingData, goals: goalsData, cashflow: cashflowData, annualExpenses: annualData }} />
+              <DashboardsSection
+                onboardingData={{ profile: profileData, mapping: mappingData, goals: goalsData, cashflow: cashflowData, annualExpenses: annualData }}
+                completedSections={sections}
+                onNavigate={setActive}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -2379,8 +2306,27 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
 
 // ─── Root export ──────────────────────────────────────────────────────────
 export default function OnboardingV4({ userEmail = '', onLogout, onComplete }) {
-  const [sections, setSections]       = useState(() => loadJson(SK.sections, {}));
-  const [profileData, setProfileData] = useState(() => loadJson(SK.profile,  DEFAULT_PROFILE));
+  // Never read from localStorage — source of truth is the DB.
+  // Start with empty state; a useEffect populates from DB if the user has been here before.
+  const [sections, setSections]       = useState({});
+  const [profileData, setProfileData] = useState(DEFAULT_PROFILE);
+  const [bootstrapping, setBootstrapping] = useState(true);
+
+  useEffect(() => {
+    API.dashboard.load()
+      .then(dbData => {
+        if (!dbData) return;
+        const hasName    = dbData.name && dbData.name !== 'Rahul';
+        const hasAssets  = Object.values(dbData.assets  || {}).flat().length > 0;
+        const hasGoals   = (dbData.goals || []).length > 0;
+        if (hasName || hasAssets || hasGoals) {
+          setProfileData(d => ({ ...d, legalName: dbData.name || d.legalName }));
+          setSections({ profiling: true, mapping: hasAssets, goals: hasGoals });
+        }
+      })
+      .catch(() => {})  // new user or not authenticated yet — show ProfileScreen
+      .finally(() => setBootstrapping(false));
+  }, []);
 
   const handleProfileDone = (data) => {
     setProfileData(data);
@@ -2390,6 +2336,14 @@ export default function OnboardingV4({ userEmail = '', onLogout, onComplete }) {
     saveJson(SK.sections, updated);
     if (onComplete) onComplete(data);
   };
+
+  if (bootstrapping) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F7F8F9]">
+        <div className="w-8 h-8 rounded-full border-2 border-[#2C4A70] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   // Show the full-screen profile setup until profiling is complete
   if (!sections.profiling) {

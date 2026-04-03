@@ -17,6 +17,10 @@ settings = get_settings()
 #                             benefit (traffic never leaves the host). PgBouncer handles its own
 #                             SSL to PostgreSQL independently via server_tls_sslmode in pgbouncer.ini.
 #
+# NOTE: do not add custom server_settings (e.g. jit=off) here — PgBouncer rejects any
+#       startup parameter not in its ignore_startup_parameters whitelist with a
+#       ProtocolViolationError before the connection even reaches PostgreSQL.
+#
 # Pool sizing rationale:
 #   PgBouncer caps real PostgreSQL connections at default_pool_size=10 regardless of how many
 #   client-side connections the app opens. Reducing pool_size/max_overflow here lowers the
@@ -33,7 +37,6 @@ engine = create_async_engine(
         "ssl": False,                        # no SSL on private Docker network (app → pgbouncer)
         "server_settings": {
             "application_name": "ledger_api",
-            "jit": "off",
         },
     },
 )
