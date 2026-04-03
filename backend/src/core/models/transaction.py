@@ -66,7 +66,7 @@ class Transaction:
     approved_at: datetime | None = None
     approved_by: str | None = None   # user_id of the approver (None = auto-approved)
 
-    created_at: datetime = field(default_factory=datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     extra_fields: dict[str, Any] = field(default_factory=dict)
 
     @property

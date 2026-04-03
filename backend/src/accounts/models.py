@@ -150,8 +150,8 @@ class Account(BaseModel):
     balance_market: Decimal = Field(default=Decimal("0"))      # market value
 
     # ── Timestamps ────────────────────────────────────────────────────────────
-    created_at: datetime = Field(default_factory=datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = {"frozen": False}
 

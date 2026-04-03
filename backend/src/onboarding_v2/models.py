@@ -55,8 +55,8 @@ class OnboardingProfile(Base):
     onboarding_step = Column(Integer, default=1)  # Current step (1-4)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime, nullable=True)
     
     # Relationships
@@ -123,9 +123,9 @@ class FinancialGoal(Base):
     last_contribution = Column(DateTime, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="goals")
     
@@ -196,9 +196,9 @@ class UserAsset(Base):
     ledger_account_id = Column(String(50), nullable=True)  # Link to accounting system
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="assets")
     
@@ -263,9 +263,9 @@ class UserLiability(Base):
     ledger_account_id = Column(String(50), nullable=True)  # Link to accounting system
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
     # Relationships
     profile = relationship("OnboardingProfile", back_populates="liabilities")
     
@@ -307,8 +307,8 @@ class CityData(Base):
     is_active = Column(Boolean, default=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
     def __repr__(self):
         return f"<CityData(name={self.name}, tier={self.tier}, col_index={self.col_index})>"

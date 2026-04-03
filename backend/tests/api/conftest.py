@@ -6,6 +6,7 @@ plus pre-seeded variants for modules that depend on profile/COA/institutions.
 All fixtures are async (asyncio_mode = auto handles the bridge to sync tests).
 """
 import uuid
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,14 @@ from sqlalchemy.pool import StaticPool
 
 from api.deps import get_db, get_tenant_db
 from db.models.base import Base
+
+# Mock the admin_engine BEFORE importing main to prevent PostgreSQL connection
+# during module initialization. We'll provide a proper override in the client fixture.
+import db.engine as engine_module
+_test_engine_mock = MagicMock()
+engine_module.admin_engine = _test_engine_mock
+engine_module.AdminSessionFactory = MagicMock()
+
 from main import app
 
 # Import all models to ensure they are registered with Base.metadata
@@ -110,8 +119,27 @@ async def client(_engine, _dev_user):
                 await sess.rollback()
                 raise
 
+    async def override_admin_session():
+        """Override admin session to use the test SQLite session instead of PostgreSQL."""
+        async with SessionFactory() as sess:
+            # Auto-set tenant_id for inserted objects
+            @sa_event.listens_for(sess.sync_session, "before_flush")
+            def _auto_tenant(session, ctx, instances):
+                for obj in session.new:
+                    if hasattr(obj, "tenant_id") and obj.tenant_id is None:
+                        obj.tenant_id = TEST_TENANT_ID
+            try:
+                yield sess
+                await sess.commit()
+            except Exception:
+                await sess.rollback()
+                raise
+
+    from api.routers.auth import _admin_session
+
     app.dependency_overrides[get_tenant_db] = override_get_tenant_db
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[_admin_session] = override_admin_session
 
     with TestClient(app) as c:
         yield c
