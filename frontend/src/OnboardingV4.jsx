@@ -18,6 +18,7 @@ import ReportsPage from './ReportsPage';
 import ImportWizard from './ImportWizard';
 import { FinnyInline } from './FinnyAssistant.jsx';
 import AddLedgerItemDialog from './AddLedgerItemDialog';
+import { GoalVizModal } from './GoalsPage.jsx';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────
 const SK = {
@@ -497,10 +498,19 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   const addAsset = (item) => { setIsDummy(false); setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] })); };
   const addLib   = (item) => { setIsDummy(false); setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] })); };
 
+  const categoryToItemType = (category) => {
+    if (category === 'creditCards') return 'credit';
+    if (['homeLoans', 'vehicleLoans', 'personalLoans', 'educationalLoans'].includes(category)) return 'loan';
+    if (['banks', 'fixedDeposits', 'providentFund'].includes(category)) return 'bank';
+    if (category === 'realEstate') return 'property';
+    if (category === 'equity' || category === 'foreignEquity') return 'stocks';
+    return 'other'; // bullion, others (money lent)
+  };
+
   const handleDialogEdit = (category, type, entryData) => {
     const kind = type === 'liab' ? 'liability' : 'asset';
     const id = editItem.id;
-    const itemType = category === 'creditCards' ? 'credit' : (category === 'homeLoans' || category === 'vehicleLoans' ? 'loan' : (category === 'banks' ? 'bank' : (category === 'realEstate' ? 'property' : (category === 'equity' || category === 'foreignEquity' ? 'stocks' : 'other'))));
+    const itemType = categoryToItemType(category);
     const item = {
       name: entryData.name,
       value: entryData.balance,
@@ -519,7 +529,7 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
 
   const handleDialogAdd = (category, type, entryData) => {
     const kind = type === 'liab' ? 'liability' : 'asset';
-    const itemType = category === 'creditCards' ? 'credit' : (category === 'homeLoans' || category === 'vehicleLoans' ? 'loan' : (category === 'banks' ? 'bank' : (category === 'realEstate' ? 'property' : (category === 'equity' || category === 'foreignEquity' ? 'stocks' : 'other'))));
+    const itemType = categoryToItemType(category);
     const item = {
       name: entryData.name,
       value: entryData.balance,
@@ -529,10 +539,8 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
 
     if (kind === 'asset') {
       addAsset(item);
-      finnyRef.current?.addMessage({ role: 'finny', content: `Added **${item.name}** (${inr(item.value)}).` });
     } else {
       addLib(item);
-      finnyRef.current?.addMessage({ role: 'finny', content: `Recorded **${item.name}** (${inr(item.value)}).` });
     }
     setDialog(false);
   };
@@ -1005,15 +1013,26 @@ function GoalDialog({ goal, existing, assets = [], onSave, onRemove, onClose }) 
 
             {/* Timeline */}
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Timeline</label>
-              <div className="grid grid-cols-4 gap-2">
-                {TIMELINE_OPTS.map(t => (
-                  <button key={t.months} onClick={() => setTimelineMonths(t.months)}
-                    className={`py-2 px-1 rounded-xl text-xs font-bold border-2 transition-all text-center
-                      ${timelineMonths === t.months ? 'border-[#2C4A70] bg-indigo-50 text-[#2C4A70]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-                    {t.label}
-                  </button>
-                ))}
+              <div className="flex justify-between items-end mb-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Timeline</label>
+                <div className="text-sm font-bold text-[#2C4A70]">
+                  {timelineMonths < 12 
+                    ? `${timelineMonths} months` 
+                    : `${Math.floor(timelineMonths / 12)} year${Math.floor(timelineMonths / 12) > 1 ? 's' : ''}${timelineMonths % 12 ? ` ${timelineMonths % 12} mo` : ''}`}
+                </div>
+              </div>
+              <input 
+                type="range" 
+                min="3" max="240" step="3" 
+                value={timelineMonths} 
+                onChange={e => setTimelineMonths(parseInt(e.target.value))}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#2C4A70]"
+              />
+              <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2 px-1">
+                <span>3 mo</span>
+                <span>5 yrs</span>
+                <span>10 yrs</span>
+                <span>20 yrs</span>
               </div>
             </div>
 
@@ -1120,15 +1139,17 @@ const GOALS_AI_PROMPTS = [
 function GoalsSection({ data, setData, perspective = 'salaried', assets = [], onComplete }) {
   // Seed dummy goals on first load
   const [isDummyGoals, setIsDummyGoals] = useState(() => {
-    if (!data.goals?.length) {
+    // Only seed if there are NO configured goals AND NO dummy goals have been seeded (or cleared) yet
+    if (!data.goals?.length && data.dummyGoalDetails === undefined) {
       const seed = DUMMY_GOALS[perspective] || DUMMY_GOALS.salaried;
-      setData(d => ({ ...d, goals: seed.map(g => g.id), dummyGoalDetails: seed }));
+      setData(d => ({ ...d, dummyGoalDetails: seed }));
       return true;
     }
     return Boolean(data.dummyGoalDetails?.length);
   });
 
   const [goalDialog, setGoalDialog] = useState(null);
+  const [selectedViz, setSelectedViz] = useState(null);
 
   const clearDummyGoals = () => {
     setData(d => ({ ...d, goals: [], goalDetails: {}, dummyGoalDetails: [] }));
@@ -1311,15 +1332,21 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
                       )}
                     </div>
                     {detail ? (
-                      <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-[#526B5C]/15">
-                        <p className="text-xs font-black text-[#2C4A70]">{inr(detail.targetAmount)}</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12}yr` : `${detail.timelineMonths}mo`}
-                        </p>
-                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full
-                          ${detail.priority === 'high' ? 'bg-rose-50 text-rose-500' : detail.priority === 'low' ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-500'}`}>
-                          {detail.priority}
-                        </span>
+                      <div className="flex flex-col gap-2 mt-2">
+                        <div className="flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-[#526B5C]/15">
+                          <p className="text-xs font-black text-[#2C4A70]">{inr(detail.targetAmount)}</p>
+                          <p className="text-[10px] text-slate-400 font-semibold">
+                            {detail.timelineMonths >= 12 ? `${detail.timelineMonths / 12}yr` : `${detail.timelineMonths}mo`}
+                          </p>
+                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full
+                            ${detail.priority === 'high' ? 'bg-rose-50 text-rose-500' : detail.priority === 'low' ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-500'}`}>
+                            {detail.priority}
+                          </span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedViz(detail); }}
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2C4A70]/5 text-[#2C4A70] text-[11px] font-semibold hover:bg-[#2C4A70]/10 transition-colors border border-[#2C4A70]/15">
+                          <TrendingUp size={12} /> View Projection
+                        </button>
                       </div>
                     ) : (
                       <p className="text-xs text-slate-300 flex items-center gap-1"><Plus size={10} /> Click to configure</p>
@@ -1368,6 +1395,21 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
             onSave={saveGoalDetail}
             onRemove={removeGoal}
             onClose={() => setGoalDialog(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedViz && (
+          <GoalVizModal 
+            apiGoal={{
+              name: GOAL_OPTS.find(g => g.id === selectedViz.id)?.label || selectedViz.id,
+              goal_type: GOAL_TYPE_MAP[selectedViz.id] || 'OTHERS',
+              target_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + (selectedViz.timelineMonths || 12)); return d;})().toISOString().slice(0,10),
+              target_amount: selectedViz.targetAmount,
+              current_amount: selectedViz.alreadySaved || 0,
+            }}
+            userAge={30}
+            onClose={() => setSelectedViz(null)}
           />
         )}
       </AnimatePresence>

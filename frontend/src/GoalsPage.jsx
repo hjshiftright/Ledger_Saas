@@ -120,7 +120,7 @@ const GOAL_VIZ_META = {
   OTHERS:     { emoji: '🎯', color: '#facc15' },
 }
 
-function GoalVizModal({ apiGoal, userAge, onClose }) {
+export function GoalVizModal({ apiGoal, userAge, onClose }) {
   const meta  = GOAL_VIZ_META[apiGoal.goal_type] || GOAL_VIZ_META.OTHERS
   const years = apiGoal.target_date
     ? Math.max(1, Math.round((new Date(apiGoal.target_date) - new Date()) / (365.25 * 24 * 3600 * 1000)))
@@ -342,15 +342,26 @@ function GoalConfigDialog({ opt, existing, onSave, onClose }) {
 
             {/* Timeline */}
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Timeline</label>
-              <div className="grid grid-cols-4 gap-2">
-                {TIMELINE_OPTS.map(t => (
-                  <button key={t.months} onClick={() => setTimelineMonths(t.months)}
-                    className={`py-2 px-1 rounded-xl text-xs font-bold border-2 transition-all text-center
-                      ${timelineMonths === t.months ? 'border-[#2C4A70] bg-indigo-50 text-[#2C4A70]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-                    {t.label}
-                  </button>
-                ))}
+              <div className="flex justify-between items-end mb-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Timeline</label>
+                <div className="text-sm font-bold text-[#2C4A70]">
+                  {timelineMonths < 12 
+                    ? `${timelineMonths} months` 
+                    : `${Math.floor(timelineMonths / 12)} year${Math.floor(timelineMonths / 12) > 1 ? 's' : ''}${timelineMonths % 12 ? ` ${timelineMonths % 12} mo` : ''}`}
+                </div>
+              </div>
+              <input 
+                type="range" 
+                min="3" max="240" step="3" 
+                value={timelineMonths} 
+                onChange={e => setTimelineMonths(parseInt(e.target.value))}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#2C4A70]"
+              />
+              <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2 px-1">
+                <span>3 mo</span>
+                <span>5 yrs</span>
+                <span>10 yrs</span>
+                <span>20 yrs</span>
               </div>
             </div>
 
