@@ -54,8 +54,11 @@ async def _override_get_tenant_db():
         @sa_event.listens_for(sess.sync_session, "before_flush")
         def _auto_tenant(session, ctx, instances):
             for obj in session.new:
-                if hasattr(obj, "tenant_id") and obj.tenant_id is None:
-                    obj.tenant_id = TEST_TENANT_ID
+                if hasattr(obj, "tenant_id"):
+                    if obj.tenant_id is None:
+                        obj.tenant_id = TEST_TENANT_ID
+                    elif isinstance(obj.tenant_id, str):
+                        obj.tenant_id = uuid.UUID(obj.tenant_id)
         try:
             yield sess
             await sess.commit()

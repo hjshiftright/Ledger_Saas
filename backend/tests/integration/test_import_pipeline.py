@@ -161,6 +161,20 @@ class TestDevAuth:
     replaced by DEV_DEFAULT_USER_ID ("dev-user").
     """
 
+    @pytest.fixture(autouse=True)
+    def _force_dev_mode(self, monkeypatch):
+        """Ensure APP_ENV=development for all tests in this class.
+
+        The dev-mode bypass is only active when APP_ENV=development.
+        CI environments may set a different value, so we explicitly
+        configure it here and clear the lru_cache before/after.
+        """
+        from config import get_settings
+        monkeypatch.setenv("APP_ENV", "development")
+        get_settings.cache_clear()
+        yield
+        get_settings.cache_clear()
+
     def test_no_auth_header_accepted_in_dev_mode(self, client: TestClient):
         """GET /api/v1/imports must return 200 without any Authorization header."""
         resp = client.get("/api/v1/imports")

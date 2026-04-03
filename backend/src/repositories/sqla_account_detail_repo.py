@@ -29,6 +29,7 @@ class SqlAlchemyAccountDetailRepository:
         detail = model_class(**mapped_data)
         self.session.add(detail)
         await self.session.flush()
+        await self.session.refresh(detail)
         return detail
 
     def _map_data(self, detail_type: str, data: dict) -> dict:
