@@ -62,7 +62,7 @@ class TestCreateProfile:
 
     def test_malformed_json_returns_400_or_422(self, client):
         # Sending pure string instead of JSON object
-        resp = client.post(PROFILES_URL, data="Not a json {")
+        resp = client.post(PROFILES_URL, content="Not a json {")
         assert resp.status_code in (400, 422)
 
 

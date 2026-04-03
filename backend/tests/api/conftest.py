@@ -14,7 +14,7 @@ from sqlalchemy import event as sa_event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from api.deps import get_db, get_tenant_db
+from api.deps import get_db, get_tenant_db, get_current_user_payload, UserTokenPayload
 from db.models.base import Base
 
 # Mock the admin_engine BEFORE importing main to prevent PostgreSQL connection
@@ -141,8 +141,12 @@ async def client(_engine, _dev_user):
                 await sess.rollback()
                 raise
 
+    def override_get_current_user_payload():
+        return UserTokenPayload(str(_DEV_USER_ID), str(TEST_TENANT_ID), "OWNER")
+
     from api.routers.auth import _admin_session
 
+    app.dependency_overrides[get_current_user_payload] = override_get_current_user_payload
     app.dependency_overrides[get_tenant_db] = override_get_tenant_db
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[_admin_session] = override_admin_session
