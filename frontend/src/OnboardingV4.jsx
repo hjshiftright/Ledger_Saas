@@ -16,8 +16,8 @@ import BudgetsPage from './BudgetsPage';
 import GoalsPage from './GoalsPage';
 import ReportsPage from './ReportsPage';
 import ImportWizard from './ImportWizard';
-import SettingsPage from './SettingsPage';
 import { FinnyInline } from './FinnyAssistant.jsx';
+import AddLedgerItemDialog from './AddLedgerItemDialog';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────
 const SK = {
@@ -497,8 +497,17 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   const addAsset = (item) => { setIsDummy(false); setData(d => ({ ...d, assets: [...(d.assets || []), { ...item, id: Date.now() + Math.random() }] })); };
   const addLib   = (item) => { setIsDummy(false); setData(d => ({ ...d, liabilities: [...(d.liabilities || []), { ...item, id: Date.now() + Math.random() }] })); };
 
-  const handleDialogEdit = (item, kind) => {
+  const handleDialogEdit = (category, type, entryData) => {
+    const kind = type === 'liab' ? 'liability' : 'asset';
     const id = editItem.id;
+    const itemType = category === 'creditCards' ? 'credit' : (category === 'homeLoans' || category === 'vehicleLoans' ? 'loan' : (category === 'banks' ? 'bank' : (category === 'realEstate' ? 'property' : (category === 'equity' || category === 'foreignEquity' ? 'stocks' : 'other'))));
+    const item = {
+      name: entryData.name,
+      value: entryData.balance,
+      type: itemType,
+      detail: entryData.description || ''
+    };
+
     if (kind === 'asset') {
       setData(d => ({ ...d, assets: d.assets.map(a => a.id === id ? { ...item, id, _kind: 'asset' } : a) }));
     } else {
@@ -508,13 +517,22 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
     setEditItem(null);
   };
 
-  const handleDialogAdd = (item, kind) => {
+  const handleDialogAdd = (category, type, entryData) => {
+    const kind = type === 'liab' ? 'liability' : 'asset';
+    const itemType = category === 'creditCards' ? 'credit' : (category === 'homeLoans' || category === 'vehicleLoans' ? 'loan' : (category === 'banks' ? 'bank' : (category === 'realEstate' ? 'property' : (category === 'equity' || category === 'foreignEquity' ? 'stocks' : 'other'))));
+    const item = {
+      name: entryData.name,
+      value: entryData.balance,
+      type: itemType,
+      detail: entryData.description || ''
+    };
+
     if (kind === 'asset') {
       addAsset(item);
-      finnyRef.current?.addMessage({ role: 'finny', content: `Added **${item.name}** (${inr(item.value)}). Anything else?` });
+      finnyRef.current?.addMessage({ role: 'finny', content: `Added **${item.name}** (${inr(item.value)}).` });
     } else {
       addLib(item);
-      finnyRef.current?.addMessage({ role: 'finny', content: `Recorded **${item.name}** (${inr(item.value)}). Anything else to add?` });
+      finnyRef.current?.addMessage({ role: 'finny', content: `Recorded **${item.name}** (${inr(item.value)}).` });
     }
     setDialog(false);
   };
@@ -860,23 +878,17 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
       </div>
 
       {/* Add Item Dialog */}
-      <AnimatePresence>
-        {dialog && (
-          <AddItemDialog
-            onAdd={handleDialogAdd}
-            onClose={() => setDialog(false)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {editItem && (
-          <AddItemDialog
-            initial={editItem}
-            onAdd={handleDialogEdit}
-            onClose={() => setEditItem(null)}
-          />
-        )}
-      </AnimatePresence>
+      <AddLedgerItemDialog
+        isOpen={dialog}
+        onAdd={handleDialogAdd}
+        onClose={() => setDialog(false)}
+      />
+      <AddLedgerItemDialog
+        isOpen={!!editItem}
+        initialEntry={editItem}
+        onAdd={handleDialogEdit}
+        onClose={() => setEditItem(null)}
+      />
     </div>
   );
 }

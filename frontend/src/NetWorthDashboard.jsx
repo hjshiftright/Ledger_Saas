@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API } from './api.js';
+import AddLedgerItemDialog from './AddLedgerItemDialog';
 
 // --- CONSTANTS ---
 const BANK_OPTIONS = ['HDFC', 'SBI', 'ICICI', 'Axis', 'Kotak', 'IDFC First', 'PNB', 'IndusInd', 'Standard Chartered', 'Other / Custom'];
@@ -90,6 +91,9 @@ export default function NetWorthDashboard() {
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addDialogCategory, setAddDialogCategory] = useState(null);
 
   // -- LOAD DATA --
   useEffect(() => {
@@ -139,10 +143,21 @@ export default function NetWorthDashboard() {
   };
 
   const addItem = (category, type) => {
+    setAddDialogCategory(category);
+    setIsAddDialogOpen(true);
+  };
+
+  const handleDialogAdd = (category, type, entryData) => {
     const setter = type === 'asset' ? setAssets : setLiabilities;
     setter(prev => ({
       ...prev,
-      [category]: [...(prev[category] || []), { id: Date.now(), name: '', balance: 0 }]
+      [category]: [...(prev[category] || []), { 
+        id: Date.now(), 
+        name: entryData.name, 
+        balance: entryData.balance,
+        description: entryData.description,
+        owner: entryData.owner 
+      }]
     }));
   };
 
@@ -458,6 +473,13 @@ export default function NetWorthDashboard() {
           </div>
         </div>
       </main>
+
+      <AddLedgerItemDialog 
+        isOpen={isAddDialogOpen} 
+        onClose={() => setIsAddDialogOpen(false)} 
+        onAdd={handleDialogAdd} 
+        defaultCategory={addDialogCategory}
+      />
     </div>
   );
 }
