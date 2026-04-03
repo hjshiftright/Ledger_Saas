@@ -312,15 +312,53 @@ async def db_session(postgres_engine: AsyncEngine) -> AsyncGenerator[AsyncSessio
         bind=postgres_engine,
         expire_on_commit=False,
     )
-    
+
     async with SessionFactory() as session:
         # We can implement a nested transaction or rely on explicit TRUNCATE
-        # Given RLS context and nested transaction behavior in asyncpg, 
+        # Given RLS context and nested transaction behavior in asyncpg,
         # a savepoint or simplest approach is yielded session and test handles it,
         # or we just let it roll back.
         await session.begin_nested()
-        
+
         yield session
-        
+
         await session.rollback()
+
+
+# ── Transaction propagation fixtures ─────────────────────────────────────────
+# Used by tests/unit/test_tx_propagation_unit.py and
+# tests/integration/test_tx_propagation_integration.py
+
+@pytest_asyncio.fixture
+async def tx_session_factory(postgres_engine: AsyncEngine):
+    """Async session factory matching production config for propagation tests.
+
+    autoflush=False and expire_on_commit=False mirror the production
+    SessionFactory so test behavior matches production behavior exactly.
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker as _asm
+    return _asm(
+        bind=postgres_engine,
+        autoflush=False,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_active_tx():
+    """Reset _active_tx ContextVar before every test.
+
+    pytest-asyncio runs each test in the same event loop task by default, so a
+    ContextVar value set in one test leaks into the next unless explicitly
+    cleared.  This fixture prevents that contamination.
+    """
+    from db.transaction import _active_tx
+    token = _active_tx.set(None)
+    yield
+    _active_tx.reset(token)
+
+
+TX_TEST_TENANT_ID = "00000000-0000-0000-0000-000000000099"
+TX_TEST_USER_ID = "99"
 

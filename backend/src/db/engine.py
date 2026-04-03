@@ -113,6 +113,45 @@ async def get_session_with_context(tenant_id: str, user_id: str = "0") -> AsyncS
             raise
 
 
+async def get_session_with_rls_and_context(
+    tenant_id: str,
+    user_id: str = "0",
+) -> AsyncSession:
+    """FastAPI generator: session + RLS + TransactionContext in ContextVar.
+
+    Replaces get_session_with_context() for routes that use the propagation
+    system.  Services can call get_active_transaction() instead of receiving
+    the session as a constructor argument.
+
+    SET LOCAL ensures RLS vars are transaction-scoped (PgBouncer safe).
+    """
+    from db.transaction import TransactionContext, _active_tx  # noqa: PLC0415
+
+    async with SessionFactory() as session:
+        await session.execute(
+            text(
+                "SELECT set_config('app.tenant_id', :tid, TRUE),"
+                "       set_config('app.user_id',   :uid, TRUE)"
+            ),
+            {"tid": str(tenant_id), "uid": str(user_id)},
+        )
+        ctx = TransactionContext(
+            session=session,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            is_root=True,
+        )
+        token = _active_tx.set(ctx)
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            _active_tx.reset(token)
+
+
 async def get_admin_session() -> AsyncSession:
     """FastAPI dependency for admin routes — uses superadmin role, bypasses RLS.
 

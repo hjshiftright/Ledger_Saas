@@ -5,11 +5,19 @@ ORM Transaction + TransactionLine rows.
 
 Flow:
     1. Ensure an ORM ImportBatch row exists for the Pydantic batch (create if absent).
-    2. For each CONFIRMED proposal:
+    2. For each CONFIRMED proposal (each wrapped in a NESTED savepoint):
        a. Resolve each JournalEntryLine.account_code → Account.id via AccountRepository.
        b. Skip the entire proposal if any code is unresolvable (never partially post).
        c. Build Transaction + TransactionLine; set txn_hash for idempotency.
+       d. If an unexpected exception occurs, roll back to the savepoint only —
+          other already-committed proposals are unaffected.
     3. Update ImportBatch status to COMPLETED.
+
+Propagation:
+    Each proposal runs inside transactional(Propagation.NESTED).  A failure in
+    proposal N rolls back only that savepoint; proposals 1…N-1 remain intact
+    in the outer transaction.  The outer transaction is committed by the FastAPI
+    route handler (via get_tenant_db() teardown).
 """
 from __future__ import annotations
 
@@ -22,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.models.import_batch import ImportBatch as PydanticBatch
 from db.models.imports import ImportBatch as OrmImportBatch
 from db.models.transactions import Transaction, TransactionLine
+from db.transaction import Propagation, transactional
 from repositories.sqla_account_repo import AccountRepository
 from repositories.sqla_transaction_repo import TransactionRepository
 from services.proposal_service import ProposedJournalEntry
@@ -64,15 +73,25 @@ class ApprovalService:
             if proposal.status != "CONFIRMED":
                 continue
 
-            # Idempotency: skip if this hash was already committed
+            # Idempotency check outside the savepoint — read-only, safe.
             if proposal.txn_hash and await self._tx_repo.find_by_hash(proposal.txn_hash):
                 already_posted += 1
                 continue
 
-            tx = await self._commit_one(proposal, orm_batch.id)
-            if tx:
-                committed_ids.append(tx.id)
-            else:
+            # Each proposal gets its own SAVEPOINT.  A failure (unresolvable
+            # account code, constraint violation, etc.) rolls back only this
+            # savepoint; previously committed proposals are unaffected.
+            try:
+                async with transactional(Propagation.NESTED):
+                    tx = await self._commit_one(proposal, orm_batch.id)
+                    if tx:
+                        committed_ids.append(tx.id)
+                    else:
+                        skipped.append(proposal.proposal_id)
+            except Exception:
+                # _commit_one returns None for unresolvable accounts (no raise),
+                # but unexpected DB exceptions must also be caught here so the
+                # outer session remains usable.
                 skipped.append(proposal.proposal_id)
 
         # Update batch status
@@ -140,6 +159,7 @@ class ApprovalService:
             return None
 
         tx = Transaction(
+            tenant_id=self._tenant_id,
             transaction_date=proposal.txn_date,
             transaction_type="IMPORT",
             description=proposal.narration,
@@ -150,6 +170,7 @@ class ApprovalService:
         )
         for acc_id, line_type, amount in resolved:
             tx.lines.append(TransactionLine(
+                tenant_id=self._tenant_id,
                 account_id=acc_id,
                 line_type=line_type,
                 amount=amount,

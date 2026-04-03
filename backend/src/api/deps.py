@@ -163,13 +163,16 @@ def require_role(*allowed_roles: str):
 async def get_tenant_db(
     token_payload: UserTokenPayload = Depends(get_current_user_payload),
 ) -> AsyncSession:
-    """Open an async session and set both app.tenant_id and app.user_id for RLS.
+    """Open an async session, set RLS context, push TransactionContext into ContextVar.
 
     Inject this into any route that reads/writes tenant-scoped tables.
     RLS policies on PostgreSQL enforce isolation automatically — no WHERE clauses needed.
+
+    After this dependency runs, services can call get_active_transaction() to
+    access the session without it being threaded through constructor arguments.
     """
-    from db.engine import get_session_with_context
-    async for session in get_session_with_context(
+    from db.engine import get_session_with_rls_and_context
+    async for session in get_session_with_rls_and_context(
         tenant_id=token_payload.tenant_id,
         user_id=token_payload.user_id,
     ):
