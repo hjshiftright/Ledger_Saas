@@ -56,6 +56,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Absolute path anchored to src/ so the DB is always at backend/src/ledger.db
 # regardless of cwd (running from repo root, backend/, or backend/src/).
 _SRC_DIR = Path(__file__).parent
+_REPO_ROOT = _SRC_DIR.parent.parent
+_REPO_DOTENV = _REPO_ROOT / ".env"
+# Prefer repo-root .env so Alembic (cwd=backend/) and uvicorn (cwd=repo root) share one file.
+_ENV_FILE = str(_REPO_DOTENV) if _REPO_DOTENV.is_file() else ".env"
 _DEFAULT_DB_URL = "postgresql+asyncpg://app_service:password@localhost:6432/ledger"
 
 
@@ -69,7 +73,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

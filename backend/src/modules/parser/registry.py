@@ -87,6 +87,10 @@ class ParserRegistry:
         from modules.parser.parsers.indusind_pdf import IndusIndPdfParser
         from modules.parser.parsers.idfc_pdf    import IdfcPdfParser
         from modules.parser.parsers.union_pdf   import UnionBankPdfParser
+        from modules.parser.parsers.baroda_pdf  import BarodaPdfParser
+        from modules.parser.parsers.canara_pdf  import CanaraPdfParser
+        from modules.parser.parsers.standard_chartered_pdf import StandardCharteredPdfParser
+        from modules.parser.parsers.boi_pdf import BoiPdfParser
         from modules.parser.parsers.yes_cc_pdf   import YesCcPdfParser
         from modules.parser.parsers.icici_cc_pdf  import IciciCcPdfParser
         from modules.parser.parsers.hdfc_cc_pdf   import HdfcCcPdfParser
@@ -114,6 +118,10 @@ class ParserRegistry:
         registry.register(SourceType.INDUSIND_BANK, IndusIndPdfParser)
         registry.register(SourceType.IDFC_BANK,    IdfcPdfParser)
         registry.register(SourceType.UNION_BANK,   UnionBankPdfParser)
+        registry.register(SourceType.BARODA_BANK,  BarodaPdfParser)
+        registry.register(SourceType.CANARA_BANK,  CanaraPdfParser)
+        registry.register(SourceType.STANDARD_CHARTERED_BANK, StandardCharteredPdfParser)
+        registry.register(SourceType.BOI_BANK, BoiPdfParser)
         registry.register(SourceType.YES_BANK_CC,   YesCcPdfParser)
         registry.register(SourceType.ICICI_BANK_CC,  IciciCcPdfParser)
         registry.register(SourceType.HDFC_BANK_CC,   HdfcCcPdfParser)
@@ -131,6 +139,10 @@ class ParserRegistry:
         registry.register(SourceType.KOTAK_BANK_CSV, GenericCsvParser)
         registry.register(SourceType.IDFC_BANK_CSV,  GenericCsvParser)
         registry.register(SourceType.UNION_BANK_CSV, GenericCsvParser)
+        registry.register(SourceType.BARODA_BANK_CSV, GenericCsvParser)
+        registry.register(SourceType.CANARA_BANK_CSV, GenericCsvParser)
+        registry.register(SourceType.STANDARD_CHARTERED_BANK_CSV, GenericCsvParser)
+        registry.register(SourceType.BOI_BANK_CSV, GenericCsvParser)
 
         # Zerodha — dedicated parsers
         registry.register(SourceType.ZERODHA_HOLDINGS,          ZerodhaHoldingsParser)

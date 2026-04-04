@@ -711,6 +711,14 @@ _ACTIVE_SOURCE_TYPES = {
     "UNION_BANK",
     "UNION_BANK_CSV",
     "INDUSIND_BANK",
+    "BARODA_BANK",
+    "BARODA_BANK_CSV",
+    "CANARA_BANK",
+    "CANARA_BANK_CSV",
+    "STANDARD_CHARTERED_BANK",
+    "STANDARD_CHARTERED_BANK_CSV",
+    "BOI_BANK",
+    "BOI_BANK_CSV",
     "YES_BANK_CC",
 }
 
@@ -736,6 +744,14 @@ _ACTIVE_SOURCE_LABELS = {
     "UNION_BANK":       "Union Bank (PDF)",
     "UNION_BANK_CSV":   "Union Bank (CSV/XLS)",
     "INDUSIND_BANK":    "IndusInd Bank (PDF)",
+    "BARODA_BANK":      "Bank of Baroda (PDF)",
+    "BARODA_BANK_CSV":  "Bank of Baroda (CSV/XLS)",
+    "CANARA_BANK":      "Canara Bank (PDF)",
+    "CANARA_BANK_CSV":  "Canara Bank (CSV/XLS)",
+    "STANDARD_CHARTERED_BANK": "Standard Chartered (PDF)",
+    "STANDARD_CHARTERED_BANK_CSV": "Standard Chartered (CSV/XLS)",
+    "BOI_BANK":         "Bank of India (PDF)",
+    "BOI_BANK_CSV":     "Bank of India (CSV/XLS)",
     "YES_BANK_CC":      "YES Bank Credit Card (PDF)",
 }
 

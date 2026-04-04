@@ -59,6 +59,10 @@ _SOURCE_TYPE_MAP: dict[SourceType, SourceAccountInfo] = {
     SourceType.INDUSIND_BANK: SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
     SourceType.IDFC_BANK:     SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
     SourceType.UNION_BANK:    SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
+    SourceType.BARODA_BANK:   SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
+    SourceType.CANARA_BANK:   SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
+    SourceType.STANDARD_CHARTERED_BANK: SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
+    SourceType.BOI_BANK:      SourceAccountInfo("1102", "Savings Account",  "ASSET", True),
 
     # ── Credit Card PDFs → Credit Card (Liability) ─────────────────────────
     SourceType.YES_BANK_CC:   SourceAccountInfo("2100", "Credit Card",      "LIABILITY", False),
@@ -73,6 +77,10 @@ _SOURCE_TYPE_MAP: dict[SourceType, SourceAccountInfo] = {
     SourceType.KOTAK_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
     SourceType.IDFC_BANK_CSV:  SourceAccountInfo("1102", "Savings Account", "ASSET", True),
     SourceType.UNION_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
+    SourceType.BARODA_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
+    SourceType.CANARA_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
+    SourceType.STANDARD_CHARTERED_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
+    SourceType.BOI_BANK_CSV: SourceAccountInfo("1102", "Savings Account", "ASSET", True),
 
     # ── Mutual Fund CAS → Investments (Asset) ───────────────────────────────
     SourceType.CAS_CAMS:       SourceAccountInfo("1200", "Investments",     "ASSET", True),

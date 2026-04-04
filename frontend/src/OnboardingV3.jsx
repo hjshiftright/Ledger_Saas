@@ -71,7 +71,7 @@ const GOAL_CATS = [
   { id: 'custom',    iconBg: 'bg-amber-100',  emoji: '✨', label: 'SOMETHING ELSE',    desc: "Name your own goal and we'll build a plan around it." },
 ];
 
-const BANKS        = ['HDFC Bank','SBI','ICICI Bank','Axis Bank','Kotak Mahindra Bank','Yes Bank','Bank of Baroda','PNB','Canara Bank','IndusInd Bank','Federal Bank','IDFC First Bank','Other'];
+const BANKS        = ['HDFC Bank','SBI','ICICI Bank','Axis Bank','Kotak Mahindra Bank','Yes Bank','Bank of Baroda','Canara Bank','Standard Chartered','Bank of India','PNB','IndusInd Bank','Federal Bank','IDFC First Bank','Other'];
 const BROKERS      = ['Zerodha','Groww','Angel One','Upstox','HDFC Securities','ICICI Direct','Other'];
 const MF_PLATFORMS = ['Groww','Kuvera','Paytm Money','SBI MF','HDFC MF','Zerodha Coin','MF Central','Other'];
 const CITIES       = ['Bengaluru','Mumbai','Delhi','Hyderabad','Chennai','Pune','Kolkata','Ahmedabad','Jaipur','Kochi','Other'];

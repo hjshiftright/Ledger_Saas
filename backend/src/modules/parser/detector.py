@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 DETECTION_THRESHOLD: float = 0.70
 
 
+def _norm_header(raw: str) -> str:
+    return " ".join(str(raw).replace("\n", " ").split()).strip().lower()
+
+
 @dataclass
 class DetectionResult:
     source_type: SourceType
@@ -39,6 +43,10 @@ _PDF_TO_CSV_REMAP: dict[SourceType, SourceType] = {
     SourceType.KOTAK_BANK:  SourceType.KOTAK_BANK_CSV,
     SourceType.IDFC_BANK:   SourceType.IDFC_BANK_CSV,
     SourceType.UNION_BANK:  SourceType.UNION_BANK_CSV,
+    SourceType.BARODA_BANK: SourceType.BARODA_BANK_CSV,
+    SourceType.CANARA_BANK: SourceType.CANARA_BANK_CSV,
+    SourceType.STANDARD_CHARTERED_BANK: SourceType.STANDARD_CHARTERED_BANK_CSV,
+    SourceType.BOI_BANK: SourceType.BOI_BANK_CSV,
 }
 
 # ── Filename keyword patterns ─────────────────────────────────────────────────
@@ -57,6 +65,11 @@ _FILENAME_PATTERNS: list[tuple[re.Pattern[str], SourceType, float]] = [
     (re.compile(r"indusind|induslnd", re.I), SourceType.INDUSIND_BANK, 0.80),
     (re.compile(r"idfc.*first|idfcbank", re.I), SourceType.IDFC_BANK, 0.80),
     (re.compile(r"union.*bank|unionbank|ubi.*stmt|ubi.*acc|OpTransaction.*UX", re.I), SourceType.UNION_BANK, 0.85),
+    (re.compile(r"bank.*of.*baroda|baroda.*bank|bob.*statement|bob.*acc", re.I), SourceType.BARODA_BANK, 0.85),
+    (re.compile(r"canara.*bank|canara.*statement|canara.*acc", re.I), SourceType.CANARA_BANK, 0.85),
+    (re.compile(r"standard.*charte?red|stanchart|scb.*statement|sc.*bank", re.I), SourceType.STANDARD_CHARTERED_BANK, 0.85),
+    # Bank of India — avoid matching "Central Bank of India" via overly broad patterns
+    (re.compile(r"bank\s*of\s*india|bankofindia|boi[_\s-]*(?:statement|stmt|acc|account)", re.I), SourceType.BOI_BANK, 0.84),
     (re.compile(r"yes.*cc|yes.*credit|yes-cc", re.I), SourceType.YES_BANK_CC, 0.85),
     # ── CAMS / KFintech / MF Central ─────────────────────────────────────────
     (re.compile(r"cas.*cams|cams.*cas|camsonline", re.I), SourceType.CAS_CAMS, 0.90),
@@ -102,6 +115,19 @@ _PDF_CONTENT_SIGNATURES: list[tuple[list[str], SourceType, float]] = [
     (["Union Bank of India", "Withdrawals", "Deposits"], SourceType.UNION_BANK, 0.94),
     (["Union Bank of India", "Debit", "Credit"], SourceType.UNION_BANK, 0.92),
     (["Union Bank of India"], SourceType.UNION_BANK, 0.82),
+    (["Bank of Baroda", "STATEMENT OF ACCOUNT", "Value Date", "Post Date", "Details"], SourceType.BARODA_BANK, 0.96),
+    (["Bank of Baroda", "Debit", "Credit", "Balance"], SourceType.BARODA_BANK, 0.93),
+    (["Canara Bank", "Current & Saving Account Statement", "Txn Date", "Value Date", "Description"], SourceType.CANARA_BANK, 0.96),
+    (["Canara Bank", "Debit", "Credit", "Balance"], SourceType.CANARA_BANK, 0.93),
+    (["ACCOUNT STATEMENT", "IFSC: SCBL", "Value", "Date", "Description", "Withdrawal", "Balance"], SourceType.STANDARD_CHARTERED_BANK, 0.98),
+    (["Standard Chartered", "Statement", "Date", "Description", "Balance"], SourceType.STANDARD_CHARTERED_BANK, 0.94),
+    (["Standard Chartered", "Debit", "Credit", "Balance"], SourceType.STANDARD_CHARTERED_BANK, 0.92),
+    (["Bank of India", "Statement of Account", "Debit", "Credit", "Balance"], SourceType.BOI_BANK, 0.95),
+    (["Bank of India", "Account Statement", "Debit", "Credit"], SourceType.BOI_BANK, 0.92),
+    (["BANK OF INDIA", "STATEMENT OF ACCOUNT", "PARTICULARS"], SourceType.BOI_BANK, 0.90),
+    # IFSC prefix BKID = Bank of India; common on branch statement PDFs
+    (["BKID", "Account Statement", "Txn Date", "Withdrawal"], SourceType.BOI_BANK, 0.94),
+    (["BKID", "Savings Account", "Txn Date", "Description"], SourceType.BOI_BANK, 0.92),
     (["YES BANK", "Credit Card Statement", "Amount (Rs.)"], SourceType.YES_BANK_CC, 0.95),
     (["YES BANK", "Card Number", "Total Amount Due"], SourceType.YES_BANK_CC, 0.92),
     (["YES BANK", "Statement Period", "Minimum Amount Due"], SourceType.YES_BANK_CC, 0.90),
@@ -140,6 +166,25 @@ _CSV_HEADER_SIGNATURES: list[tuple[set[str], SourceType, float]] = [
     ({"Transaction Date", "Transaction Details", "Reference No.", "Debit", "Credit", "Balance"}, SourceType.IDFC_BANK_CSV, 0.92),
     ({"Date", "Particulars", "Chq/Ref No.", "Debit", "Credit", "Balance"}, SourceType.UNION_BANK_CSV, 0.92),
     ({"Tran Date", "Particulars", "Reference No", "Debit", "Credit", "Balance"}, SourceType.UNION_BANK_CSV, 0.90),
+    ({"Txn Date", "Narration", "Cheque No", "Debit", "Credit", "Balance"}, SourceType.BARODA_BANK_CSV, 0.92),
+    ({"Value Date", "Post Date", "Details", "Chq.No.", "Debit", "Credit", "Balance"}, SourceType.BARODA_BANK_CSV, 0.95),
+    ({"Date", "Narration", "Cheque No", "Debit", "Credit", "Balance"}, SourceType.BARODA_BANK_CSV, 0.90),
+    ({"Transaction Date", "Description", "Cheque No.", "Debit", "Credit", "Balance"}, SourceType.CANARA_BANK_CSV, 0.92),
+    ({"Txn Date", "Value Date", "Cheque No.", "Description", "Branch Code", "Debit", "Credit", "Balance"}, SourceType.CANARA_BANK_CSV, 0.95),
+    ({"Date", "Particulars", "Ref No", "Debit", "Credit", "Balance"}, SourceType.CANARA_BANK_CSV, 0.90),
+    ({"Date", "Description", "Cheque Number", "Debit", "Credit", "Balance"}, SourceType.STANDARD_CHARTERED_BANK_CSV, 0.92),
+    ({"Date", "Description", "Cheque", "Deposit", "Withdrawal", "Balance"}, SourceType.STANDARD_CHARTERED_BANK_CSV, 0.95),
+    ({"Transaction Date", "Narration", "Reference", "Withdrawal", "Deposit", "Balance"}, SourceType.STANDARD_CHARTERED_BANK_CSV, 0.90),
+    # Bank of India CSV/XLS
+    ({"Value Date", "Transaction Date", "Particulars", "Debit", "Credit", "Balance"}, SourceType.BOI_BANK_CSV, 0.95),
+    ({"Transaction Date", "Particulars", "Cheque No.", "Debit", "Credit", "Balance"}, SourceType.BOI_BANK_CSV, 0.93),
+    ({"Date", "Remarks", "Debit", "Credit", "Balance"}, SourceType.BOI_BANK_CSV, 0.92),
+    # Bank of India — branch statement export (BOI.csv / BOI.xlsx)
+    (
+        {"Txn Date", "Description", "Cheque No", "Withdrawal (in Rs.)", "Deposits (in Rs.)", "Balance (in Rs.)"},
+        SourceType.BOI_BANK_CSV,
+        0.96,
+    ),
     # Union Bank UX3 XLS: OpTransactionHistoryUX3_XLS format
     ({"Date", "Tran Id", "Remarks", "UTR Number", "Withdrawals", "Deposits", "Balance"}, SourceType.UNION_BANK_CSV, 0.95),
     # ── Zerodha — only Tax P&L ────────────────────────────────────────────────
@@ -321,12 +366,12 @@ class SourceDetector:
 
         # Case-insensitive comparison so files with ALL-CAPS or all-lower headers
         # (e.g. SBI XLSX exported with different locale) still match.
-        headers_lower = {h.lower() for h in headers}
+        headers_lower = {_norm_header(h) for h in headers}
 
         best_confidence = 0.0
         best_type: SourceType | None = None
         for required_cols, source_type, confidence in _CSV_HEADER_SIGNATURES:
-            required_lower = {c.lower() for c in required_cols}
+            required_lower = {_norm_header(c) for c in required_cols}
             overlap = len(required_lower & headers_lower) / len(required_lower)
             if overlap >= 0.80 and confidence > best_confidence:
                 best_confidence = confidence * overlap
@@ -349,7 +394,7 @@ class SourceDetector:
         _HEADER_KEYWORDS = {
             "date", "narration", "description", "debit", "credit", "balance",
             "withdrawal", "deposit", "transaction", "amount", "particulars",
-            "remarks", "reference", "cheque", "chq", "txn",
+            "remarks", "reference", "cheque", "chq", "txn", "value date",
         }
 
         def _row_score(cells: list[str]) -> int:
@@ -374,13 +419,13 @@ class SourceDetector:
                 best_score = 0
                 best_cells: list[str] = []
                 for _, row in df_raw.iterrows():
-                    cells = [str(c).strip() for c in row if str(c).strip() not in ("", "nan")]
+                    cells = [str(c).replace("\n", " ").strip() for c in row if str(c).strip() not in ("", "nan")]
                     s = _row_score(cells)
                     if s > best_score:
                         best_score = s
                         best_cells = cells
                 if best_score >= 2:
-                    return {c.strip() for c in best_cells}
+                    return {" ".join(c.split()).strip() for c in best_cells}
             except Exception:  # noqa: BLE001
                 # xlrd failed — might be a text-based pseudo-XLS (SBI old format).
                 # Try reading as tab-separated text with single-quoted cells.
@@ -398,7 +443,14 @@ class SourceDetector:
                         # Require a high score so preamble rows (low keyword density)
                         # are skipped and only the real transaction header is returned.
                         if _row_score(cells) >= 4:
-                            return {c.strip() for c in cells if c.strip()}
+                            return {" ".join(c.split()).strip() for c in cells if c.strip()}
+                    # Fallback for mislabeled XLS/XLSX tests carrying CSV text bytes.
+                    for line in text.splitlines():
+                        if "," not in line:
+                            continue
+                        cells = [c.strip().strip('"') for c in line.split(",")]
+                        if _row_score(cells) >= 4:
+                            return {" ".join(c.split()).strip() for c in cells if c.strip()}
                 except Exception:  # noqa: BLE001
                     pass
             return set()
@@ -413,10 +465,19 @@ class SourceDetector:
                     continue
             else:
                 return set()
+            best_headers: set[str] = set()
+            best_score = 0
             for line in text.splitlines():
                 line = line.strip()
-                if line:
-                    return {h.strip().strip('"') for h in line.split(",")}
+                if not line:
+                    continue
+                cells = [h.strip().strip('"') for h in line.split(",")]
+                score = _row_score(cells)
+                if score > best_score:
+                    best_score = score
+                    best_headers = {" ".join(c.split()).strip() for c in cells if c}
+            if best_headers and best_score >= 2:
+                return best_headers
         except Exception:  # noqa: BLE001
             pass
         return set()

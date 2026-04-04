@@ -10,6 +10,8 @@ services:
       POSTGRES_PASSWORD: ledger_secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Runs once on empty volume — role required by initial_schema_with_rls migration
+      - ./docker/postgres/init-01-app-service-role.sql:/docker-entrypoint-initdb.d/01-app-service-role.sql
     # Port 5432 exposed to host for local dev — admin engine and Alembic connect directly.
     # Admin access: docker compose exec db psql -U ledger ledger
     # Exposed on 5433 to avoid conflict with any local PostgreSQL on port 5432.

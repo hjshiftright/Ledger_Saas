@@ -95,24 +95,36 @@ def decrypt_pdf_bytes(file_bytes: bytes, password: str) -> bytes:
 
 
 def extract_text_per_page(file_bytes: bytes, max_pages: int | None = None) -> list[str]:
-    """Extract embedded text from each PDF page using pdfplumber.
+    """Extract embedded text from each PDF page.
 
-    Returns a list with one entry per page (empty string if no text on that page).
-    Raises ImportError if pdfplumber is not installed.
+    Uses pdfplumber when available; falls back to PyMuPDF so text-layer parsing
+    and source detection still work when only ``PyMuPDF`` is installed.
     """
-    if not PDFPLUMBER_AVAILABLE:
-        raise ImportError(
-            "pdfplumber is required for text-layer extraction. "
-            "Install with: pip install pdfplumber"
-        )
-    pages: list[str] = []
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        for i, page in enumerate(pdf.pages):
-            if max_pages is not None and i >= max_pages:
-                break
-            text: str = page.extract_text() or ""
-            pages.append(text)
-    return pages
+    if PDFPLUMBER_AVAILABLE:
+        pages: list[str] = []
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for i, page in enumerate(pdf.pages):
+                if max_pages is not None and i >= max_pages:
+                    break
+                text: str = page.extract_text() or ""
+                pages.append(text)
+        return pages
+
+    if PYMUPDF_AVAILABLE:
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        try:
+            out: list[str] = []
+            n = doc.page_count if max_pages is None else min(doc.page_count, max_pages)
+            for i in range(n):
+                out.append(doc[i].get_text() or "")
+            return out
+        finally:
+            doc.close()
+
+    raise ImportError(
+        "pdfplumber or PyMuPDF is required for text-layer extraction. "
+        "Install with: pip install pdfplumber  OR  pip install PyMuPDF"
+    )
 
 
 def extract_tables_per_page(file_bytes: bytes) -> list[list[list[str | None]]]:

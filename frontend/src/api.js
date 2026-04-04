@@ -5,6 +5,12 @@
 const BASE = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 const ONBOARDING_BASE = `${BASE}/onboarding`;
 
+/** Same Bearer token as v1Call/apiCall — required so pipeline/detect + parse use the same tenant as /process when logged in. */
+const authHeaderOnly = () => {
+  const token = sessionStorage.getItem("ledger_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 class ApiError extends Error {
   constructor(status, statusText, body) {
     super(`HTTP ${status}: ${statusText}`);
@@ -113,7 +119,11 @@ export const API = {
       fd.append("file", file);
       fd.append("source_type_hint", sourceTypeHint);
       fd.append("password", password);
-      const res = await fetch(`${BASE}/pipeline/detect`, { method: "POST", body: fd });
+      const res = await fetch(`${BASE}/pipeline/detect`, {
+        method: "POST",
+        body: fd,
+        headers: authHeaderOnly(),
+      });
       if (!res.ok) {
         let errorBody = null;
         try { errorBody = await res.json(); } catch (_) {}
@@ -136,7 +146,11 @@ export const API = {
       fd.append("password", password);
       fd.append("use_llm", useLlm ? "true" : "false");
       fd.append("llm_provider_id", providerId ?? "");
-      const res = await fetch(`${BASE}/pipeline/parse`, { method: "POST", body: fd });
+      const res = await fetch(`${BASE}/pipeline/parse`, {
+        method: "POST",
+        body: fd,
+        headers: authHeaderOnly(),
+      });
       if (!res.ok) {
         let errorBody = null;
         try { errorBody = await res.json(); } catch (_) {}

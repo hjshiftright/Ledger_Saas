@@ -19,6 +19,10 @@ class SourceType(str, Enum):
     INDUSIND_BANK = "INDUSIND_BANK"
     IDFC_BANK = "IDFC_BANK"
     UNION_BANK = "UNION_BANK"
+    BARODA_BANK = "BARODA_BANK"
+    CANARA_BANK = "CANARA_BANK"
+    STANDARD_CHARTERED_BANK = "STANDARD_CHARTERED_BANK"
+    BOI_BANK = "BOI_BANK"  # Bank of India (PDF)
     YES_BANK_CC = "YES_BANK_CC"   # Yes Bank Credit Card e-statement
     ICICI_BANK_CC = "ICICI_BANK_CC" # ICICI Bank Credit Card e-statement
     HDFC_BANK_CC = "HDFC_BANK_CC"   # HDFC Bank Credit Card e-statement
@@ -31,6 +35,10 @@ class SourceType(str, Enum):
     KOTAK_BANK_CSV = "KOTAK_BANK_CSV"
     IDFC_BANK_CSV = "IDFC_BANK_CSV"
     UNION_BANK_CSV = "UNION_BANK_CSV"
+    BARODA_BANK_CSV = "BARODA_BANK_CSV"
+    CANARA_BANK_CSV = "CANARA_BANK_CSV"
+    STANDARD_CHARTERED_BANK_CSV = "STANDARD_CHARTERED_BANK_CSV"
+    BOI_BANK_CSV = "BOI_BANK_CSV"  # Bank of India (CSV/XLS/XLSX)
 
     # ── Mutual Fund CAS ────────────────────────────────────────────────────────
     CAS_CAMS = "CAS_CAMS"
@@ -164,6 +172,11 @@ PDF_SOURCE_TYPES: frozenset[SourceType] = frozenset(
         SourceType.KOTAK_BANK,
         SourceType.INDUSIND_BANK,
         SourceType.IDFC_BANK,
+        SourceType.UNION_BANK,
+        SourceType.BARODA_BANK,
+        SourceType.CANARA_BANK,
+        SourceType.STANDARD_CHARTERED_BANK,
+        SourceType.BOI_BANK,
         SourceType.CAS_CAMS,
         SourceType.CAS_KFINTECH,
         SourceType.CAS_MF_CENTRAL,
@@ -178,6 +191,11 @@ CSV_SOURCE_TYPES: frozenset[SourceType] = frozenset(
         SourceType.AXIS_BANK_CSV,
         SourceType.KOTAK_BANK_CSV,
         SourceType.IDFC_BANK_CSV,
+        SourceType.UNION_BANK_CSV,
+        SourceType.BARODA_BANK_CSV,
+        SourceType.CANARA_BANK_CSV,
+        SourceType.STANDARD_CHARTERED_BANK_CSV,
+        SourceType.BOI_BANK_CSV,
         SourceType.ZERODHA_HOLDINGS,
         SourceType.ZERODHA_TRADEBOOK,
         SourceType.ZERODHA_TAX_PNL,
@@ -200,12 +218,22 @@ BANK_SOURCE_TYPES: frozenset[SourceType] = frozenset(
         SourceType.KOTAK_BANK,
         SourceType.INDUSIND_BANK,
         SourceType.IDFC_BANK,
+        SourceType.UNION_BANK,
+        SourceType.BARODA_BANK,
+        SourceType.CANARA_BANK,
+        SourceType.STANDARD_CHARTERED_BANK,
+        SourceType.BOI_BANK,
         SourceType.HDFC_BANK_CSV,
         SourceType.SBI_BANK_CSV,
         SourceType.ICICI_BANK_CSV,
         SourceType.AXIS_BANK_CSV,
         SourceType.KOTAK_BANK_CSV,
         SourceType.IDFC_BANK_CSV,
+        SourceType.UNION_BANK_CSV,
+        SourceType.BARODA_BANK_CSV,
+        SourceType.CANARA_BANK_CSV,
+        SourceType.STANDARD_CHARTERED_BANK_CSV,
+        SourceType.BOI_BANK_CSV,
     }
 )
 

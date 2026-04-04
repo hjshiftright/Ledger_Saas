@@ -13,7 +13,7 @@ import { API } from './api.js';
 import AddLedgerItemDialog from './AddLedgerItemDialog';
 
 // --- CONSTANTS ---
-const BANK_OPTIONS = ['HDFC', 'SBI', 'ICICI', 'Axis', 'Kotak', 'IDFC First', 'PNB', 'IndusInd', 'Standard Chartered', 'Other / Custom'];
+const BANK_OPTIONS = ['HDFC', 'SBI', 'ICICI', 'Axis', 'Kotak', 'IDFC First', 'PNB', 'IndusInd', 'Standard Chartered', 'Bank of Baroda', 'Canara Bank', 'Bank of India', 'Other / Custom'];
 const GOAL_ICONS = {
   "Kid's Education": GraduationCap,
   "Marriage": Heart,
