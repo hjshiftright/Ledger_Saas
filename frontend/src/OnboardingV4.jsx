@@ -2368,12 +2368,12 @@ export default function OnboardingV4({ userEmail = '', onLogout, onComplete }) {
     API.dashboard.load()
       .then(dbData => {
         if (!dbData) return;
-        const hasName    = dbData.name && dbData.name.trim().length > 0;
+        const hasName    = dbData.name && dbData.name.trim().length > 0 && dbData.name !== 'Rahul';
         const hasAssets  = Object.values(dbData.assets  || {}).flat().length > 0;
         const hasGoals   = (dbData.goals || []).length > 0;
         if (hasName || hasAssets || hasGoals) {
-          setProfileData(d => ({ ...d, legalName: dbData.name || d.legalName }));
-          setSections({ profiling: true, mapping: hasAssets, goals: hasGoals });
+          setProfileData(d => ({ ...d, legalName: dbData.name !== 'Rahul' ? dbData.name : d.legalName }));
+          setSections({ profiling: !!hasName, mapping: !!hasAssets, goals: !!hasGoals });
         }
       })
       .catch(() => {})  // new user or not authenticated yet — show ProfileScreen
