@@ -97,23 +97,23 @@ function TypingIndicator() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * FinnyInline — self-contained inline chat panel.
+ * ProtonInline — self-contained inline chat panel.
  *
  * Props:
- *   subtitle         – line below "Finny" in the header
+ *   subtitle         – line below "Proton" in the header
  *   placeholder      – textarea placeholder
  *   prompts          – array of quick-prompt strings
  *   showPromptsAlways– keep prompt chips visible even after messages exist
- *   initialMessage   – first message Finny sends on mount
- *   onSend(text)     – async fn; return a string → auto-appended as Finny reply
+ *   initialMessage   – first message Proton sends on mount
+ *   onSend(text)     – async fn; return a string → auto-appended as Proton reply
  *                      return null/undefined → caller injects via ref
  *
- * Ref exposes: { addMessage({ role: 'finny'|'user', content }) }
+ * Ref exposes: { addMessage({ role: 'proton'|'user', content }) }
  */
-export const FinnyInline = forwardRef(function FinnyInline(
+export const ProtonInline = forwardRef(function ProtonInline(
   {
     subtitle = 'Your financial companion',
-    placeholder = 'Ask Finny anything…',
+    placeholder = 'Ask Proton anything…',
     prompts = [],
     showPromptsAlways = false,
     initialMessage,
@@ -122,7 +122,7 @@ export const FinnyInline = forwardRef(function FinnyInline(
   ref
 ) {
   const [messages, setMessages] = useState(() =>
-    initialMessage ? [{ role: 'finny', content: initialMessage }] : []
+    initialMessage ? [{ role: 'proton', content: initialMessage }] : []
   )
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
@@ -145,7 +145,7 @@ export const FinnyInline = forwardRef(function FinnyInline(
     setThinking(true)
     try {
       const reply = await onSend?.(content)
-      if (reply != null) addMessage({ role: 'finny', content: reply })
+      if (reply != null) addMessage({ role: 'proton', content: reply })
     } finally {
       setThinking(false)
       setTimeout(() => inputRef.current?.focus(), 50)
@@ -164,7 +164,7 @@ export const FinnyInline = forwardRef(function FinnyInline(
           <Sparkles size={16} className="text-white" />
         </div>
         <div>
-          <p className="text-sm font-black leading-tight" style={{ color: NAVY }}>Finny</p>
+          <p className="text-sm font-black leading-tight" style={{ color: NAVY }}>Proton</p>
           <p className="text-[11px] text-slate-400 leading-tight">{subtitle}</p>
         </div>
         <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
@@ -246,7 +246,7 @@ const FLOATING_PROMPTS = [
   "Which budget am I closest to hitting?",
 ]
 
-export function FinnyFloating({ onNavigate }) {
+export function ProtonFloating({ onNavigate }) {
   const [open, setOpen]               = useState(false)
   const [messages, setMessages]       = useState([])
   const [input, setInput]             = useState('')
@@ -285,7 +285,7 @@ export function FinnyFloating({ onNavigate }) {
     try {
       const history = messages.map(m => ({ role: m.role, content: m.content }))
       const res = await API.chat.send(content, history)
-      addMessage({ role: 'finny', content: res.reply })
+      addMessage({ role: 'proton', content: res.reply })
     } catch {
       setError('Something went wrong. Try again.')
       setMessages(messages)
@@ -313,7 +313,7 @@ export function FinnyFloating({ onNavigate }) {
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
-                <div className="text-sm font-black leading-tight" style={{ color: NAVY }}>Finny</div>
+                <div className="text-sm font-black leading-tight" style={{ color: NAVY }}>Proton</div>
                 <div className="text-xs text-slate-400 leading-tight">Ask anything about your money</div>
               </div>
             </div>
@@ -340,7 +340,7 @@ export function FinnyFloating({ onNavigate }) {
                 </div>
                 <p className="text-sm font-semibold text-slate-700 mb-1">No AI provider set up yet</p>
                 <p className="text-xs text-slate-400 mb-5 leading-relaxed px-2">
-                  Add a Gemini, OpenAI, or Anthropic API key in Settings and Finny will be ready to help.
+                  Add a Gemini, OpenAI, or Anthropic API key in Settings and Proton will be ready to help.
                 </p>
                 <button
                   onClick={() => { setOpen(false); onNavigate?.('settings') }}
@@ -357,7 +357,7 @@ export function FinnyFloating({ onNavigate }) {
                   style={{ background: `${NAVY}18` }}>
                   <Sparkles className="w-6 h-6" style={{ color: NAVY }} />
                 </div>
-                <p className="text-sm font-semibold text-slate-700 mb-1">Hey! I'm Finny 👋</p>
+                <p className="text-sm font-semibold text-slate-700 mb-1">Hey! I'm Proton 👋</p>
                 <p className="text-xs text-slate-400 mb-5 leading-relaxed">
                   I have your live financial data. Ask me anything about your money.
                 </p>
@@ -449,7 +449,7 @@ export function FinnyFloating({ onNavigate }) {
       >
         {open ? <Minimize2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
         <span className="text-sm font-semibold leading-none">
-          {open ? 'Minimise' : 'Ask Finny'}
+          {open ? 'Minimise' : 'Ask Proton'}
         </span>
         {!open && messages.length > 0 && (
           <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5" />
@@ -460,4 +460,4 @@ export function FinnyFloating({ onNavigate }) {
 }
 
 // Default export = floating widget (drop-in replacement for ChatWidget)
-export default FinnyFloating
+export default ProtonFloating

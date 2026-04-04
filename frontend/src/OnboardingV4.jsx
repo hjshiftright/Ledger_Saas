@@ -16,7 +16,7 @@ import BudgetsPage from './BudgetsPage';
 import GoalsPage from './GoalsPage';
 import ReportsPage from './ReportsPage';
 import ImportWizard from './ImportWizard';
-import { FinnyInline } from './FinnyAssistant.jsx';
+import { ProtonInline } from './ProtonAssistant.jsx';
 import AddLedgerItemDialog from './AddLedgerItemDialog';
 import { GoalVizModal } from './GoalsPage.jsx';
 
@@ -75,163 +75,217 @@ const Textarea = ({ value, onChange, placeholder }) => (
 );
 
 // ─── Full-screen Profile Setup ────────────────────────────────────────────
+// ─── Full-screen Profile Setup ────────────────────────────────────────────
 const PERSPECTIVES = [
-  { id: 'salaried',  icon: Briefcase, title: 'Salaried',        desc: 'Monthly payroll & tax management' },
-  { id: 'business',  icon: Store,     title: 'Business Owner',  desc: 'Separate personal & entity flows' },
-  { id: 'homemaker', icon: Home,      title: 'Homemaker',       desc: 'Optimise household allocation' },
-  { id: 'investor',  icon: TrendingUp,title: 'Investor',        desc: 'Track multi-asset performance' },
+  { id: 'salaried',  title: 'Salaried',   desc: 'Steady monthly paycheck.' },
+  { id: 'business',  title: 'Business',   desc: 'Self-employed or business owner.' },
+  { id: 'investor',  title: 'Investor',   desc: 'Focus on long term wealth building.' },
+  { id: 'homemaker', title: 'Homemaker',  desc: 'Managing family budgets & accounts.' },
+  { id: 'freelancer',title: 'Freelancer', desc: 'Independent professional.' },
+  { id: 'student',   title: 'Student',    desc: 'Education & early career.' },
+  { id: 'retiree',   title: 'Retiree',    desc: 'Living on pensions & investments.' },
+  { id: 'other',     title: 'Other',      desc: 'Clean slate for full customization.' },
 ];
 
+const RadioPill = ({ active, onClick, label, className = '' }) => (
+  <button 
+    onClick={onClick}
+    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors border-2 ${
+      active ? 'border-[#2C4A70] text-[#2C4A70] bg-[#2C4A70]/5' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+    } ${className}`}
+  >
+    {label}
+  </button>
+);
+
 function ProfileScreen({ initial, onDone }) {
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState({
+    legalName: initial?.legalName || '',
+    age: initial?.age || '',
+    gender: initial?.gender || '',
+    perspective: initial?.perspective || '',
+    maritalStatus: initial?.maritalStatus || '',
+    kids: initial?.kids || '',
+    otherDependants: initial?.otherDependants || '',
+    timeAvailable: initial?.timeAvailable || 'standard'
+  });
+
   const set = (k, v) => setData(d => ({ ...d, [k]: v }));
-  const canSubmit = data.perspective && data.legalName;
+  
+  const canSubmit = data.legalName && data.perspective;
+
+  const protonRef = useRef(null);
+  const handleProtonSend = async (text) => {
+    // Basic mock acknowledgement for the UI
+    return "Got it! I've securely noted your profile.";
+  };
 
   return (
-    <div className="min-h-screen bg-[#F7F8F9] flex flex-col">
+    <div className="flex flex-col h-screen bg-[#F7F8F9]">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-10 pt-8 pb-0">
-        <span className="text-lg italic font-serif font-bold text-[#2C4A70]">The Private Ledger</span>
-      </header>
-
-      {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-5xl">
-
-          {/* Heading */}
-          <FadeIn className="text-center mb-10">
-            <h1 className="text-4xl md:text-5xl font-serif font-black text-[#2C4A70] leading-tight mb-3">
-              Welcome to your financial cockpit.
-            </h1>
-            <p className="text-slate-500 text-lg max-w-xl mx-auto">
-              A few quick details help us personalise everything for you.
-            </p>
-          </FadeIn>
-
-          {/* Perspective — 4 cards in a row */}
-          <FadeIn delay={0.08}>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">
-              I primarily manage money as a…
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {PERSPECTIVES.map(({ id, icon: Icon, title, desc }) => {
-                const active = data.perspective === id;
-                return (
-                  <button key={id} onClick={() => set('perspective', id)}
-                    className={`relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-all cursor-pointer
-                      ${active
-                        ? 'border-[#2C4A70] bg-white shadow-lg ring-4 ring-[#2C4A70]/10'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}
-                  >
-                    {active && (
-                      <span className="absolute top-3 right-3 bg-[#526B5C] text-white rounded-full p-0.5">
-                        <Check size={11} strokeWidth={3} />
-                      </span>
-                    )}
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3
-                      ${active ? 'bg-[#2C4A70] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                      <Icon size={22} />
-                    </div>
-                    <h3 className={`font-bold text-sm mb-1 ${active ? 'text-[#2C4A70]' : 'text-slate-700'}`}>{title}</h3>
-                    <p className="text-xs text-slate-400 leading-snug">{desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </FadeIn>
-
-          {/* Bottom row — name fields + time + optional textarea */}
-          <FadeIn delay={0.16}>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7 grid md:grid-cols-2 gap-6">
-
-              {/* Left column */}
-              <div className="space-y-5">
-                <Field label="Your Name *" value={data.legalName} onChange={v => set('legalName', v)} placeholder="Full name" />
-                <Field label="Partner's Name" value={data.partnerName} onChange={v => set('partnerName', v)} placeholder="Optional" />
-
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2.5">Time available today</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { id: 'express', time: '2–3 min', label: 'Express Sync' },
-                      { id: 'deep',    time: '10 min',  label: 'Deep Setup'   },
-                    ].map(({ id, time, label }) => {
-                      const active = data.timeAvailable === id;
-                      return (
-                        <button key={id} onClick={() => set('timeAvailable', id)}
-                          className={`py-3 px-4 rounded-xl border-2 text-left transition-all
-                            ${active ? 'border-[#2C4A70] bg-blue-50/40 shadow-sm' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}
-                        >
-                          <p className={`text-xl font-black font-serif ${active ? 'text-[#2C4A70]' : 'text-slate-600'}`}>{time}</p>
-                          <p className="text-xs font-semibold text-slate-400 mt-0.5">{label}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right column */}
-              <div className="space-y-5">
-
-                {/* Household Type */}
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2.5">Household Type</p>
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    {[
-                      { id: 'single', label: 'Single',  Icon: User  },
-                      { id: 'couple', label: 'Couple',  Icon: Users },
-                      { id: 'family', label: 'Family',  Icon: Users },
-                    ].map(({ id, label, Icon }) => {
-                      const active = data.householdType === id;
-                      return (
-                        <button key={id} onClick={() => set('householdType', id)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all
-                            ${active ? 'border-[#2C4A70] bg-blue-50/40 shadow-sm' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center
-                            ${active ? 'bg-[#2C4A70] text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>
-                            <Icon size={id === 'family' ? 18 : 16} strokeWidth={id === 'family' ? 1.5 : 2} />
-                          </div>
-                          <span className={`text-xs font-bold ${active ? 'text-[#2C4A70]' : 'text-slate-500'}`}>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Dependents counter */}
-                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">Dependents</p>
-                      <p className="text-xs text-slate-400">Children or others financially reliant on you</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => set('dependents', Math.max(0, (data.dependents || 0) - 1))}
-                        className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors font-bold text-base leading-none">
-                        −
-                      </button>
-                      <span className="w-5 text-center font-black text-slate-800 text-base">{data.dependents || 0}</span>
-                      <button
-                        onClick={() => set('dependents', (data.dependents || 0) + 1)}
-                        className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors font-bold text-base leading-none">
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </FadeIn>
-
-          {/* CTA */}
-          <FadeIn delay={0.22} className="flex justify-center mt-8">
-            <Btn onClick={() => onDone(data)} disabled={!canSubmit} className="px-12 py-4 text-lg">
-              Set up my Ledger <ArrowRight size={20} />
-            </Btn>
-          </FadeIn>
+      <div className="bg-white border-b border-slate-200 px-8 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-base italic font-serif font-bold text-[#2C4A70]">The Private Ledger</span>
+          <ChevronRight size={14} className="text-slate-300" />
+          <span className="text-sm font-semibold text-slate-600">Profile Configuration</span>
         </div>
-      </main>
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-8 rounded-full bg-[#2C4A70] flex items-center justify-center">
+            <User size={14} className="text-white" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-8 py-6 w-full max-w-[1400px] mx-auto">
+        <FadeIn>
+          <div className="mb-4">
+            <h1 className="text-3xl font-serif font-black text-[#2C4A70] leading-tight mb-1">
+              Hey {data.legalName ? <span className="font-bold">{data.legalName}</span> : ''} ! I'm your Ledger Advisor.
+            </h1>
+            <p className="text-slate-500 text-[14px]">
+              Let's quickly verify your basic profile details for tax considerations.
+            </p>
+          </div>
+
+          <div className="flex gap-6 items-start">
+            
+            {/* ── LEFT column ── */}
+            <div className="w-[60%] flex flex-col gap-4 shrink-0">
+              
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <div className="flex flex-wrap gap-x-6 gap-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Preferred Name</p>
+                    <input 
+                      type="text" 
+                      value={data.legalName} 
+                      onChange={e => set('legalName', e.target.value)} 
+                      placeholder="e.g. prana"
+                      className="w-48 border-2 border-slate-100 rounded-lg px-3 py-1.5 text-slate-800 focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 outline-none transition-colors text-sm font-medium"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Age</p>
+                    <input 
+                      type="number" 
+                      value={data.age} 
+                      onChange={e => set('age', e.target.value)} 
+                      placeholder="30"
+                      className="w-20 border-2 border-slate-100 rounded-lg px-3 py-1.5 text-slate-800 text-center focus:border-[#2C4A70] focus:ring-2 focus:ring-[#2C4A70]/10 outline-none transition-colors text-sm font-medium"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Gender</p>
+                    <div className="flex gap-1.5">
+                      {['Male', 'Female', 'Other'].map(g => (
+                        <RadioPill key={g} active={data.gender === g} onClick={() => set('gender', g)} label={g} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="my-4 border-slate-100" />
+
+                <div className="flex flex-wrap gap-x-6 gap-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Marital Status</p>
+                    <div className="flex gap-1.5">
+                      {['Single', 'Married', 'Other'].map(s => (
+                        <RadioPill key={s} active={data.maritalStatus === s} onClick={() => set('maritalStatus', s)} label={s} />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Kids</p>
+                    <div className="flex gap-1.5">
+                      {['0', '1', '2', '3+'].map(k => (
+                        <RadioPill key={k} active={data.kids === k} onClick={() => set('kids', k)} label={k} className="w-10 px-0 flex justify-center" />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Dependants</p>
+                    <div className="flex gap-1.5">
+                      {['0', '1', '2', '3+'].map(k => (
+                        <RadioPill key={k} active={data.otherDependants === k} onClick={() => set('otherDependants', k)} label={k} className="w-10 px-0 flex justify-center" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <div className="flex items-end justify-between mb-3">
+                  <h3 className="text-[14px] font-bold text-slate-800">
+                    Which of these best describes your current situation?
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    Helps customize accounts & budgets.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {PERSPECTIVES.map(({ id, title, desc }) => {
+                    const active = data.perspective === id;
+                    return (
+                      <button key={id} onClick={() => set('perspective', id)}
+                        className={`text-left p-3 rounded-lg border-2 transition-all
+                          ${active ? 'border-[#2C4A70] shadow-sm bg-[#2C4A70]/5 ring-1 ring-[#2C4A70]' : 'border-slate-100 hover:border-slate-200'}`}
+                      >
+                        <h3 className={`font-bold text-[13px] mb-0.5 ${active ? 'text-[#2C4A70]' : 'text-slate-800'}`}>{title}</h3>
+                        <p className="text-[10px] text-slate-500 leading-snug">{desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <p className="text-[11px] font-semibold text-slate-500 mb-2.5">How much time do you have to set things up today?</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { id: 'basics', title: 'Just the basics', desc: 'Setup: ~2 mins' },
+                    { id: 'standard', title: 'Standard setup', desc: 'Setup: ~5 mins' },
+                    { id: 'deep', title: 'Deep dive', desc: 'Setup: 10+ mins' },
+                  ].map(({ id, title, desc }) => {
+                    const active = data.timeAvailable === id;
+                    return (
+                      <button key={id} onClick={() => set('timeAvailable', id)}
+                        className={`text-left p-3 rounded-lg border-2 transition-all
+                          ${active ? 'border-[#2C4A70] bg-[#F7F8F9]' : 'border-slate-100 hover:border-slate-200'}`}
+                      >
+                        <h3 className={`font-bold text-[13px] ${active ? 'text-[#2C4A70]' : 'text-slate-800'}`}>{title}</h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── RIGHT column ── */}
+            <div className="flex-1 sticky top-0 h-[520px] border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+              <ProtonInline 
+                ref={protonRef}
+                initialMessage="I'm Proton! I help you fill out details using plain English. E.g. 'I'm a 30yo software engineer with a car loan'."
+                onSend={handleProtonSend}
+              />
+            </div>
+
+          </div>
+        </FadeIn>
+      </div>
+
+      <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-end shrink-0">
+        <button 
+          onClick={() => onDone(data)} 
+          disabled={!canSubmit}
+          className="bg-[#2C4A70] hover:bg-[#1F344F] text-white font-bold py-3 px-8 rounded-full shadow-md flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next: Set Up Accounts <ArrowRight size={16} strokeWidth={2.5} />
+        </button>
+      </div>
+
     </div>
   );
 }
@@ -479,12 +533,12 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
     return allNeg && (data.assets?.length > 0 || data.liabilities?.length > 0);
   });
 
-  const finnyRef = useRef(null);
+  const protonRef = useRef(null);
 
   const clearDummy = () => {
     setData(d => ({ ...d, assets: [], liabilities: [] }));
     setIsDummy(false);
-    finnyRef.current?.addMessage({ role: 'finny', content: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." });
+    protonRef.current?.addMessage({ role: 'proton', content: "Cleared! Start fresh — tell me about your accounts, investments, and any debts." });
   };
 
   const [dialog, setDialog] = useState(false);
@@ -616,7 +670,7 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
   const totalL   = liabilities.reduce((s, a) => s + a.value, 0);
   const netWorth = totalA - totalL;
 
-  const handleFinnySend = async (text) => {
+  const handleProtonSend = async (text) => {
     await new Promise(r => setTimeout(r, 800));
     return simulateAIResponse(text);
   };
@@ -855,15 +909,15 @@ function MappingSection({ data, setData, perspective = 'salaried', onComplete })
         {/* Divider */}
         <div className="w-px bg-slate-200 shrink-0" />
 
-        {/* Right — Finny assistant sidebar */}
+        {/* Right — Proton assistant sidebar */}
         <div className="w-[380px] shrink-0 flex flex-col border-l border-slate-100">
-          <FinnyInline
-            ref={finnyRef}
+          <ProtonInline
+            ref={protonRef}
             subtitle="Your financial companion"
             placeholder="E.g. HDFC savings ₹3L, home loan ₹28L…"
             prompts={!hasAny ? SUGGESTED_PROMPTS.slice(0, 3) : []}
             initialMessage="I've pre-filled a starting map based on your profile. You can edit any entry, remove what doesn't apply, or just tell me what you own and owe in plain language."
-            onSend={handleFinnySend}
+            onSend={handleProtonSend}
           />
         </div>
       </div>
@@ -1080,7 +1134,12 @@ function GoalDialog({ goal, existing, assets = [], onSave, onRemove, onClose }) 
             <button onClick={onClose} className="flex-1 py-3 rounded-full border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            <button onClick={() => { onSave({ id: goal.id, targetAmount: num(targetAmount), alreadySaved: num(alreadySaved), timelineMonths, priority, note }); onClose(); }}
+            <button onClick={() => { 
+                try {
+                  onSave({ id: goal.id, targetAmount: num(targetAmount), alreadySaved: num(alreadySaved), timelineMonths, priority, note });
+                } catch(e) { console.error('Save crash:', e); }
+                finally { onClose(); }
+              }}
               disabled={!canSave}
               className="flex-1 py-3 rounded-full bg-[#2C4A70] text-white font-semibold text-sm hover:bg-[#1F344F] disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all">
               {existing ? 'Update Goal' : 'Add Goal'}
@@ -1174,7 +1233,7 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
     });
   };
 
-  const handleGoalFinnySend = async (text) => {
+  const handleGoalProtonSend = async (text) => {
     await new Promise(r => setTimeout(r, 900));
     const lower = text.toLowerCase();
     let reply = "That's a thoughtful question. Based on your goals, I'd suggest reviewing your emergency fund first — it's the foundation everything else rests on. Once that's set, allocate surplus income toward your highest-priority goal using a SIP or recurring deposit.";
@@ -1377,15 +1436,15 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
           </div>
         </div>
 
-        {/* RIGHT — Finny goal assistant */}
+        {/* RIGHT — Proton goal assistant */}
         <div className="w-[380px] shrink-0 flex flex-col border-l border-slate-100">
-          <FinnyInline
+          <ProtonInline
             subtitle="Your financial companion"
             placeholder="Ask about saving strategies, timelines…"
             prompts={GOALS_AI_PROMPTS}
             showPromptsAlways
-            initialMessage="I'm Finny, your financial companion. Ask me anything about saving strategies, timelines, or how to prioritise your financial milestones."
-            onSend={handleGoalFinnySend}
+            initialMessage="I'm Proton, your financial companion. Ask me anything about saving strategies, timelines, or how to prioritise your financial milestones."
+            onSend={handleGoalProtonSend}
           />
         </div>
       </div>
