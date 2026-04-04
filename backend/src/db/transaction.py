@@ -128,7 +128,10 @@ async def _new_root_transaction(
         await session.rollback()
         raise
     finally:
-        _active_tx.reset(token)
+        try:
+            _active_tx.reset(token)
+        except ValueError:
+            pass  # Teardown ran in a copied Context (e.g. FastAPI GC) — safe to ignore.
         await session.close()
 
 
@@ -162,7 +165,10 @@ async def _nested_savepoint(parent: TransactionContext):
         await sp.rollback()  # ROLLBACK TO SAVEPOINT
         raise
     finally:
-        _active_tx.reset(token)
+        try:
+            _active_tx.reset(token)
+        except ValueError:
+            pass  # Teardown ran in a copied Context — safe to ignore.
 
 
 # ── Main context manager ──────────────────────────────────────────────────────
@@ -222,7 +228,10 @@ async def transactional(
                     yield ctx
                 finally:
                     # Restore outer context (may be None).
-                    _active_tx.reset(token)
+                    try:
+                        _active_tx.reset(token)
+                    except ValueError:
+                        pass  # Teardown ran in a copied Context — safe to ignore.
 
         case Propagation.NESTED:
             if current is None:
@@ -248,7 +257,10 @@ async def transactional(
             try:
                 yield None
             finally:
-                _active_tx.reset(token)
+                try:
+                    _active_tx.reset(token)
+                except ValueError:
+                    pass  # Teardown ran in a copied Context — safe to ignore.
 
         case Propagation.MANDATORY:
             if current is None:

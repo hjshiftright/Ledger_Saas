@@ -381,7 +381,7 @@ export default function AddLedgerItemDialog({ isOpen, onClose, onAdd, defaultCat
     ? computeLentProjection(balance, interestRate, lentDate, returnDate)
     : null;
 
-  const handleCommit = () => {
+  const handleCommit = (keepOpen = false) => {
     const typePart  = accountType ? ` – ${accountType}` : '';
     const finalName = resolvedInstitution
       ? `${resolvedInstitution}${typePart}`
@@ -404,7 +404,12 @@ export default function AddLedgerItemDialog({ isOpen, onClose, onAdd, defaultCat
       owner:       config.showOwner ? owner : '',
     };
     onAdd(selectedCatId, selectedCatType, entry);
-    onClose();
+    
+    if (!keepOpen) {
+      onClose();
+    } else {
+      resetForm(selectedCatId);
+    }
   };
 
   return (
@@ -704,12 +709,29 @@ export default function AddLedgerItemDialog({ isOpen, onClose, onAdd, defaultCat
                     className="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors">
                     Cancel
                   </button>
-                  <button onClick={handleCommit} disabled={!canCommit}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors shadow-sm
-                      disabled:opacity-40 disabled:cursor-not-allowed
-                      ${isLiab ? 'bg-rose-500 hover:bg-rose-600' : 'bg-[#1E3A5F] hover:bg-[#1E3A5F]/90'}`}>
-                    {initialEntry ? 'Save Changes' : 'Add Entry'}
-                  </button>
+                  {initialEntry ? (
+                    <button onClick={() => handleCommit(false)} disabled={!canCommit}
+                      className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors shadow-sm
+                        disabled:opacity-40 disabled:cursor-not-allowed
+                        ${isLiab ? 'bg-rose-500 hover:bg-rose-600' : 'bg-[#1E3A5F] hover:bg-[#1E3A5F]/90'}`}>
+                      Save Changes
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => handleCommit(true)} disabled={!canCommit}
+                        className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm
+                          disabled:opacity-40 disabled:cursor-not-allowed
+                          ${isLiab ? 'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100' : 'bg-[#1E3A5F]/5 text-[#1E3A5F] border border-[#1E3A5F]/20 hover:bg-[#1E3A5F]/10'}`}>
+                        Save & Add Another
+                      </button>
+                      <button onClick={() => handleCommit(false)} disabled={!canCommit}
+                        className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors shadow-sm
+                          disabled:opacity-40 disabled:cursor-not-allowed
+                          ${isLiab ? 'bg-rose-500 hover:bg-rose-600' : 'bg-[#1E3A5F] hover:bg-[#1E3A5F]/90'}`}>
+                        Save & Close
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

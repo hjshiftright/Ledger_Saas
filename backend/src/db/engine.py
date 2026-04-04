@@ -149,7 +149,14 @@ async def get_session_with_rls_and_context(
             await session.rollback()
             raise
         finally:
-            _active_tx.reset(token)
+            # reset() requires the token to belong to the same Context object.
+            # FastAPI runs dependency teardown (GeneratorExit) in a copied Context,
+            # so reset() raises ValueError there. Since that copied Context is about
+            # to be discarded, ignoring the error is safe — no state leaks.
+            try:
+                _active_tx.reset(token)
+            except ValueError:
+                pass
 
 
 async def get_admin_session() -> AsyncSession:
