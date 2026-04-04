@@ -352,7 +352,7 @@ export default function AnnualExpensesView({ data, setData, onBack, onComplete }
               Save Draft
             </button>
             <Btn disabled={saving} onClick={async () => { await persist({ completed: true }); onComplete(); }}>
-              {saving ? 'Saving…' : 'Proceed to Mapping'}
+              {saving ? 'Saving…' : 'Proceed to Accounts'}
             </Btn>
           </div>
         </div>

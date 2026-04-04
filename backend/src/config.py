@@ -58,18 +58,29 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _SRC_DIR = Path(__file__).parent
 _DEFAULT_DB_URL = "postgresql+asyncpg://app_service:password@localhost:6432/ledger"
 
+# Probe candidate .env locations so local dev works regardless of where uvicorn
+# is invoked from (project root, backend/, or backend/src/).
+# Pydantic-settings always gives real env vars higher priority than the file,
+# so Docker Compose's `environment:` block takes precedence automatically.
+_ENV_CANDIDATES = [
+    _SRC_DIR / ".env",            # backend/src/.env  (most specific)
+    _SRC_DIR.parent / ".env",     # backend/.env
+    _SRC_DIR.parent.parent / ".env",  # project root .env
+]
+_ENV_FILE = next((str(p) for p in _ENV_CANDIDATES if p.exists()), ".env")
+
 
 class Settings(BaseSettings):
     """All application settings sourced from environment variables.
 
     Pydantic-settings automatically reads from:
-    1. Environment variables (highest priority)
-    2. .env file (if present at project root)
+    1. Environment variables (highest priority — used by Docker Compose)
+    2. First .env file found in: backend/src/, backend/, or project root
     3. Default values defined here
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

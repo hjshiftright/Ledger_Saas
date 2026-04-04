@@ -105,6 +105,7 @@ services:
       # Change this to a long random string before going to production
       SECRET_KEY:      change-me-before-going-to-production
       ALLOWED_ORIGINS: "http://localhost,http://localhost:80"
+      GOOGLE_CLIENT_ID: "23208176216-hoti0t0pmsskee269dsotbtad4rds3nm.apps.googleusercontent.com"
       # Optional: uncomment and fill in to enable LLM features
       # GEMINI_API_KEY:     your-key-here
       # OPENAI_API_KEY:     your-key-here

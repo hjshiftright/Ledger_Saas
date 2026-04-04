@@ -124,7 +124,7 @@ export default function BudgetsSection({ data, setData, onBack, onComplete }) {
       {/* Footer nav */}
       <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-between shrink-0">
         <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#2C4A70] transition-colors uppercase tracking-wide">
-          <ArrowRight size={14} className="rotate-180" /> Back to Mapping
+          <ArrowRight size={14} className="rotate-180" /> Back to Accounts
         </button>
         <div className="flex items-center gap-3">
           <button onClick={() => persist()} className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wide">
