@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Eye, EyeOff, Check, Shield, ChevronDown, Sparkles, AlertTriangle, RefreshCw, X } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { API } from './api.js';
 
 const NAVY = '#2C4A70';
@@ -39,9 +40,31 @@ function AuthForm({ mode, onSuccess, onSwitchMode, hasExistingUsers, onResetDb }
   const [llmApiKey, setLlmApiKey]           = useState('');
   const [error, setError]                   = useState(null);
   const [loading, setLoading]               = useState(false);
+  const [googleLoading, setGoogleLoading]   = useState(false);
 
   const isSignup = mode === 'signup';
   const selectedProvider = LLM_PROVIDERS.find(p => p.key === llmProvider);
+
+  // Google Sign-In: GoogleLogin component returns { credential } which is a signed ID token
+  const handleGoogleSuccess = async ({ credential }) => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const res = await API.auth.google({ credential });
+      const firstTenant = res.tenants?.[0];
+      if (!firstTenant) throw new Error('No accessible tenant found.');
+      const tokenRes = await API.auth.selectTenant({ userId: res.user_id, tenantId: firstTenant.tenant_id });
+      sessionStorage.setItem('ledger_auth_token', tokenRes.access_token);
+      sessionStorage.setItem('ledger_user_email', res.email);
+      sessionStorage.setItem('ledger_user_id', String(res.user_id));
+      onSuccess(res);
+    } catch (err) {
+      const detail = err?.body?.detail;
+      setError(detail?.message || err.message || 'Google sign-in failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -182,6 +205,31 @@ function AuthForm({ mode, onSuccess, onSwitchMode, hasExistingUsers, onResetDb }
           }
         </button>
 
+        {/* Google Sign-In */}
+        <div className="relative flex items-center gap-3 my-1">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">or</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        <div className={`flex justify-center transition-opacity ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Google sign-in was cancelled or failed.')}
+            text={isSignup ? 'signup_with' : 'signin_with'}
+            shape="pill"
+            theme="outline"
+            size="large"
+            width="360"
+          />
+        </div>
+        {googleLoading && (
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+            <span className="animate-spin block border-2 border-slate-300 border-t-[#2C4A70] rounded-full w-3.5 h-3.5" />
+            Signing in with Google…
+          </div>
+        )}
+
         <p className="text-center text-xs text-slate-500">
           {isSignup
             ? <>Already have a vault?{' '}<button type="button" onClick={() => onSwitchMode('login')} className="text-[#2C4A70] font-bold hover:underline">Sign in</button></>
@@ -310,11 +358,7 @@ export default function LandingPage({ onAuthenticated }) {
       <div className="w-full md:w-[55%] flex flex-col items-center justify-center p-10 md:p-16">
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
           className="w-full max-w-md">
-          <div className="flex justify-end mb-8">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm text-xs font-bold text-slate-500 tracking-widest uppercase border border-slate-100">
-              <Shield size={12} style={{ color: GREEN_TEXT }} /> Local-Only Mode
-            </div>
-          </div>
+
 
           <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-10">
             {checking ? (

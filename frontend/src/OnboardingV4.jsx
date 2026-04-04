@@ -92,9 +92,6 @@ function ProfileScreen({ initial, onDone }) {
       {/* Top bar */}
       <header className="flex items-center justify-between px-10 pt-8 pb-0">
         <span className="text-lg italic font-serif font-bold text-[#2C4A70]">The Private Ledger</span>
-        <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-1.5 rounded-full shadow-sm text-xs font-semibold text-slate-500">
-          <Shield size={13} className="text-[#526B5C]" /> Local-Only Mode
-        </div>
       </header>
 
       {/* Main */}
@@ -1161,7 +1158,7 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
     setIsDummyGoals(false);
     setData(d => ({
       ...d,
-      goals: d.goals.includes(detail.id) ? d.goals : [...(d.goals || []), detail.id],
+      goals: (d.goals || []).includes(detail.id) ? d.goals : [...(d.goals || []), detail.id],
       goalDetails: { ...(d.goalDetails || {}), [detail.id]: detail },
       dummyGoalDetails: [],
     }));
@@ -1199,10 +1196,18 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
     setData(u);
     saveJson(SK.goals, u);
 
-    // Persist goals to database — use configured details, fall back to dummies
-    const toSave = Object.keys(u.goalDetails || {}).length > 0
-      ? Object.values(u.goalDetails)
-      : (u.dummyGoalDetails || []);
+    // Persist only the goals the user explicitly configured — never fall back to dummy suggestions.
+    // Saving dummy goals to the DB would cause the Goals tick to appear on subsequent loads
+    // even though the user never actually entered any goal details.
+    const toSave = Object.values(u.goalDetails || {});
+
+    // Clear existing DB goals to prevent duplication on multiple 'Continues'
+    try {
+      const existing = await API.goals.list();
+      for (const g of existing) {
+        await API.goals.delete(g.id);
+      }
+    } catch (_) { /* non-blocking */ }
 
     for (const d of toSave) {
       const targetDate = new Date();
@@ -1366,7 +1371,7 @@ function GoalsSection({ data, setData, perspective = 'salaried', assets = [], on
 
           {/* Continue footer */}
           <div className="mt-auto border-t border-slate-200 bg-white px-6 py-4 flex justify-end shrink-0">
-            <Btn onClick={handleComplete} disabled={!data.goals?.length}>
+            <Btn onClick={handleComplete} disabled={configuredGoals.length === 0}>
               Looks good, continue <ArrowRight size={18} />
             </Btn>
           </div>
@@ -2203,13 +2208,10 @@ function Hub({ sections, setSections, profileData, setProfileData, userEmail, on
         if (flatAssets.length || flatLiabilities.length) {
           setMappingData(d => ({ ...d, assets: flatAssets, liabilities: flatLiabilities }));
         }
-        const mappedGoals = (dbData.goals || []).map(g => ({
-          id: g.id, name: g.name, targetAmount: g.target,
-          years: g.years, alreadySaved: g.current, status: 'Confirmed',
-        }));
-        if (mappedGoals.length) {
-          setGoalsData(d => ({ ...d, goals: mappedGoals, completed: true }));
-        }
+        // Note: we do NOT put DB goal objects into goalsData.goals here.
+        // GoalsSection treats `goals` as an array of string IDs (e.g. 'emergency'),
+        // but DB records use integer primary keys — mixing them incorrectly enables
+        // the Continue button without the user actually configuring any goals.
       })
       .catch(() => {})  // new user — proceed with empty defaults
       .finally(() => setDbReady(true));
@@ -2366,7 +2368,7 @@ export default function OnboardingV4({ userEmail = '', onLogout, onComplete }) {
     API.dashboard.load()
       .then(dbData => {
         if (!dbData) return;
-        const hasName    = dbData.name && dbData.name !== 'Rahul';
+        const hasName    = dbData.name && dbData.name.trim().length > 0;
         const hasAssets  = Object.values(dbData.assets  || {}).flat().length > 0;
         const hasGoals   = (dbData.goals || []).length > 0;
         if (hasName || hasAssets || hasGoals) {

@@ -200,7 +200,7 @@ class DashboardService:
         ]
 
         return DashboardDataResponse(
-            name=profile.display_name if profile else "Rahul",
+            name=profile.display_name if profile else "",
             age=30,
             monthly_income=150000,
             monthly_expenses=50000,

@@ -29,7 +29,7 @@ export default function NetWorthDashboard() {
   const [age, setAge] = useState(30);
   const [monthlyIncome, setMonthlyIncome] = useState(150000);
   const [monthlyExpenses, setMonthlyExpenses] = useState(50000);
-  const [name, setName] = useState('Rahul');
+  const [name, setName] = useState('');
   
   // -- ASSET STATE --
   const [assets, setAssets] = useState({
@@ -101,7 +101,7 @@ export default function NetWorthDashboard() {
       try {
         const data = await API.dashboard.load();
         if (data) {
-          setName(data.name || 'Rahul');
+          setName(data.name || '');
           setAge(data.age || 30);
           setMonthlyIncome(data.monthly_income || 150000);
           setMonthlyExpenses(data.monthly_expenses || 50000);

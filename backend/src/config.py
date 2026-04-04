@@ -24,6 +24,9 @@ Environment variables (can also be placed in a .env file at project root):
     # Which provider to use by default (GOOGLE | OPENAI | ANTHROPIC)
     DEFAULT_LLM_PROVIDER=GOOGLE
 
+    # Google OAuth (Sign-In)
+    GOOGLE_CLIENT_ID=          # From Google Cloud Console → APIs & Services → Credentials
+
     # FastAPI / server
     APP_ENV=development          # development | staging | production
     APP_HOST=0.0.0.0
@@ -71,6 +74,10 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    # ── Google OAuth ─────────────────────────────────────────────────────────
+
+    google_client_id: str = Field(default="", description="Google OAuth 2.0 Client ID for Sign-In")
 
     # ── Application ───────────────────────────────────────────────────────────
 

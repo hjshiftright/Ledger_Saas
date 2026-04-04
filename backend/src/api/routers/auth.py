@@ -103,6 +103,10 @@ class LogoutResponse(BaseModel):
     message: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(..., description="Google ID token from the frontend Sign-In button")
+
+
 # ── JWT helpers ───────────────────────────────────────────────────────────────
 
 def _create_scoped_jwt(
@@ -370,6 +374,127 @@ async def select_tenant(
         user_id=user.id,
         tenant_id=str(membership.tenant_id),
         role=membership.role,
+    )
+
+
+@router.post("/google", response_model=AuthListResponse, summary="Sign in or sign up with Google")
+async def google_auth(
+    request: GoogleAuthRequest,
+    session: AsyncSession = Depends(_admin_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Verify a Google ID token, then sign up or log in the user.
+
+    If no Google Client ID is configured on the server, returns 501.
+    On success returns the same AuthListResponse as /login — caller should
+    then call /auth/select-tenant to receive a scoped JWT.
+    """
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail={"error": "GOOGLE_AUTH_DISABLED", "message": "Google Sign-In is not configured on this server."},
+        )
+
+    # Verify the ID token with Google
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        id_info = google_id_token.verify_oauth2_token(
+            request.credential,
+            google_requests.Request(),
+            settings.google_client_id,
+        )
+    except Exception as exc:
+        logger.warning("Google token verification failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "GOOGLE_TOKEN_INVALID", "message": "Could not verify Google credential."},
+        )
+
+    google_id = id_info["sub"]
+    email     = id_info.get("email", "")
+    full_name = id_info.get("name")
+
+    # Look up existing user by google_id first, then fall back to email
+    user = await session.scalar(select(User).where(User.google_id == google_id))
+    if not user and email:
+        user = await session.scalar(select(User).where(User.email == email))
+        if user:
+            # Link existing email account to this Google identity
+            user.google_id = google_id
+            if not user.is_email_verified:
+                user.is_email_verified = True
+
+    if not user:
+        # First-time Google sign-in — create the account
+        user = User(
+            email=email,
+            hashed_password=None,
+            full_name=full_name,
+            google_id=google_id,
+            is_active=True,
+            is_email_verified=True,
+        )
+        session.add(user)
+        await session.flush()
+
+        tenant_name = f"{email.split('@')[0]}'s Account" if email else "My Account"
+        tenant = Tenant(
+            name=tenant_name,
+            entity_type="PERSONAL",
+            created_by_user_id=user.id,
+            status="ACTIVE",
+            plan="FREE",
+        )
+        session.add(tenant)
+        await session.flush()
+
+        membership = TenantMembership(
+            tenant_id=tenant.id,
+            user_id=user.id,
+            role="OWNER",
+            is_active=True,
+            accepted_at=datetime.now(timezone.utc),
+        )
+        session.add(membership)
+        await session.flush()
+
+        _seed_tenant_coa(session, user.id, tenant.id)
+        logger.info("New user via Google Sign-In: %s (id=%d) → tenant %s", email, user.id, tenant.id)
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "ACCOUNT_DISABLED", "message": "This account is disabled."},
+        )
+
+    user.last_login_at = datetime.now(timezone.utc)
+
+    # Fetch all active tenant memberships
+    result = await session.execute(
+        select(TenantMembership)
+        .options(selectinload(TenantMembership.tenant))
+        .where(TenantMembership.user_id == user.id)
+        .where(TenantMembership.is_active == True)  # noqa: E712
+    )
+    memberships = result.scalars().all()
+
+    tenants = [
+        TenantInfo(
+            tenant_id=str(m.tenant_id),
+            name=m.tenant.name,
+            entity_type=m.tenant.entity_type,
+            role=m.role,
+        )
+        for m in memberships
+        if m.tenant and m.tenant.status == "ACTIVE"
+    ]
+
+    return AuthListResponse(
+        user_id=user.id,
+        email=user.email,
+        tenants=tenants,
+        message="Google sign-in successful. Call /auth/select-tenant to receive your access token.",
     )
 
 

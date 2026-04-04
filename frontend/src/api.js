@@ -343,6 +343,10 @@ export const API = {
         ...(tenantId !== undefined && { tenant_id: tenantId }),
       }),
 
+    /** Sign in or sign up with a Google ID token (credential from useGoogleLogin / GoogleLogin). */
+    google: ({ credential }) =>
+      v1Call("/auth/google", "POST", { credential }),
+
     /** Reset the database (destructive). */
     resetDb: () =>
       v1Call("/auth/reset-db", "POST", { confirm: true }),

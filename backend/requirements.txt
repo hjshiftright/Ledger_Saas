@@ -39,6 +39,7 @@ anthropic>=0.25.0
 # ── Authentication ────────────────────────────────────────────────────────────
 bcrypt>=4.0.0
 python-jose[cryptography]>=3.3.0
+google-auth>=2.29.0          # Verify Google OAuth ID tokens
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dateutil>=2.9.0
