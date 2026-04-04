@@ -151,6 +151,25 @@ class TestExtractionChainPartial:
         assert result.status == ParseStatus.PARTIAL
         assert result.row_count == 5  # Best (TABLE_EXTRACTION) rows
 
+    def test_equal_confidence_prefers_more_rows(self, batch_id):
+        """When two methods score the same (e.g. 0.6), keep the one with more rows."""
+        text_result = _make_result(batch_id, 0.60, ExtractionMethod.TEXT_LAYER, n_rows=2)
+        table_result = _make_result(batch_id, 0.60, ExtractionMethod.TABLE_EXTRACTION, n_rows=8)
+
+        parser = _StubParser(
+            {
+                ExtractionMethod.TEXT_LAYER: text_result,
+                ExtractionMethod.TABLE_EXTRACTION: table_result,
+            },
+            methods=[ExtractionMethod.TEXT_LAYER, ExtractionMethod.TABLE_EXTRACTION],
+        )
+
+        chain = ExtractionChain(parser, batch_id, b"mock")
+        result = chain.run()
+
+        assert result.status == ParseStatus.PARTIAL
+        assert result.row_count == 8
+
 
 class TestExtractionChainFailure:
     def test_returns_failed_when_no_rows_at_all(self, batch_id):

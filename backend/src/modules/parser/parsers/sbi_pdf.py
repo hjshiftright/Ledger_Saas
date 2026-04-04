@@ -111,9 +111,11 @@ class SbiPdfParser(BaseParser):
         self._ocr_extractor = OCRExtractor()
 
     def supported_methods(self) -> list[ExtractionMethod]:
+        # TABLE_EXTRACTION first — matches module docstring; text-layer regex often
+        # under-counts rows on newer SBI layouts where pdfplumber tables are complete.
         return [
-            ExtractionMethod.TEXT_LAYER,
             ExtractionMethod.TABLE_EXTRACTION,
+            ExtractionMethod.TEXT_LAYER,
             ExtractionMethod.OCR,
         ]
 
@@ -132,7 +134,9 @@ class SbiPdfParser(BaseParser):
                 return self.parse_text_content(batch_id, combined, method)
 
             if method == ExtractionMethod.TABLE_EXTRACTION:
-                tables = self._table_extractor.extract_tables(file_bytes)
+                # Use pdfplumber stream only. "auto" tries Camelot lattice first when
+                # installed; lattice output for SBI is often inferior to pdfplumber.
+                tables = self._table_extractor.extract_tables(file_bytes, method="stream")
                 if not tables:
                     return self._make_failed_result(batch_id, method, "No tables found.")
                 rows = self._rows_from_tables(batch_id, tables)

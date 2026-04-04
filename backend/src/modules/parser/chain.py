@@ -29,6 +29,15 @@ logger = logging.getLogger(__name__)
 CONFIDENCE_THRESHOLD: float = 0.75
 
 
+def _should_replace_best(candidate: ExtractionResult, current: ExtractionResult) -> bool:
+    """Prefer higher confidence; on a tie prefer more rows (full table vs sparse regex)."""
+    if candidate.confidence > current.confidence + 1e-9:
+        return True
+    if abs(candidate.confidence - current.confidence) <= 1e-9:
+        return len(candidate.rows) > len(current.rows)
+    return False
+
+
 class ExtractionChain:
     """Runs all supported extraction methods in priority order.
 
@@ -90,8 +99,8 @@ class ExtractionChain:
                 )
                 continue
 
-            # Keep track of the best result so far
-            if best is None or result.confidence > best.confidence:
+            # Keep track of the best result so far (tie-break: more rows at same confidence)
+            if best is None or _should_replace_best(result, best):
                 best = result
 
             if result.succeeded:
@@ -115,9 +124,7 @@ class ExtractionChain:
                 best.confidence if best else 0.0,
             )
             llm_result = self._try_llm_fallback(llm_provider)
-            if llm_result is not None and llm_result.confidence > (
-                best.confidence if best else 0.0
-            ):
+            if llm_result is not None and (best is None or _should_replace_best(llm_result, best)):
                 best = llm_result
 
         # No method met the threshold

@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 DETECTION_THRESHOLD: float = 0.70
 
+# "Bank of India" matches inside "State Bank of India", "Union Bank of India", etc.
+# BOI PDF signatures must not fire on those institutions.
+_BOI_BANK_OF_INDIA_FALSE_POSITIVE_MARKERS: tuple[str, ...] = (
+    "state bank of india",
+    "union bank of india",
+    "central bank of india",
+)
+
 
 def _norm_header(raw: str) -> str:
     return " ".join(str(raw).replace("\n", " ").split()).strip().lower()
@@ -69,7 +77,16 @@ _FILENAME_PATTERNS: list[tuple[re.Pattern[str], SourceType, float]] = [
     (re.compile(r"canara.*bank|canara.*statement|canara.*acc", re.I), SourceType.CANARA_BANK, 0.85),
     (re.compile(r"standard.*charte?red|stanchart|scb.*statement|sc.*bank", re.I), SourceType.STANDARD_CHARTERED_BANK, 0.85),
     # Bank of India — avoid matching "Central Bank of India" via overly broad patterns
-    (re.compile(r"bank\s*of\s*india|bankofindia|boi[_\s-]*(?:statement|stmt|acc|account)", re.I), SourceType.BOI_BANK, 0.84),
+    # Do not match "State Bank of India" / "Union Bank of India" (they contain "bank of india")
+    (
+        re.compile(
+            r"(?<!state\s)(?<!union\s)(?<!central\s)"
+            r"(?:bank\s*of\s*india|bankofindia|boi[_\s-]*(?:statement|stmt|acc|account))",
+            re.I,
+        ),
+        SourceType.BOI_BANK,
+        0.84,
+    ),
     (re.compile(r"yes.*cc|yes.*credit|yes-cc", re.I), SourceType.YES_BANK_CC, 0.85),
     # ── CAMS / KFintech / MF Central ─────────────────────────────────────────
     (re.compile(r"cas.*cams|cams.*cas|camsonline", re.I), SourceType.CAS_CAMS, 0.90),
@@ -101,9 +118,10 @@ _PDF_CONTENT_SIGNATURES: list[tuple[list[str], SourceType, float]] = [
     (["Statementofaccount", "RTGS/NEFTIFSC"], SourceType.HDFC_BANK, 0.90),
     (["HDFCBANKLTD", "Statementofaccount"], SourceType.HDFC_BANK, 0.88),
     (["HDFCBANKLTD", "WithdrawalAmt."], SourceType.HDFC_BANK, 0.88),
-    (["State Bank of India", "Debit", "Credit"], SourceType.SBI_BANK, 0.90),
-    (["Txn Date", "Value Date", "Debit", "Credit", "Balance"], SourceType.SBI_BANK, 0.88),
-    (["Txn Date", "Debit", "Credit", "Balance"], SourceType.SBI_BANK, 0.85),
+    # 0.96 beats BOI signatures that match the substring "Bank of India" inside "State Bank of India"
+    (["State Bank of India", "Debit", "Credit"], SourceType.SBI_BANK, 0.96),
+    (["Txn Date", "Value Date", "Debit", "Credit", "Balance"], SourceType.SBI_BANK, 0.94),
+    (["Txn Date", "Debit", "Credit", "Balance"], SourceType.SBI_BANK, 0.92),
     (["State Bank of India", "Balance"], SourceType.SBI_BANK, 0.82),
     (["ICICI Bank", "Withdrawal", "Deposit"], SourceType.ICICI_BANK, 0.90),
     (["ICICI BANK", "Withdrawal", "Deposit"], SourceType.ICICI_BANK, 0.88),
@@ -344,6 +362,10 @@ class SourceDetector:
         for keywords, source_type, confidence in _PDF_CONTENT_SIGNATURES:
             # All keywords must be present (case-insensitive)
             if all(kw.lower() in sample_lower for kw in keywords):
+                if source_type == SourceType.BOI_BANK and any(
+                    m in sample_lower for m in _BOI_BANK_OF_INDIA_FALSE_POSITIVE_MARKERS
+                ):
+                    continue
                 if confidence > best_confidence:
                     best_confidence = confidence
                     best_type = source_type

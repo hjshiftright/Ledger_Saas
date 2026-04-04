@@ -117,6 +117,17 @@ class TestPdfContentDetection:
         assert result.source_type == SourceType.HDFC_BANK
         assert result.confidence >= DETECTION_THRESHOLD
 
+    def test_sbi_not_boi_state_bank_contains_bank_of_india_substring(self, detector: SourceDetector):
+        """SBI PDFs say 'State Bank of India' — must not classify as Bank of India (BOI)."""
+        content = (
+            b"%PDF-1.4\nSTATEMENT OF ACCOUNT\nState Bank of India\n"
+            b"Debit Credit Balance\nTerms and conditions apply."
+        )
+        result = detector.detect("AccountStatement-FEB.pdf", content)
+        assert result.source_type == SourceType.SBI_BANK
+        assert result.confidence >= 0.90
+        assert result.method == "content"
+
     def test_cams_content_signature(self, detector: SourceDetector):
         content = b"CAMS Consolidated Account Statement\nFolio No: 12345678"
         result = detector.detect("report.pdf", content)
